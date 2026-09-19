@@ -10,7 +10,7 @@
     c.className = "fx";
     art.appendChild(c);
     const ctx = c.getContext("2d");
-    // The fire sits at a fixed point of the banner image (hero-sigil.png, 1344x752): x 0.636, y 0.905. The CSS background is
+    // The fire sits at a fixed point of the banner image (hero-sigil.webp, 1344x752): x 0.636, y 0.905. The CSS background is
     // `cover` positioned `center 88%`, so we replay that geometry to find where the fire lands in the box at any size.
     const IMG_W = 1344, IMG_H = 752, FIRE_X = 0.687, FIRE_Y = 0.90, POS_X = 0.5, POS_Y = 0.88; // measured on the flame pixels
     let W = 0, H = 0, fx = 0, fy = 0, unit = 1;

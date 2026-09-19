@@ -44,7 +44,7 @@ header .sp { flex:1; }
 /* hero */
 .hero { margin:22px auto 26px; }
 .hero .panel { padding:0; overflow:hidden; }
-.hero .art { position:relative; aspect-ratio:16/8; min-height:220px; background:#0b0d0f center 88%/cover no-repeat; background-image:url(img/hero-sigil.png); image-rendering:pixelated; }
+.hero .art { position:relative; aspect-ratio:16/8; min-height:220px; background:#0b0d0f center 88%/cover no-repeat; background-image:url(img/hero-sigil.webp); image-rendering:pixelated; }
 .hero .art::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg, rgba(16,19,22,.92) 0%, rgba(16,19,22,.72) 42%, rgba(16,19,22,0) 75%); }
 .hero .txt { position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; justify-content:center; gap:14px; padding:28px 32px; max-width:640px; }
 .hero .txt h2 { font-size:20px; color:var(--ink); line-height:1.5; text-shadow:3px 3px 0 var(--line); }
@@ -144,7 +144,7 @@ header .sp { flex:1; }
 
 /* miner band */
 .band .panel { padding:0; overflow:hidden; }
-.band .art { position:relative; min-height:230px; background:#0b0d0f center/cover no-repeat; background-image:url(img/hero-mine.png); }
+.band .art { position:relative; min-height:230px; background:#0b0d0f center/cover no-repeat; background-image:url(img/hero-mine.webp); }
 .band .art::after { content:""; position:absolute; inset:0; background:linear-gradient(270deg, rgba(16,19,22,.94) 0%, rgba(16,19,22,.78) 45%, rgba(16,19,22,.15) 100%); }
 .band .txt { position:relative; z-index:1; display:flex; flex-direction:column; justify-content:center; align-items:flex-end; text-align:right; gap:12px; padding:26px 32px; min-height:230px; }
 .band .txt h2 { font-size:15px; color:var(--ink); text-shadow:3px 3px 0 var(--line); }
