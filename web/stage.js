@@ -19,11 +19,11 @@
   const TIER_COL = ["", "#9aa0a4", "#3fae5a", "#3b7ddd", "#8e44d1", "#d9a21b", "#f2f2f2"]; // reveal card only
   // anchors in grid cells: the liquid surface, the fire (particles die above `top`), the glow centre, the vial rack
   const BG = {
-    1: { src: "img/stage-1.png", liquid: { cx: 126, cy: 77, rx: 19, ry: 5 }, fire: { cx: 126, cy: 130, rx: 22, top: 96 }, glow: { cx: 126, cy: 60 }, rack: [[196, 130], [207, 135], [218, 140], [229, 145]] },
-    2: { src: "img/stage-2.png", liquid: { cx: 104, cy: 46, rx: 20, ry: 5 }, fire: { cx: 90, cy: 136, rx: 12, top: 112 }, glow: { cx: 104, cy: 30 }, rack: [[183, 90], [203, 90], [221, 92], [240, 100]] },
-    3: { src: "img/stage-3.png", liquid: { cx: 126, cy: 58, rx: 25, ry: 6 }, fire: { cx: 126, cy: 120, rx: 30, top: 92 }, glow: { cx: 126, cy: 40 }, rack: [[200, 86], [211, 90], [222, 94], [233, 98], [244, 102]], candles: [[25, 62], [43, 80]] },
+    1: { src: "img/stage-1.png", liquid: { cx: 126, cy: 77, rx: 19, ry: 5 }, fire: { cx: 126, cy: 130, rx: 22, top: 96 }, glow: { cx: 126, cy: 60 }, rack: [[184, 134], [200, 140], [216, 146], [232, 152]] },
+    2: { src: "img/stage-2.png", liquid: { cx: 104, cy: 46, rx: 20, ry: 5 }, fire: { cx: 90, cy: 136, rx: 12, top: 112 }, glow: { cx: 104, cy: 30 }, rack: [[180, 94], [198, 92], [216, 94], [234, 100]] },
+    3: { src: "img/stage-3.png", liquid: { cx: 126, cy: 58, rx: 25, ry: 6 }, fire: { cx: 126, cy: 120, rx: 30, top: 92 }, glow: { cx: 126, cy: 40 }, rack: [[192, 84], [208, 90], [224, 96], [240, 102]], candles: [[25, 62], [43, 80]] },
   };
-  const CODE = { liquid: { cx: 126, cy: 72, rx: 27, ry: 5 }, fire: { cx: 126, cy: 132, rx: 24, top: 100 }, glow: { cx: 126, cy: 52 }, rack: [[200, 136], [212, 140], [224, 144], [236, 148]] };
+  const CODE = { liquid: { cx: 126, cy: 72, rx: 27, ry: 5 }, fire: { cx: 126, cy: 132, rx: 24, top: 100 }, glow: { cx: 126, cy: 52 }, rack: [[184, 138], [200, 144], [216, 150], [232, 156]] };
   const q = new URLSearchParams(location.search);
   const mode = ["hybrid", "code", "sprite"].includes(q.get("stage")) ? q.get("stage") : (el.dataset.stage || "hybrid");
   const bgN = q.get("bg") || el.dataset.bg || "1";
@@ -38,6 +38,13 @@
   const SPRITE_VER = "5"; // bump when the sheet is rebuilt: /img/* is cached for a day
   const sprite = new Image(); if (mode === "sprite") sprite.src = `img/stage-sprite.png?v=${SPRITE_VER}`;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // drawn sprites for the rack vials and the gauge tube (scripts/stage-ui.py); the code shapes below are the fallback
+  const UI_VER = "1";
+  const ui = { vial: {}, gauge: new Image(), meta: null };
+  for (const k of ["empty", "sealed", "ready"]) { ui.vial[k] = new Image(); ui.vial[k].src = `img/stage-vial-${k}.png?v=${UI_VER}`; }
+  ui.gauge.src = `img/stage-gauge.png?v=${UI_VER}`;
+  fetch(`img/stage-ui.json?v=${UI_VER}`).then((r) => (r.ok ? r.json() : null)).then((m) => { ui.meta = m; }).catch(() => {});
+  const ready = (img) => img.complete && img.naturalWidth > 0;
 
   const S = {
     running: false, rate: 0, I: 0, thr: 0, best: 0, sec: 0, sessionSec: 60, chainNow: 0, m: 0,
@@ -96,6 +103,14 @@
   const drawVial = (x, y, v) => {
     if (v.rise < 1) { const [lx, ly] = [cfg.liquid.cx, cfg.liquid.cy - 4]; x = Math.round(lx + (x - lx) * v.rise); y = Math.round(ly + (y - ly) * v.rise - Math.sin(v.rise * Math.PI) * 20); }
     const blink = (S.frame >> 2) & 1;
+    const img = ui.vial[v.status === "submitting" ? "empty" : v.status === "ready" ? "ready" : "sealed"];
+    if (ready(img)) { // bottom-centre anchored sprite; a soft pulse behind a vial that is ready to reveal
+      const w = img.naturalWidth, h = img.naturalHeight, x0 = Math.round(x - w / 2), y0 = y - h;
+      if (v.status === "ready" && !blink) pxEllipse(x, y - (h >> 1), (w >> 1) + 3, (h >> 1) + 3, hex(COL.potion, 0.22));
+      if (v.status === "submitting" && blink) g.globalAlpha = 0.6;
+      g.drawImage(img, x0, y0); g.globalAlpha = 1;
+      return;
+    }
     if (v.status === "ready" && !blink) px(x - 5, y - 13, 11, 15, hex(COL.potion, 0.3));
     px(x - 1, y - 11, 3, 2, v.status === "sealed" || v.status === "ready" ? COL.wax : COL.cork);
     px(x - 2, y - 9, 5, 2, "#1c2126");
@@ -195,7 +210,15 @@
     S.vials.forEach((v, i) => { if (i < cfg.rack.length) { const [x, y] = vialPos(i); drawVial(x, y, v); } });
     if (S.vials.length > cfg.rack.length) { const [x, y] = vialPos(cfg.rack.length - 1); px(x + 6, y - 4, 1, 1, COL.white); px(x + 8, y - 4, 1, 1, COL.white); px(x + 10, y - 4, 1, 1, COL.white); }
     // gauge: the climb of the best hash to the bar; full and gold once over it, no scale above the bar
-    if (S.thr > 0 && (S.running || S.best > 0)) {
+    if (S.thr > 0 && (S.running || S.best > 0) && ready(ui.gauge) && ui.meta && ui.meta.gauge) {
+      const G = ui.meta.gauge, gx = W - G.w - 3, gy = Math.max(4, Math.round((H - G.h) / 2)), F = G.fill, lo = S.thr - 6;
+      const fx0 = gx + F.x0, fw = F.x1 - F.x0, top = gy + F.y0 + 3, bottom = gy + F.y1 - 1;
+      const ypos = (v) => Math.round(bottom - (clamp(v, lo, S.thr) - lo) / (S.thr - lo) * (bottom - top - 8));
+      g.drawImage(ui.gauge, gx, gy);
+      if (S.best > lo) { const yb = ypos(S.best); px(fx0, yb, fw, bottom - yb, cold() ? COL.cold : over() ? COL.gold : COL.potion); px(fx0, yb, 1, bottom - yb, hex(COL.white, 0.35)); }
+      const ybar = ypos(S.thr); px(gx + F.x0 - 3, ybar, fw + 6, 1, COL.white); px(gx + F.x0 - 5, ybar - 1, 2, 3, COL.white);
+      if (over() && !cold() && (S.frame >> 1) & 1) { px(fx0 + (fw >> 1) - 1, ybar - 7, 3, 3, COL.gold2); px(fx0 + (fw >> 1), ybar - 9, 1, 1, COL.white); }
+    } else if (S.thr > 0 && (S.running || S.best > 0)) {
       const x0 = W - 11, w = 5, y0 = 12, y1 = H - 12, lo = S.thr - 6;
       const ypos = (v) => Math.round(y1 - (clamp(v, lo, S.thr) - lo) / (S.thr - lo) * (y1 - y0 - 10));
       px(x0 - 1, y0 - 1, w + 2, y1 - y0 + 2, "#0b0d0f"); px(x0 - 1, y0 - 1, w + 2, 1, "#3a434c"); px(x0 - 1, y1, w + 2, 1, "#3a434c"); px(x0 - 1, y0, 1, y1 - y0, "#3a434c"); px(x0 + w, y0, 1, y1 - y0, "#3a434c");
