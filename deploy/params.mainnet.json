@@ -1,0 +1,59 @@
+{
+  "_comment": "Mainnet profile per GAME_DESIGN.md section 9. TREASURY must be the Safe address at deploy time.",
+  "materialsURI": "https://alchemists.example/api/materials/{id}.json",
+  "alchemistsBaseURI": "https://alchemists.example/api/alchemists/",
+  "summonFeeWei": "0",
+  "mine": {
+    "floorBits": 30,
+    "ceilBits": 43,
+    "kPerHour": 20000,
+    "oreR0": 1000000,
+    "refHashrate": "10000000000000",
+    "mCap": 2,
+    "price0Wei": "200000000000000",
+    "priceD": 50000,
+    "unlockHashrate": ["1000000000000", "2000000000000", "3000000000000", "4000000000000"],
+    "extraK": [1500, 200, 30, 5],
+    "keyChance": 65536,
+    "upgradeChance": 16,
+    "firstHourSec": 3600,
+    "windowSec": 120,
+    "windowSecEarly": 60,
+    "maxStepBits": 2,
+    "maxStepEarlyBits": 3,
+    "estCapBits": 6,
+    "estDivX10": 34
+  },
+  "workshop": {
+    "furnaceCooldown": 600,
+    "refineSuccess": [90, 80, 65, 50],
+    "furnaceBonus": 5,
+    "refineBaseInputs": 10,
+    "refineInputDrop": 4,
+    "rerollOutCategory": [5, 5, 5, 4, 3],
+    "rerollOutAny": 5,
+    "rerollUpPct": 5,
+    "rerollUp2PerMille": 5,
+    "rerollDown": [0, 5, 10, 20, 30],
+    "keyChance": [1000000, 100000, 10000, 1000, 100],
+    "craftUpgradePct": 5
+  },
+  "itemRecipe": [
+    [0, 0, 1, 2, 2],
+    [0, 0, 2, 0, 3],
+    [3, 2, 0, 0, 0],
+    [0, 3, 0, 0, 2],
+    [3, 0, 0, 2, 0],
+    [2, 0, 3, 0, 0],
+    [2, 3, 0, 0, 0],
+    [0, 0, 0, 2, 3]
+  ],
+  "furnaceRecipe": [4, 3, 0, 3, 0],
+  "keyKinds": [0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 7],
+  "governance": {
+    "safe": "0x0000000000000000000000000000000000000000",
+    "guardian": "safe",
+    "timelockDelay": 172800,
+    "_comment": "safe: the Safe multisig (proposer + executor); guardian: who may pause (the Safe); delay in seconds (48h)"
+  }
+}

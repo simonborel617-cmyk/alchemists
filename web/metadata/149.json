@@ -1,0 +1,28 @@
+{
+  "name": "Epic Belladonna",
+  "description": "Ingredient of the Alchemists mine: Belladonna (Herbs), tier Epic. Mined by proof of work on Robinhood Chain.",
+  "image": "./149.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Herbs"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Belladonna"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}

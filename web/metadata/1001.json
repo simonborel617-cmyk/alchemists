@@ -1,0 +1,20 @@
+{
+  "name": "Common Potion of Purification",
+  "description": "Single-use potion consumed by one refining attempt of tier Common ingredients.",
+  "image": "./1001.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Potion"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 1,
+      "display_type": "number"
+    }
+  ]
+}

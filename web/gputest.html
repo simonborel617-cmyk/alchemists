@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>GPU miner test</title>
+<link rel="stylesheet" href="style.css"></head>
+<body style="padding:20px">
+<pre id="out" style="font:13px/1.5 monospace;color:#e9e4d6">starting…</pre>
+<script src="sha256.js"></script>
+<script src="gpu.js"></script>
+<script>
+(async () => {
+  const out = document.getElementById("out");
+  const log = (m) => { out.textContent += "\n" + m; };
+  try {
+    out.textContent = "webgpu: " + GpuMiner.available();
+    const g = await GpuMiner.create();
+    log("adapter: " + g.info);
+    const st = await g.selftest();
+    log("selftest: " + (st.ok ? "PASS" : "FAIL " + st.hex));
+    // find a few 24-bit hashes and verify on the CPU
+    const ctx = MineHash.setup("0x1111111111111111111111111111111111111111", "0x4242424242424242424242424242424242424242424242424242424242424242");
+    g.setJob("0x1111111111111111111111111111111111111111", "0x4242424242424242424242424242424242424242424242424242424242424242", 24, 12345, 678);
+    let found = 0, checked = 0, bad = 0;
+    const t0 = performance.now();
+    while (performance.now() - t0 < 4000) {
+      const r = await g.dispatch();
+      if (r) { found++; const d = MineHash.digest(ctx, r.hi, r.lo); const lz = MineHash.lz64(d[0], d[1]); checked++; if (lz !== r.lz) bad++; }
+    }
+    const secs = (performance.now() - t0) / 1000;
+    log(`bench: ${(g.hashes / secs / 1e6).toFixed(1)} MH/s over ${secs.toFixed(1)} s, dispatches ${Math.round(g.hashes / g.perDispatch)}, finds>=24 bits ${found}, cpu-verified ${checked - bad}/${checked}`);
+    log("DONE");
+  } catch (e) { log("ERROR " + (e.message || e)); }
+})();
+</script>
+</body></html>

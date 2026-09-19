@@ -1,0 +1,28 @@
+{
+  "name": "Epic Antimony",
+  "description": "Ingredient of the Alchemists mine: Antimony (Metals), tier Epic. Mined by proof of work on Robinhood Chain.",
+  "image": "./61.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Metals"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Antimony"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}

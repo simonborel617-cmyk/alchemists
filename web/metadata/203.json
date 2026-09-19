@@ -1,0 +1,28 @@
+{
+  "name": "Uncommon Yew",
+  "description": "Ingredient of the Alchemists mine: Yew (Woods), tier Uncommon. Mined by proof of work on Robinhood Chain.",
+  "image": "./203.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Woods"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Yew"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 2,
+      "display_type": "number"
+    }
+  ]
+}

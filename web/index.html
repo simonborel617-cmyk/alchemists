@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alchemists · Mine, Workshop and the Cauldron</title>
+<meta name="description" content="Proof-of-work mining of alchemical ingredients on Robinhood Chain: mine, refine, reroll, craft ritual items, fill the Cauldron.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta http-equiv="Cache-Control" content="no-cache">
+<link rel="stylesheet" href="style.css?v=13">
+</head>
+<body data-app="7">
+<header>
+  <div class="wrap">
+    <h1>ALCHEMISTS<small>mine · workshop · the Cauldron</small></h1>
+    <span class="tag" id="net">loading…</span>
+    <span id="pauseFlag"></span>
+    <span class="sp"></span>
+    <span id="who"></span>
+    <button id="connect" class="btn gold">Connect wallet</button>
+  </div>
+</header>
+
+<div class="wrap hero">
+  <div class="panel">
+    <div class="art">
+      <div class="txt">
+        <h2>Mine ingredients with <em>real proof of work</em>. Refine. Assemble the ritual.</h2>
+        <p>Every minute the mine issues a new challenge. The best hash of the minute from your address becomes a random ingredient: 40 types, 5 tiers. The furnace refines, the crucible rerolls, the ritual table seals items for the summoning. Every payment in ETH flows into the Cauldron.</p>
+        <div class="cta">
+          <a class="btn gold" href="#bm">Mine in your browser</a>
+          <a class="btn" href="miner.html">GPU rig setup</a>
+          <button class="btn" id="connect2">Connect wallet</button>
+        </div>
+      </div>
+    </div>
+    <div class="steps">
+      <div><img class="px" src="img/ore.png" alt=""><span><b>1 · Mine</b>one submit per minute per address</span></div>
+      <div><img class="px" src="img/furnace-3.png" alt=""><span><b>2 · Furnace</b>refine one tier up</span></div>
+      <div><img class="px" src="img/crucible.png" alt=""><span><b>3 · Crucible</b>10 → 5, a chance of a higher tier</span></div>
+      <div><img class="px" src="metadata/2005.png" alt=""><span><b>4 · Ritual</b>items from 5 ingredients</span></div>
+      <div><img class="px" src="img/cauldron.png" alt=""><span><b>5 · Cauldron</b>ether gathers for the ritual</span></div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <section class="panel" id="bm" style="margin-bottom:26px">
+    <h2>Mine in your browser <span class="tag" id="mineState">stopped</span></h2>
+    <div class="bm">
+      <div class="bm-wallet">
+        <h3>signer</h3>
+        <div class="row"><label class="f">sign submits with<select id="signerMode"><option value="session">session wallet · no pop-ups</option><option value="own">my own wallet · confirm each submit</option></select></label></div>
+        <div id="sessionBox">
+          <p>A session wallet that lives in this browser signs the submits, so nothing pops up every minute. Fund it with a little ETH, mine, then move the loot to your main wallet whenever you like.</p>
+          <div class="row" style="align-items:center;gap:8px 12px;margin-top:8px"><a id="burnerAddr" class="mono" href="#"></a><span class="tag warn" id="burnerBal">–</span></div>
+          <div class="row" style="margin-top:10px"><input id="fundAmt" value="0.005" style="width:90px" aria-label="amount in ETH"><button class="btn gold" id="fundBtn">Fund from wallet</button><button class="btn" id="withdrawBtn">Move loot to wallet</button></div>
+          <div class="row" style="margin-top:8px"><button class="btn" id="exportBtn">Export key</button><button class="btn" id="importBtn">Import key</button></div>
+          <p class="small">Keep only what you are ready to spend in it. The key is stored in this browser only; export it if you want to keep it.</p>
+        </div>
+        <div id="ownBox" style="display:none">
+          <p>Your connected wallet mines under its own address and signs every submit itself. Nothing is deposited anywhere. A submit must be confirmed within the minute after the find, or it expires and the find is lost.</p>
+          <div class="row" style="margin-top:10px;align-items:center"><button class="btn gold" id="connect3">Connect wallet</button><span class="tag" id="ownAddr">not connected</span></div>
+          <p class="small">Safer, but you have to be at the keyboard: one confirmation per minute while mining.</p>
+        </div>
+      </div>
+      <div class="bm-limits">
+        <h3>limits</h3>
+        <label class="f">max price per submit, ETH<input id="maxPrice" placeholder="no limit" inputmode="decimal"></label>
+        <label class="f">budget for this run, ETH<input id="budget" placeholder="no limit" inputmode="decimal"></label>
+        <label class="f">rounds to mine, minutes<input id="rounds" value="0" inputmode="numeric"></label>
+        <label class="f">max submits<input id="maxSubmits" value="0" inputmode="numeric"></label>
+        <label class="f">keep at least in the signing wallet, ETH<input id="reserve" value="0.0005" inputmode="decimal"></label>
+        <label class="f">overpay margin, %<input id="margin" value="25" inputmode="numeric"></label>
+        <p class="small">The limits apply to whichever wallet signs, session or your own. 0 means no limit. Mining stops on its own when a limit is reached, the vein is exhausted or the mine is paused. The margin covers a price step between the quote and the block; the contract refunds the excess.</p>
+      </div>
+      <div class="bm-engine">
+        <h3>power</h3>
+        <div class="row"><label class="f">engine<select id="engine"><option value="cpu">CPU (any browser)</option><option value="gpu">GPU (WebGPU)</option></select></label></div>
+        <div id="cpuOpts"><label class="f range">threads<span id="cpuThreadsLbl">4</span><input type="range" id="cpuThreads" min="1" max="8" value="4"></label><p class="small">Every thread is one CPU core. Start with half of your cores if you want to keep using the computer.</p></div>
+        <div id="gpuOpts" style="display:none"><label class="f range">intensity<span id="gpuIntLbl">100 %</span><input type="range" id="gpuInt" min="10" max="100" value="100" step="10"></label><p class="small" id="gpuNote">Lower intensity leaves the card idle between batches so the desktop stays smooth.</p></div>
+        <div class="row" style="margin-top:6px"><button class="btn gold" id="mineStart">Start mining</button><button class="btn" id="mineStop" disabled>Stop</button></div>
+      </div>
+      <div class="bm-live">
+        <div class="stat" style="grid-template-columns:1fr 1fr">
+          <div><b>my hashrate</b><span id="hashrate">–</span></div>
+          <div><b>best this minute</b><span id="bestBits">–</span></div>
+        </div>
+        <div class="tag" id="mstats" style="margin-top:10px;display:block">rounds 0 · submits 0 · skips 0 · minted 0 · spent 0 ETH</div>
+        <div class="tag warn" id="mineWarn" style="display:none;margin-top:8px;line-height:1.5;white-space:normal"></div>
+        <h3 style="margin-top:14px">latest loot</h3>
+        <div class="inv" id="results" style="grid-template-columns:repeat(auto-fill,84px)"></div>
+        <div class="log" id="mlog" style="margin-top:12px;max-height:150px"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid g2">
+    <section class="panel" id="mine">
+      <h2>Mine <span class="tag" id="mineAddr"></span></h2>
+      <div class="stat">
+        <div style="grid-column:span 2"><b>session</b><div class="clock"><span id="clock">–</span><small id="session"></small></div></div>
+        <div><b>submit price</b><span id="price" class="sm">–</span></div>
+        <div><b>threshold this minute</b><span id="thr">–</span></div>
+        <div><b>network hashrate, estimate</b><span id="ema">–</span></div>
+        <div><b>submits total</b><span id="subs">–</span></div>
+        <div><b>farm multiplier</b><span id="mult">–</span></div>
+        <div><b>network pressure</b><span id="press">–</span></div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="barlbl"><span>threshold corridor</span><span id="corr">30 … 43 bits</span></div>
+        <div class="bar" id="thrBar"><i style="width:0"></i><span class="pin" style="left:0"></span></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="barlbl"><span>ore left in the vein</span><span id="oreLbl">–</span></div>
+        <div class="bar ore" id="oreBar"><i style="width:100%"></i><span class="mark" style="left:50%"></span><span class="mark" style="left:75%"></span><span class="mark" style="left:87.5%"></span></div>
+        <div class="barlbl"><span>halvings at 50 / 25 / 12.5 %</span><span id="halv"></span></div>
+      </div>
+      <div style="margin-top:14px">
+        <h3>unlocked rarities</h3>
+        <div class="gems" id="gems"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="my">
+      <h2>My finds <span class="tag" id="pending">to reveal: –</span></h2>
+      <p style="margin:0 0 12px;color:var(--ink2);font-size:14px">Every submit reveals the find before it. If the last one is still sealed (you stopped mining, or you run the standalone miner from another machine), reveal it here by hand.</p>
+      <div class="stat" style="grid-template-columns:1fr 1fr">
+        <div><b>my ingredients</b><span id="myCount">–</span></div>
+        <div><b>my furnaces</b><span id="myFurn">–</span></div>
+      </div>
+      <div id="pendList" style="margin-top:12px;font:12px/1.6 var(--mono);color:var(--ink2)"></div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button id="revealMine" class="btn" disabled>Reveal finds</button>
+        <button id="revealWs" class="btn" disabled>Reveal crafts</button>
+        <span class="pill" id="commits">crafts to reveal: –</span>
+      </div>
+      <div id="revealStatus" class="tag" style="display:none;margin-top:10px;line-height:1.5;white-space:normal"></div>
+      <div style="margin-top:18px">
+        <h3>how to join</h3>
+        <ol style="margin:0;padding-left:18px;color:var(--ink2);font-size:13px;line-height:1.6">
+          <li>Pick who signs: <b>your own wallet</b> (nothing is deposited, you confirm each submit) or the <b>session wallet</b> (fund it with a little ETH once, then no pop-ups). Funding the session wallet is optional.</li>
+          <li>Press <b>Start mining</b>: CPU works everywhere, WebGPU uses your card. Set limits if you want a cap on price or spend.</li>
+          <li>Loot lands in the wallet that mined it. From the session wallet, <b>Move loot to my wallet</b> sends everything to your main wallet in one click.</li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="inv" style="margin-bottom:26px">
+    <h2>Inventory <label class="f" style="margin-left:6px;flex-direction:row;align-items:center;gap:8px">showing<select id="invWho"><option value="miner">session wallet</option><option value="main" disabled>main wallet</option></select><span class="tag" id="invWhoAddr"></span></label><button class="btn gold" id="withdrawBtn2" style="margin-left:12px;display:none">Move loot to my wallet</button><span class="tag" id="invHint">empty</span></h2>
+    <div class="tabs" id="tabs"></div>
+    <div class="inv" id="invGrid"></div>
+    <div class="empty" id="invEmpty">Connect a wallet to see your ingredients, potions, items, keys and furnaces.</div>
+  </section>
+
+  <section class="panel" id="ws" style="margin-bottom:26px">
+    <h2>Workshop <span class="tag" id="wsStatus">…</span><span class="tag" id="wsAddr"></span></h2>
+    <div class="ws">
+      <nav class="ws-nav" id="wsNav">
+        <button data-st="potion" class="on"><img class="px" src="img/potion.png" alt=""><span>Potion</span></button>
+        <button data-st="furnace"><img class="px" src="img/furnace-1.png" alt="" id="navFurImg"><span>Furnace</span></button>
+        <button data-st="refine"><img class="px" src="img/furnace-2.png" alt=""><span>Refining</span></button>
+        <button data-st="reroll"><img class="px" src="img/crucible.png" alt=""><span>Crucible</span></button>
+        <button data-st="item"><img class="px" src="metadata/2001.png" alt="" id="navItImg"><span>Ritual table</span></button>
+      </nav>
+      <div class="ws-body">
+        <div class="st on" id="st-potion">
+          <div class="st-head"><img class="px" src="img/potion.png" alt=""><div><h3>Potion of Purification</h3><p>Two herbs of one tier brew into one potion of that tier. Every refining attempt burns one potion. Brewing is instant, nothing to reveal.</p></div></div>
+          <div class="recipe" id="rc-potion"></div>
+          <div class="ctl"><label class="f">tier<select id="potTier"></select></label><label class="f">first herb<select id="potA"></select></label><label class="f">second herb<select id="potB"></select></label></div>
+          <div class="req" id="rq-potion"></div>
+          <div class="act"><button id="doPotion" class="btn gold">Brew potion</button><span class="hint" id="potHint"></span></div>
+        </div>
+        <div class="st" id="st-furnace">
+          <div class="st-head"><img class="px" src="img/furnace-1.png" alt="" id="furImg"><div><h3>Furnace</h3><p>A furnace is built from ingredients of its own tier. Its tier caps the tier of ingredients you can refine in it, and a furnace hotter than the ingredient adds a success bonus. One firing per cooldown.</p></div></div>
+          <div class="recipe" id="rc-furnace"></div>
+          <div class="ctl"><label class="f">furnace tier<select id="furTier"><option value="1">1 · clay (Common)</option><option value="2">2 · iron (Uncommon)</option><option value="3">3 · brass (Rare)</option><option value="4">4 · athanor (Epic)</option></select></label></div>
+          <div class="req" id="rq-furnace"></div>
+          <div class="act"><button id="doFurnace" class="btn gold">Build furnace</button><span class="hint" id="furHint"></span></div>
+        </div>
+        <div class="st" id="st-refine">
+          <div class="st-head"><img class="px" src="img/furnace-2.png" alt=""><div><h3>Refining</h3><p id="refDesc">Ingredients of one type and tier plus a potion of that tier go into a furnace; on success one ingredient of the next tier comes out. The result is sealed until the next minute.</p></div></div>
+          <div class="recipe" id="rc-refine"></div>
+          <div class="ctl"><label class="f">furnace<select id="refFurnace"></select></label><label class="f">ingredient<select id="refType"></select></label><label class="f">tier in<select id="refTier"></select></label></div>
+          <div class="req" id="rq-refine"></div>
+          <div class="act"><button id="doRefine" class="btn gold">Refine</button><span class="hint" id="refHint"></span></div>
+        </div>
+        <div class="st" id="st-reroll">
+          <div class="st-head"><img class="px" src="img/crucible.png" alt=""><div><h3>Crucible</h3><p>Ten ingredients of one tier melt into fewer random ones of the same tier. Choosing an output category costs a few pieces. Each piece rolls for a tier up, and there is a risk of a tier down at high tiers. Sealed until the next minute.</p></div></div>
+          <div class="recipe" id="rc-reroll"></div>
+          <div class="ctl"><label class="f">tier<select id="rrTier"></select></label><label class="f">output category<select id="rrCat"><option value="255">any category</option><option value="0">metals</option><option value="1">minerals</option><option value="2">herbs</option><option value="3">woods</option><option value="4">beasts</option></select></label></div>
+          <div class="req" id="rq-reroll"></div>
+          <div class="act"><button id="doReroll" class="btn gold">Melt 10</button><span class="hint" id="rrHint"></span></div>
+        </div>
+        <div class="st" id="st-item">
+          <div class="st-head"><img class="px" src="metadata/2001.png" alt="" id="itImg"><div><h3>Ritual table</h3><p>Five ingredients by the recipe of the item are sealed into a ritual item of their tier. A small chance of one tier higher, and a roll for a mythic key bound to the item kind. Sealed until the next minute.</p></div></div>
+          <div class="recipe" id="rc-item"></div>
+          <div class="ctl"><label class="f">item<select id="itKind"></select></label><label class="f">tier<select id="itTier"></select></label></div>
+          <div class="req" id="rq-item"></div>
+          <div class="act"><button id="doItem" class="btn gold">Craft item</button><span class="hint" id="itHint"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="band" style="margin-bottom:26px">
+    <div class="panel">
+      <div class="art">
+        <div class="txt">
+          <h2>How to mine</h2>
+          <p>One process per card, up to 32 addresses on it. Your keys stay with you: the card only ever sees public addresses. Starting submit price 0.0002 ETH, gas about 300k per submit with reveal.</p>
+          <p><code>alchemists-miner --net robinhood --box "ssh -p PORT root@HOST ./hb-miner-linux-x64" --miners-file miners.txt</code></p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end"><a class="btn gold" href="miner.html">Guide and files</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2">
+    <section class="panel" id="cauldron">
+      <h2>The Cauldron <span class="tag">treasury</span></h2>
+      <div class="cauldron">
+        <span class="pot"><img class="px" src="img/cauldron.png" alt=""><i style="left:44px;top:42px;animation-delay:0s"></i><i style="left:62px;top:48px;animation-delay:.7s"></i><i style="left:78px;top:40px;animation-delay:1.4s"></i></span>
+        <div>
+          <div class="big" id="treasury">–</div>
+          <p>All ether from submits gathers here. Once the alchemists are summoned, 30 % streams daily to holders and 70 % brews for the ritual of the Philosopher's Stone.</p>
+          <div class="split"><i></i><i></i></div>
+          <div class="barlbl" style="margin-top:4px"><span>30 % stream</span><span>70 % brew</span></div>
+        </div>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Log</h2>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><b>Contracts</b><div id="contracts"></div></div>
+    <div><b>Rules</b>One submit per minute per address. Type and tier are revealed by the next minute's challenge. The submit price rises with mining and falls with burning. The threshold stays inside the 30…43 bit corridor.</div>
+    <div><b>Network</b><span id="netFoot"></span></div>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<script src="sha256.js?v=13"></script>
+<script src="gpu.js?v=13"></script>
+<script src="fx.js?v=13"></script>
+<script src="app.js?v=13"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "name": "Rare Scarab",
+  "description": "Ingredient of the Alchemists mine: Scarab (Beasts), tier Rare. Mined by proof of work on Robinhood Chain.",
+  "image": "./316.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Beasts"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Scarab"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}

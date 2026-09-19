@@ -1,0 +1,28 @@
+{
+  "name": "Legendary Hawthorn",
+  "description": "Ingredient of the Alchemists mine: Hawthorn (Woods), tier Legendary. Mined by proof of work on Robinhood Chain.",
+  "image": "./238.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Woods"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Hawthorn"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 5,
+      "display_type": "number"
+    }
+  ]
+}

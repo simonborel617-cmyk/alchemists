@@ -1,0 +1,28 @@
+{
+  "name": "Epic Seal",
+  "description": "Sealed ritual item for summoning: Seal, tier Epic. Crafted from five ingredients by recipe.",
+  "image": "./2028.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Seal"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}

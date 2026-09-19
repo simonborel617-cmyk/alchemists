@@ -1,0 +1,28 @@
+{
+  "name": "Legendary Censer",
+  "description": "Sealed ritual item for summoning: Censer, tier Legendary. Crafted from five ingredients by recipe.",
+  "image": "./2045.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Censer"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Enhancer"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 5,
+      "display_type": "number"
+    }
+  ]
+}

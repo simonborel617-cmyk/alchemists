@@ -1,0 +1,28 @@
+{
+  "name": "Azoth (key of Paracelsus)",
+  "description": "Mythic key: Azoth, the signature Seal of Paracelsus. Unique. Summons the named 1/1 alchemist when offered in the Seal slot.",
+  "image": "./3008.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Mythic Key"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Seal"
+    },
+    {
+      "trait_type": "Alchemist",
+      "value": "Paracelsus"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Mythic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 6,
+      "display_type": "number"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Rare Potion of Purification",
+  "description": "Single-use potion consumed by one refining attempt of tier Rare ingredients.",
+  "image": "./1003.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Potion"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Uncommon Salt",
+  "description": "Ingredient of the Alchemists mine: Salt (Minerals), tier Uncommon. Mined by proof of work on Robinhood Chain.",
+  "image": "./75.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Minerals"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Salt"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 2,
+      "display_type": "number"
+    }
+  ]
+}

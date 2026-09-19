@@ -1,0 +1,38 @@
+{
+  "materialsURI": "http://localhost/materials/{id}.json",
+  "alchemistsBaseURI": "http://localhost/alchemists/",
+  "summonFeeWei": "0",
+  "mine": {
+    "floorBits": 12,
+    "ceilBits": 43,
+    "kPerHour": 20000,
+    "oreR0": 1000000,
+    "refHashrate": "5000000000000",
+    "mCap": 2,
+    "price0Wei": "200000000000000",
+    "priceD": 50000,
+    "unlockHashrate": ["1", "2", "3", "4"],
+    "extraK": [1500, 200, 30, 5],
+    "keyChance": 65536,
+    "upgradeChance": 16,
+    "firstHourSec": 3600,
+    "windowSec": 120,
+    "windowSecEarly": 60,
+    "maxStepBits": 2,
+    "maxStepEarlyBits": 3,
+    "estCapBits": 6,
+    "estDivX10": 34
+  },
+  "itemRecipe": [
+    [0, 0, 1, 2, 2],
+    [0, 0, 2, 0, 3],
+    [3, 2, 0, 0, 0],
+    [0, 3, 0, 0, 2],
+    [3, 0, 0, 2, 0],
+    [2, 0, 3, 0, 0],
+    [2, 3, 0, 0, 0],
+    [0, 0, 0, 2, 3]
+  ],
+  "furnaceRecipe": [4, 3, 0, 3, 0],
+  "keyKinds": [0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 7]
+}

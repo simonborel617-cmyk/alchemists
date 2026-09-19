@@ -1,0 +1,28 @@
+{
+  "name": "Common Hawthorn",
+  "description": "Ingredient of the Alchemists mine: Hawthorn (Woods), tier Common. Mined by proof of work on Robinhood Chain.",
+  "image": "./234.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Woods"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Hawthorn"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 1,
+      "display_type": "number"
+    }
+  ]
+}

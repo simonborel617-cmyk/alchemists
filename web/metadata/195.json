@@ -1,0 +1,28 @@
+{
+  "name": "Uncommon Oak",
+  "description": "Ingredient of the Alchemists mine: Oak (Woods), tier Uncommon. Mined by proof of work on Robinhood Chain.",
+  "image": "./195.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Woods"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Oak"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 2,
+      "display_type": "number"
+    }
+  ]
+}

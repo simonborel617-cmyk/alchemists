@@ -1,0 +1,16 @@
+{
+  "network": "robinhoodTestnet",
+  "chainId": 46630,
+  "deployer": "0xEd809549fFff5D7d79c27dfcad459389a8722a56",
+  "treasury": "0xEd809549fFff5D7d79c27dfcad459389a8722a56",
+  "params": "params.testnet.json",
+  "deployedAt": "2026-09-15T18:52:06.283Z",
+  "block": 120045695,
+  "contracts": {
+    "Materials": "0xcD2D37C0e2fc532BAF8BF106c85c17e1EfAa67CC",
+    "Mine": "0x55659F90E798CE98B1e869BBD4E80C5038FA5D8D",
+    "Furnaces": "0x881e145ED45341BC286c4Bb372051DD8C0fd04e4",
+    "Workshop": "0x0Ee1305e829958F292410cFEA5d74Adb582C7CEb",
+    "Alchemists": "0x74496936C89f993ACdD6FB81422103bD8f99ffC8"
+  }
+}

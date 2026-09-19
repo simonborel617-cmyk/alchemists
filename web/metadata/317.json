@@ -1,0 +1,28 @@
+{
+  "name": "Epic Scarab",
+  "description": "Ingredient of the Alchemists mine: Scarab (Beasts), tier Epic. Mined by proof of work on Robinhood Chain.",
+  "image": "./317.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Beasts"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Scarab"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}

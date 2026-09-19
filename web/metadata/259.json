@@ -1,0 +1,28 @@
+{
+  "name": "Uncommon Bone",
+  "description": "Ingredient of the Alchemists mine: Bone (Beasts), tier Uncommon. Mined by proof of work on Robinhood Chain.",
+  "image": "./259.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Beasts"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Bone"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 2,
+      "display_type": "number"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Common Scepter",
+  "description": "Sealed ritual item for summoning: Scepter, tier Common. Crafted from five ingredients by recipe.",
+  "image": "./2033.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Scepter"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 1,
+      "display_type": "number"
+    }
+  ]
+}

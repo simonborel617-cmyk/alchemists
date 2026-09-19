@@ -1,0 +1,28 @@
+{
+  "name": "Uncommon Grimoire",
+  "description": "Sealed ritual item for summoning: Grimoire, tier Uncommon. Crafted from five ingredients by recipe.",
+  "image": "./2002.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Grimoire"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 2,
+      "display_type": "number"
+    }
+  ]
+}

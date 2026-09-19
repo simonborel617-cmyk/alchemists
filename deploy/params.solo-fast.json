@@ -1,0 +1,59 @@
+{
+  "_comment": "Fast solo testnet profile: 15-second sessions, 60 ore, one GPU walks the whole season (halvings, exhaustion) in ~20 minutes. Not for mainnet.",
+  "materialsURI": "https://alchemists.example/api/materials/{id}.json",
+  "alchemistsBaseURI": "https://alchemists.example/api/alchemists/",
+  "summonFeeWei": "0",
+  "mine": {
+    "sessionSec": 15,
+    "floorBits": 18,
+    "ceilBits": 43,
+    "kPerHour": 240,
+    "oreR0": 60,
+    "refHashrate": "5000000",
+    "mCap": 2,
+    "price0Wei": "100000000000000",
+    "priceD": 20,
+    "unlockHashrate": ["300000", "1000000", "2000000", "3500000"],
+    "extraK": [20, 8, 3, 1],
+    "keyChance": 64,
+    "upgradeChance": 4,
+    "firstHourSec": 300,
+    "windowSec": 30,
+    "windowSecEarly": 15,
+    "maxStepBits": 3,
+    "maxStepEarlyBits": 4,
+    "estCapBits": 6,
+    "estDivX10": 34
+  },
+  "workshop": {
+    "furnaceCooldown": 30,
+    "refineSuccess": [90, 80, 65, 50],
+    "furnaceBonus": 5,
+    "refineBaseInputs": 10,
+    "refineInputDrop": 4,
+    "rerollOutCategory": [5, 5, 5, 4, 3],
+    "rerollOutAny": 5,
+    "rerollUpPct": 5,
+    "rerollUp2PerMille": 5,
+    "rerollDown": [0, 5, 10, 20, 30],
+    "keyChance": [50, 20, 10, 5, 2],
+    "craftUpgradePct": 25
+  },
+  "itemRecipe": [
+    [0, 0, 1, 2, 2],
+    [0, 0, 2, 0, 3],
+    [3, 2, 0, 0, 0],
+    [0, 3, 0, 0, 2],
+    [3, 0, 0, 2, 0],
+    [2, 0, 3, 0, 0],
+    [2, 3, 0, 0, 0],
+    [0, 0, 0, 2, 3]
+  ],
+  "furnaceRecipe": [4, 3, 0, 3, 0],
+  "keyKinds": [0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 7],
+  "governance": {
+    "safe": "deployer",
+    "guardian": "safe",
+    "timelockDelay": 120
+  }
+}

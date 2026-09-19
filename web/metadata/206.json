@@ -1,0 +1,28 @@
+{
+  "name": "Legendary Yew",
+  "description": "Ingredient of the Alchemists mine: Yew (Woods), tier Legendary. Mined by proof of work on Robinhood Chain.",
+  "image": "./206.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Woods"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Yew"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 5,
+      "display_type": "number"
+    }
+  ]
+}

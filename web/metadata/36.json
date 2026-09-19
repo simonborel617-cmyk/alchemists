@@ -1,0 +1,28 @@
+{
+  "name": "Rare Mercury",
+  "description": "Ingredient of the Alchemists mine: Mercury (Metals), tier Rare. Mined by proof of work on Robinhood Chain.",
+  "image": "./36.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Metals"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Mercury"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}

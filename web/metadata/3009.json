@@ -1,0 +1,28 @@
+{
+  "name": "Trigrams of the Cantong qi (key of Wei Boyang)",
+  "description": "Mythic key: Trigrams of the Cantong qi, the signature Seal of Wei Boyang. Unique. Summons the named 1/1 alchemist when offered in the Seal slot.",
+  "image": "./3009.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Mythic Key"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Seal"
+    },
+    {
+      "trait_type": "Alchemist",
+      "value": "Wei Boyang"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Mythic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 6,
+      "display_type": "number"
+    }
+  ]
+}

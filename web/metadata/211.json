@@ -1,0 +1,28 @@
+{
+  "name": "Uncommon Ash",
+  "description": "Ingredient of the Alchemists mine: Ash (Woods), tier Uncommon. Mined by proof of work on Robinhood Chain.",
+  "image": "./211.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Woods"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Ash"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 2,
+      "display_type": "number"
+    }
+  ]
+}

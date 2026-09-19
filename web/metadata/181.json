@@ -1,0 +1,28 @@
+{
+  "name": "Epic Hemlock",
+  "description": "Ingredient of the Alchemists mine: Hemlock (Herbs), tier Epic. Mined by proof of work on Robinhood Chain.",
+  "image": "./181.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Herbs"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Hemlock"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}

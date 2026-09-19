@@ -1,0 +1,28 @@
+{
+  "name": "Common Mirror",
+  "description": "Sealed ritual item for summoning: Mirror, tier Common. Crafted from five ingredients by recipe.",
+  "image": "./2049.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Mirror"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Enhancer"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 1,
+      "display_type": "number"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "network": "robinhoodTestnet",
+  "safe": "0xc1e32A54744Bb075b49512c09Cd075DbeBBFA140",
+  "owners": [
+    "0x41499E67d669851510E9d1df628cd2Ad0758334a",
+    "0xEd809549fFff5D7d79c27dfcad459389a8722a56",
+    "0xA18de007Be184f9906acd1c6bfae87Fd8C939655"
+  ],
+  "threshold": 2,
+  "version": "1.4.1",
+  "tx": "0x9ab3a3bdbc5204c31b03d344d18556beb6d8c8fa457a0f492473e46c06d05420",
+  "createdAt": "2026-09-18T23:08:43.141Z",
+  "name": "cauldron"
+}

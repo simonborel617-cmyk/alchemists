@@ -1,0 +1,28 @@
+{
+  "name": "Legendary Mugwort",
+  "description": "Ingredient of the Alchemists mine: Mugwort (Herbs), tier Legendary. Mined by proof of work on Robinhood Chain.",
+  "image": "./174.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Herbs"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Mugwort"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 5,
+      "display_type": "number"
+    }
+  ]
+}

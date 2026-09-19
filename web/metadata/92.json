@@ -1,0 +1,28 @@
+{
+  "name": "Rare Cinnabar",
+  "description": "Ingredient of the Alchemists mine: Cinnabar (Minerals), tier Rare. Mined by proof of work on Robinhood Chain.",
+  "image": "./92.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Minerals"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Cinnabar"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}

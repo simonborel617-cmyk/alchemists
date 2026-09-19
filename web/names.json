@@ -1,0 +1,186 @@
+{
+ "kinds": [
+  "Grimoire",
+  "Candle",
+  "Chalice",
+  "Seal",
+  "Scepter",
+  "Censer",
+  "Mirror",
+  "Relic"
+ ],
+ "categories": [
+  "Metals",
+  "Minerals",
+  "Herbs",
+  "Woods",
+  "Beasts"
+ ],
+ "types": [
+  "Lead",
+  "Tin",
+  "Iron",
+  "Copper",
+  "Mercury",
+  "Silver",
+  "Gold",
+  "Antimony",
+  "Sulphur",
+  "Salt",
+  "Saltpetre",
+  "Cinnabar",
+  "Vitriol",
+  "Alum",
+  "Lodestone",
+  "Quartz",
+  "Mandrake",
+  "Wormwood",
+  "Belladonna",
+  "Henbane",
+  "Vervain",
+  "Mugwort",
+  "Hemlock",
+  "Rue",
+  "Oak",
+  "Yew",
+  "Ash",
+  "Elder",
+  "Rowan",
+  "Hawthorn",
+  "Willow",
+  "Blackthorn",
+  "Bone",
+  "Bezoar",
+  "Toadstone",
+  "Raven Feather",
+  "Snakeskin",
+  "Beeswax",
+  "Bat Wing",
+  "Scarab"
+ ],
+ "tiers": [
+  "",
+  "Common",
+  "Uncommon",
+  "Rare",
+  "Epic",
+  "Legendary",
+  "Mythic"
+ ],
+ "ranks": [
+  "",
+  "Apprentice",
+  "Adept",
+  "Master",
+  "Magister",
+  "Archmage",
+  "Named"
+ ],
+ "keys": [
+  {
+   "kind": 0,
+   "key": "Book of Abraham the Jew",
+   "alchemist": "Nicolas Flamel"
+  },
+  {
+   "kind": 0,
+   "key": "Emerald Tablet",
+   "alchemist": "Hermes Trismegistus"
+  },
+  {
+   "kind": 0,
+   "key": "Baopuzi",
+   "alchemist": "Ge Hong"
+  },
+  {
+   "kind": 1,
+   "key": "Unquenchable Candle",
+   "alchemist": "Saint Germain"
+  },
+  {
+   "kind": 1,
+   "key": "Flame of Panopolis",
+   "alchemist": "Zosimos of Panopolis"
+  },
+  {
+   "kind": 2,
+   "key": "Chalice of the Ouroboros",
+   "alchemist": "Cleopatra the Alchemist"
+  },
+  {
+   "kind": 2,
+   "key": "Bain-marie",
+   "alchemist": "Maria the Prophetess"
+  },
+  {
+   "kind": 2,
+   "key": "Cup of Madeira",
+   "alchemist": "Rasputin"
+  },
+  {
+   "kind": 3,
+   "key": "Azoth",
+   "alchemist": "Paracelsus"
+  },
+  {
+   "kind": 3,
+   "key": "Trigrams of the Cantong qi",
+   "alchemist": "Wei Boyang"
+  },
+  {
+   "kind": 3,
+   "key": "Pentacle",
+   "alchemist": "Agrippa"
+  },
+  {
+   "kind": 4,
+   "key": "Staff of Merlin",
+   "alchemist": "Merlin"
+  },
+  {
+   "kind": 4,
+   "key": "Pestle",
+   "alchemist": "Baba Yaga"
+  },
+  {
+   "kind": 4,
+   "key": "Mercury Rod",
+   "alchemist": "Nagarjuna"
+  },
+  {
+   "kind": 5,
+   "key": "Censer of the Egyptian Lodge",
+   "alchemist": "Cagliostro"
+  },
+  {
+   "kind": 5,
+   "key": "Censer of Sal Ammoniac",
+   "alchemist": "Al-Razi"
+  },
+  {
+   "kind": 6,
+   "key": "Obsidian Mirror",
+   "alchemist": "John Dee"
+  },
+  {
+   "kind": 6,
+   "key": "Prism",
+   "alchemist": "Isaac Newton"
+  },
+  {
+   "kind": 6,
+   "key": "Shew-stone",
+   "alchemist": "Edward Kelley"
+  },
+  {
+   "kind": 7,
+   "key": "Talking Head",
+   "alchemist": "Albertus Magnus"
+  },
+  {
+   "kind": 7,
+   "key": "First Alembic",
+   "alchemist": "Jabir ibn Hayyan"
+  }
+ ]
+}

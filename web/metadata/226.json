@@ -1,0 +1,28 @@
+{
+  "name": "Common Rowan",
+  "description": "Ingredient of the Alchemists mine: Rowan (Woods), tier Common. Mined by proof of work on Robinhood Chain.",
+  "image": "./226.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Woods"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Rowan"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 1,
+      "display_type": "number"
+    }
+  ]
+}

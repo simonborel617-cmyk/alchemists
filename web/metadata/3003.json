@@ -1,0 +1,28 @@
+{
+  "name": "Unquenchable Candle (key of Saint Germain)",
+  "description": "Mythic key: Unquenchable Candle, the signature Candle of Saint Germain. Unique. Summons the named 1/1 alchemist when offered in the Candle slot.",
+  "image": "./3003.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Mythic Key"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Candle"
+    },
+    {
+      "trait_type": "Alchemist",
+      "value": "Saint Germain"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Mythic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 6,
+      "display_type": "number"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Rare Candle",
+  "description": "Sealed ritual item for summoning: Candle, tier Rare. Crafted from five ingredients by recipe.",
+  "image": "./2011.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Candle"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}

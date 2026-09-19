@@ -1,0 +1,28 @@
+{
+  "name": "Legendary Candle",
+  "description": "Sealed ritual item for summoning: Candle, tier Legendary. Crafted from five ingredients by recipe.",
+  "image": "./2013.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Candle"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 5,
+      "display_type": "number"
+    }
+  ]
+}

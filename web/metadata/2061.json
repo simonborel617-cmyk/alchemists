@@ -1,0 +1,28 @@
+{
+  "name": "Legendary Relic",
+  "description": "Sealed ritual item for summoning: Relic, tier Legendary. Crafted from five ingredients by recipe.",
+  "image": "./2061.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Relic"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Enhancer"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 5,
+      "display_type": "number"
+    }
+  ]
+}

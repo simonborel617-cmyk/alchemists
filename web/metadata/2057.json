@@ -1,0 +1,28 @@
+{
+  "name": "Common Relic",
+  "description": "Sealed ritual item for summoning: Relic, tier Common. Crafted from five ingredients by recipe.",
+  "image": "./2057.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Relic"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Enhancer"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 1,
+      "display_type": "number"
+    }
+  ]
+}

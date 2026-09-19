@@ -1,0 +1,28 @@
+{
+  "name": "Legendary Rue",
+  "description": "Ingredient of the Alchemists mine: Rue (Herbs), tier Legendary. Mined by proof of work on Robinhood Chain.",
+  "image": "./190.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Herbs"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Rue"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 5,
+      "display_type": "number"
+    }
+  ]
+}

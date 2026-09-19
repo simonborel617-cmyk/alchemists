@@ -1,0 +1,20 @@
+{
+  "name": "Epic Potion of Purification",
+  "description": "Single-use potion consumed by one refining attempt of tier Epic ingredients.",
+  "image": "./1004.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Potion"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}

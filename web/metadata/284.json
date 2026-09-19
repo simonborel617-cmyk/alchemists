@@ -1,0 +1,28 @@
+{
+  "name": "Rare Raven Feather",
+  "description": "Ingredient of the Alchemists mine: Raven Feather (Beasts), tier Rare. Mined by proof of work on Robinhood Chain.",
+  "image": "./284.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Beasts"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Raven Feather"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}

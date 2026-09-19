@@ -1,0 +1,25 @@
+.env
+node_modules/
+artifacts/
+cache/
+typechain-types/
+deployments/*.local.json
+.env.miners
+
+# local state, logs, secrets, generated intermediates
+.env.*
+!.env.example
+*.log
+.*-pid
+.*-pid.json
+.*-pids.json
+gpu-stop.txt
+.claude/
+build/pyi/
+dist/*.exe
+dist/hb-miner-linux-x64
+art/gen/
+art/probes/
+art/pixel*/
+web/deployment.json
+web/abi/

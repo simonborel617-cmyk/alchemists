@@ -1,0 +1,28 @@
+{
+  "name": "Common Mugwort",
+  "description": "Ingredient of the Alchemists mine: Mugwort (Herbs), tier Common. Mined by proof of work on Robinhood Chain.",
+  "image": "./170.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Herbs"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Mugwort"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 1,
+      "display_type": "number"
+    }
+  ]
+}

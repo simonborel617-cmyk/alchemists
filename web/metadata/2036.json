@@ -1,0 +1,28 @@
+{
+  "name": "Epic Scepter",
+  "description": "Sealed ritual item for summoning: Scepter, tier Epic. Crafted from five ingredients by recipe.",
+  "image": "./2036.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Scepter"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}

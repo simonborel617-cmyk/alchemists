@@ -1,0 +1,28 @@
+{
+  "name": "Epic Bat Wing",
+  "description": "Ingredient of the Alchemists mine: Bat Wing (Beasts), tier Epic. Mined by proof of work on Robinhood Chain.",
+  "image": "./309.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Beasts"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Bat Wing"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}

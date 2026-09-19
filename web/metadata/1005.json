@@ -1,0 +1,20 @@
+{
+  "name": "Legendary Potion of Purification",
+  "description": "Single-use potion consumed by one refining attempt of tier Legendary ingredients.",
+  "image": "./1005.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Potion"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 5,
+      "display_type": "number"
+    }
+  ]
+}

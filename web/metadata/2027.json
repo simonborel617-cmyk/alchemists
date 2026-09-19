@@ -1,0 +1,28 @@
+{
+  "name": "Rare Seal",
+  "description": "Sealed ritual item for summoning: Seal, tier Rare. Crafted from five ingredients by recipe.",
+  "image": "./2027.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ritual Item"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Seal"
+    },
+    {
+      "trait_type": "Required",
+      "value": "Yes"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}

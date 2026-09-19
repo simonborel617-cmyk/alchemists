@@ -1,0 +1,28 @@
+{
+  "name": "Rare Gold",
+  "description": "Ingredient of the Alchemists mine: Gold (Metals), tier Rare. Mined by proof of work on Robinhood Chain.",
+  "image": "./52.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Ingredient"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Metals"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Gold"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}
