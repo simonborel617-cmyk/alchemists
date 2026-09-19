@@ -1,0 +1,11 @@
+// Cloudflare Workers static-assets deployment of the dapp: `npx wrangler deploy` uploads web/ as-is (no Worker script).
+// Connected to GitHub through Workers Builds; every push to main redeploys. web/_headers sets the cache and CORS policy.
+{
+  "name": "alchemists",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./web",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  }
+}

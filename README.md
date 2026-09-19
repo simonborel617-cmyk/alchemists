@@ -143,11 +143,12 @@ RPC stalls on big JSON-RPC batches, so the dapp caps batches at 8 calls and cach
 
 ## Hosting
 
-The site is static: `web/` is served as-is (no build step) by Cloudflare Pages at https://alchemist-mine.com, project
-`alchemist-mine`, production branch `main`, build output directory `web`. Every push to `main` redeploys. `web/abi/*.json`,
+The site is static: `web/` is served as-is (no build step) by a Cloudflare Worker with static assets at
+https://alchemist-mine.com (`wrangler.jsonc`, project `alchemists`, connected to this repository through Workers Builds,
+deploy command `npx wrangler deploy`). Every push to `main` redeploys. `web/abi/*.json`,
 `web/deployment.json` and `web/names.json` are committed, so run `node scripts/build-web.js <network>` after a deploy and
 commit the result. `web/_headers` sets the cache and CORS policy (HTML revalidates on every load, `/metadata/*` is cacheable
-and CORS-open). Manual upload without the Git integration: `npx wrangler pages deploy web --project-name alchemist-mine`.
+and CORS-open). Manual upload without the Git integration: `npx wrangler deploy` (after `npx wrangler login`).
 
 Metadata lives on the same host: `https://alchemist-mine.com/metadata/{id}.json` for `Materials` (decimal and 64-char hex
 names both exist, so the ERC-1155 `{id}` convention and plain decimal clients both resolve) and
