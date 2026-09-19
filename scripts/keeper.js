@@ -45,7 +45,7 @@ async function tickIfNeeded() {
   const m = Math.floor(chainNow() / SESSION_MS);
   const c = await mine.challenge(m);
   if (c === ZERO) {
-    const tx = await mine.tick({ gasLimit: 3_000_000n });
+    const tx = await mine.tick({ gasLimit: 9_000_000n }); // a normal tick fills one minute; after an outage it backfills up to 120 minutes (~5.5M gas)
     await tx.wait();
     log(`tick minute ${m}`);
   }

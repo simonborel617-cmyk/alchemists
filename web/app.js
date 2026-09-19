@@ -244,7 +244,7 @@
         try { ch = await mine.challenge(m); tq = Number(await mine.minuteThreshold(m)); } catch {}
         if (ch && BigInt(ch) !== 0n) break;
         // the keeper normally ticks within a few seconds of the minute; only after ~9 s do we spend gas on it ourselves
-        if (tries === 5) { mlog("no challenge yet, ticking the mine myself"); try { await (await C("Mine", burner).tick({ gasLimit: 3_000_000n })).wait(); } catch (e) { mlog("tick: " + (e.shortMessage || e.message)); } }
+        if (tries === 5) { mlog("no challenge yet, ticking the mine myself"); try { await (await C("Mine", burner).tick({ gasLimit: 9_000_000n })).wait(); } catch (e) { mlog("tick: " + (e.shortMessage || e.message)); } }
         await new Promise((r) => setTimeout(r, 1500));
       }
       if (!ch || BigInt(ch) === 0n || this.m !== m) return;
