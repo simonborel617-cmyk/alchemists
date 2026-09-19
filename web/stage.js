@@ -156,7 +156,11 @@
   const drawBase = () => {
     if (mode === "code") { drawCodeScene(); return; }
     const n = mode === "sprite" ? spriteFrames() : 0;
-    if (n > 0 && S.I > 0) { const k = S.frame % (2 * n - 2); const f = k < n ? k : 2 * n - 2 - k; g.drawImage(sprite, 0, f * H, W, H, 0, 0, W, H); return; } // ping-pong loop
+    if (n > 1) { // sheet: frame 0 = the cold cauldron for idle, frames 1..n-1 = the boiling loop, played ping-pong
+      let f = 0;
+      if (S.I > 0) { const L = n - 1, k = S.frame % (2 * L - 2 || 1); f = 1 + (k < L ? k : 2 * L - 2 - k); }
+      g.drawImage(sprite, 0, f * H, W, H, 0, 0, W, H); return;
+    }
     if (bg.complete && bg.naturalWidth) g.drawImage(bg, 0, 0, W, H);
   };
 

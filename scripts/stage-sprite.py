@@ -63,7 +63,9 @@ def to_cell(arr):
     im = im.resize((W, H), Image.BOX)
     return im.quantize(palette=pal, dither=Image.Dither.NONE).convert("RGB")
 
-cells = [to_cell(frames[i]) for i in idx]
+# cell 0 is the clip's first frame (the cold cauldron, the start image): stage.js shows it while idle and loops the rest,
+# so the idle-to-brewing switch keeps the clip's own framing and colours instead of jumping to the separate still
+cells = [to_cell(frames[0])] + [to_cell(frames[i]) for i in idx]
 sheet = Image.new("RGB", (W, H * len(cells)))
 for k, c in enumerate(cells):
     sheet.paste(c, (0, k * H))
