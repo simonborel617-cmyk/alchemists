@@ -10,9 +10,9 @@ Order of operations and checks. None of this is automated on purpose: every step
    timelock proposer and the guardian at once. Write the address down. The whole cycle was rehearsed on the testnet on
    2026-09-19 (ninth deployment, Safe `0xc1e3…A140`): schedule and execute through the Safe, guardian pause, unpause through the timelock.
 2. **Parameters.** In `deploy/params.mainnet.json` set `governance.safe`, keep `guardian: "safe"` and
-   `timelockDelay: 172800`. `materialsURI` → the real metadata host `https://…/metadata/{id}.json`.
+   `timelockDelay: 172800`. `materialsURI` → `https://alchemist-mine.com/metadata/{id}.json` (already set in `params.mainnet.json`).
    Check: `node scripts/preflight.js deploy/params.mainnet.json`.
-3. **Metadata and art.** `node scripts/metadata.js --out web/metadata --base https://…/metadata/`, publish as static
+3. **Metadata and art.** `node scripts/metadata.js` (base `https://alchemist-mine.com/metadata/`), publish as static
    files. Open `{id}.json` for 2, 1001, 2013 and 3000 in a browser.
 4. **Audit.** External report on `Mine`, `Workshop`, `Materials`, `Guarded`; every High and Critical closed, tests green
    (`npx hardhat test`).

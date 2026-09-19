@@ -21,5 +21,3 @@ dist/hb-miner-linux-x64
 art/gen/
 art/probes/
 art/pixel*/
-web/deployment.json
-web/abi/

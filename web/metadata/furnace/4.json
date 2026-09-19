@@ -1,7 +1,7 @@
 {
   "name": "Athanor",
   "description": "Tier 4 furnace of the Alchemists workshop. Built from tier Epic ingredients; refines ingredients up to tier Epic (a hotter furnace adds a success bonus). One firing per cooldown.",
-  "image": "./furnace/4.png",
+  "image": "https://alchemist-mine.com/metadata/furnace/4.png",
   "attributes": [
     {
       "trait_type": "Kind",

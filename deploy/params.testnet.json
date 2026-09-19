@@ -1,7 +1,7 @@
 {
-  "materialsURI": "https://alchemists.example/api/materials/{id}.json",
-  "furnacesURI": "https://alchemists.example/api/metadata/furnace/",
-  "alchemistsBaseURI": "https://alchemists.example/api/alchemists/",
+  "materialsURI": "https://alchemist-mine.com/metadata/{id}.json",
+  "furnacesURI": "https://alchemist-mine.com/metadata/furnace/",
+  "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",
   "mine": {
     "floorBits": 20,

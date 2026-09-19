@@ -1,8 +1,8 @@
 {
   "_comment": "Multi-address testnet profile: mainnet bit depths (floor 30, ceiling 43, real 60s sessions) with unlocks, K and reference scaled to one shared RTX 3060 split across ~8 addresses. Tiny start price so test wallets last. Governance: deployer stands in for the Safe with a 2-minute timelock.",
-  "materialsURI": "https://alchemists.example/api/materials/{id}.json",
-  "furnacesURI": "https://alchemists.example/api/metadata/furnace/",
-  "alchemistsBaseURI": "https://alchemists.example/api/alchemists/",
+  "materialsURI": "https://alchemist-mine.com/metadata/{id}.json",
+  "furnacesURI": "https://alchemist-mine.com/metadata/furnace/",
+  "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",
   "mine": {
     "sessionSec": 60,

@@ -1,7 +1,7 @@
 {
   "name": "Brass Furnace",
   "description": "Tier 3 furnace of the Alchemists workshop. Built from tier Rare ingredients; refines ingredients up to tier Rare (a hotter furnace adds a success bonus). One firing per cooldown.",
-  "image": "./furnace/3.png",
+  "image": "https://alchemist-mine.com/metadata/furnace/3.png",
   "attributes": [
     {
       "trait_type": "Kind",

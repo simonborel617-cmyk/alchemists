@@ -141,11 +141,23 @@ Build the ABI bundle and deployment config: `node scripts/build-web.js robinhood
 `web/deployment.json`, `web/names.json` from `deploy/keys.json`), then serve `web/` with any static server. The public
 RPC stalls on big JSON-RPC batches, so the dapp caps batches at 8 calls and caches the workshop tunables.
 
+## Hosting
+
+The site is static: `web/` is served as-is (no build step) by Cloudflare Pages at https://alchemist-mine.com, project
+`alchemist-mine`, production branch `main`, build output directory `web`. Every push to `main` redeploys. `web/abi/*.json`,
+`web/deployment.json` and `web/names.json` are committed, so run `node scripts/build-web.js <network>` after a deploy and
+commit the result. `web/_headers` sets the cache and CORS policy (HTML revalidates on every load, `/metadata/*` is cacheable
+and CORS-open). Manual upload without the Git integration: `npx wrangler pages deploy web --project-name alchemist-mine`.
+
+Metadata lives on the same host: `https://alchemist-mine.com/metadata/{id}.json` for `Materials` (decimal and 64-char hex
+names both exist, so the ERC-1155 `{id}` convention and plain decimal clients both resolve) and
+`https://alchemist-mine.com/metadata/furnace/<tier>.json` for `Furnaces`.
+
 ## Metadata and art
 
-`node scripts/metadata.js --out web/metadata --base https://host/metadata/` writes `{id}.json` for all 266 `Materials`
+`node scripts/metadata.js` (base `https://alchemist-mine.com/metadata/` by default) writes `{id}.json` for all 266 `Materials`
 ids and copies the real icons from `art/final` (`<slug>-t<tier-1>.png`, `key-<i>.png`), falling back to a placeholder
-SVG where an icon is missing. `Materials.setURI("https://host/metadata/{id}.json")` goes through the timelock.
+SVG where an icon is missing. `Materials.setURI("https://alchemist-mine.com/metadata/{id}.json")` goes through the timelock.
 Icons are pixel art generated per `ART-BRIEF.md` and normalised by `scripts/pixelize.py` (grid detection or `--grid 64`,
 32-colour quantisation, tier auras, `--mythic` for the white key aura).
 

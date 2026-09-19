@@ -1,7 +1,7 @@
 // Generates ERC-1155 metadata JSON and placeholder SVG icons for every Materials id:
 // ingredients (40 types x 5 tiers), potions, ritual items (8 kinds x 5 tiers) and the 21 mythic keys.
-//   node scripts/metadata.js [--out web/metadata] [--base https://host/metadata]
-// The base URL is what Materials.setURI should point at: "<base>/{id}.json". Real icons are picked up from
+//   node scripts/metadata.js [--out web/metadata] [--base https://alchemist-mine.com/metadata/]
+// The base URL is what Materials.setURI should point at: "<base>{id}.json" (decimal and 64-hex names both exist). Real icons are picked up from
 // --art <dir> (default art/final) as <slug>-t<tier-1>.png for ingredients/potions/items (slug = lowercase English
 // name, spaces to dashes; t0 = Common .. t4 = Legendary, as scripts/pixelize.py writes them) and key-<i>.png for
 // the 21 keys; ids without a file get the placeholder SVG (category glyph on a tier-coloured aura).
@@ -10,7 +10,9 @@ const path = require("path");
 const keys = require("../deploy/keys.json");
 
 const OUT = (() => { const i = process.argv.indexOf("--out"); return i >= 0 ? process.argv[i + 1] : path.join(__dirname, "..", "web", "metadata"); })();
-const BASE = (() => { const i = process.argv.indexOf("--base"); return i >= 0 ? process.argv[i + 1] : "./"; })();
+const BASE = (() => { const i = process.argv.indexOf("--base"); return i >= 0 ? process.argv[i + 1] : "https://alchemist-mine.com/metadata/"; })();
+// ERC-1155 clients replace {id} in Materials.uri() with the 64-char lowercase hex id, so every JSON is also written under that name.
+const hexId = (id) => BigInt(id).toString(16).padStart(64, "0");
 const ART = (() => { const i = process.argv.indexOf("--art"); return i >= 0 ? process.argv[i + 1] : path.join(__dirname, "..", "art", "final"); })();
 const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 let realArt = 0;
@@ -65,7 +67,9 @@ function write(id, meta, image, artFile) {
   } else {
     fs.writeFileSync(path.join(OUT, `${id}.svg`), image);
   }
-  fs.writeFileSync(path.join(OUT, `${id}.json`), JSON.stringify(meta, null, 2));
+  const json = JSON.stringify(meta, null, 2);
+  fs.writeFileSync(path.join(OUT, `${id}.json`), json);
+  fs.writeFileSync(path.join(OUT, `${hexId(id)}.json`), json);
 }
 
 fs.mkdirSync(OUT, { recursive: true });
