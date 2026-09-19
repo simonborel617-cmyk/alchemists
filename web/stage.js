@@ -19,11 +19,11 @@
   const TIER_COL = ["", "#9aa0a4", "#3fae5a", "#3b7ddd", "#8e44d1", "#d9a21b", "#f2f2f2"]; // reveal card only
   // anchors in grid cells: the liquid surface, the fire (particles die above `top`), the glow centre, the vial rack
   const BG = {
-    1: { src: "img/stage-1.png", liquid: { cx: 126, cy: 77, rx: 19, ry: 5 }, fire: { cx: 126, cy: 130, rx: 22, top: 96 }, glow: { cx: 126, cy: 60 }, rack: [[184, 134], [200, 140], [216, 146], [232, 152]] },
+    1: { src: "img/stage-1.png", liquid: { cx: 126, cy: 77, rx: 19, ry: 5 }, fire: { cx: 126, cy: 130, rx: 22, top: 96 }, glow: { cx: 126, cy: 60 }, rack: [[54, 154], [38, 158], [22, 162], [8, 166]] }, // the floor left of the tripod, clear of its foot
     2: { src: "img/stage-2.png", liquid: { cx: 104, cy: 46, rx: 20, ry: 5 }, fire: { cx: 90, cy: 136, rx: 12, top: 112 }, glow: { cx: 104, cy: 30 }, rack: [[180, 94], [198, 92], [216, 94], [234, 100]] },
     3: { src: "img/stage-3.png", liquid: { cx: 126, cy: 58, rx: 25, ry: 6 }, fire: { cx: 126, cy: 120, rx: 30, top: 92 }, glow: { cx: 126, cy: 40 }, rack: [[192, 84], [208, 90], [224, 96], [240, 102]], candles: [[25, 62], [43, 80]] },
   };
-  const CODE = { liquid: { cx: 126, cy: 72, rx: 27, ry: 5 }, fire: { cx: 126, cy: 132, rx: 24, top: 100 }, glow: { cx: 126, cy: 52 }, rack: [[184, 138], [200, 144], [216, 150], [232, 156]] };
+  const CODE = { liquid: { cx: 126, cy: 72, rx: 27, ry: 5 }, fire: { cx: 126, cy: 132, rx: 24, top: 100 }, glow: { cx: 126, cy: 52 }, rack: [[54, 156], [38, 160], [22, 164], [8, 168]] };
   const q = new URLSearchParams(location.search);
   const mode = ["hybrid", "code", "sprite"].includes(q.get("stage")) ? q.get("stage") : (el.dataset.stage || "hybrid");
   const bgN = q.get("bg") || el.dataset.bg || "1";
