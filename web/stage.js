@@ -35,7 +35,7 @@
   g.imageSmoothingEnabled = false;
   const hud = { cap: el.querySelector(".cap"), bits: el.querySelector(".bits"), labels: el.querySelector(".labels") };
   const bg = new Image(); if (mode !== "code") bg.src = cfg.src;
-  const SPRITE_VER = "3"; // bump when the sheet is rebuilt: /img/* is cached for a day
+  const SPRITE_VER = "5"; // bump when the sheet is rebuilt: /img/* is cached for a day
   const sprite = new Image(); if (mode === "sprite") sprite.src = `img/stage-sprite.png?v=${SPRITE_VER}`;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
