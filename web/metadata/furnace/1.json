@@ -1,0 +1,24 @@
+{
+  "name": "Clay Furnace",
+  "description": "Tier 1 furnace of the Alchemists workshop. Built from tier Common ingredients; refines ingredients up to tier Common (a hotter furnace adds a success bonus). One firing per cooldown.",
+  "image": "./furnace/1.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Furnace"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 1,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Refines up to",
+      "value": "Common"
+    }
+  ]
+}

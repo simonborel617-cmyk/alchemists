@@ -1,5 +1,6 @@
 {
   "materialsURI": "https://alchemists.example/api/materials/{id}.json",
+  "furnacesURI": "https://alchemists.example/api/metadata/furnace/",
   "alchemistsBaseURI": "https://alchemists.example/api/alchemists/",
   "summonFeeWei": "0",
   "mine": {
@@ -11,8 +12,18 @@
     "mCap": 2,
     "price0Wei": "200000000000000",
     "priceD": 50000,
-    "unlockHashrate": ["100000", "200000", "300000", "400000"],
-    "extraK": [1500, 200, 30, 5],
+    "unlockHashrate": [
+      "100000",
+      "200000",
+      "300000",
+      "400000"
+    ],
+    "extraK": [
+      1500,
+      200,
+      30,
+      5
+    ],
     "keyChance": 65536,
     "upgradeChance": 16,
     "firstHourSec": 3600,
@@ -24,17 +35,93 @@
     "estDivX10": 34
   },
   "itemRecipe": [
-    [0, 0, 1, 2, 2],
-    [0, 0, 2, 0, 3],
-    [3, 2, 0, 0, 0],
-    [0, 3, 0, 0, 2],
-    [3, 0, 0, 2, 0],
-    [2, 0, 3, 0, 0],
-    [2, 3, 0, 0, 0],
-    [0, 0, 0, 2, 3]
+    [
+      0,
+      0,
+      1,
+      2,
+      2
+    ],
+    [
+      0,
+      0,
+      2,
+      0,
+      3
+    ],
+    [
+      3,
+      2,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      3,
+      0,
+      0,
+      2
+    ],
+    [
+      3,
+      0,
+      0,
+      2,
+      0
+    ],
+    [
+      2,
+      0,
+      3,
+      0,
+      0
+    ],
+    [
+      2,
+      3,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      2,
+      3
+    ]
   ],
-  "furnaceRecipe": [4, 3, 0, 3, 0],
-  "keyKinds": [0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 7],
+  "furnaceRecipe": [
+    4,
+    3,
+    0,
+    3,
+    0
+  ],
+  "keyKinds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    5,
+    5,
+    6,
+    6,
+    6,
+    7,
+    7
+  ],
   "governance": {
     "safe": "deployer",
     "guardian": "safe",

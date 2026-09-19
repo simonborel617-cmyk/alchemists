@@ -1,0 +1,24 @@
+{
+  "name": "Iron Furnace",
+  "description": "Tier 2 furnace of the Alchemists workshop. Built from tier Uncommon ingredients; refines ingredients up to tier Uncommon (a hotter furnace adds a success bonus). One firing per cooldown.",
+  "image": "./furnace/2.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Furnace"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 2,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Refines up to",
+      "value": "Uncommon"
+    }
+  ]
+}

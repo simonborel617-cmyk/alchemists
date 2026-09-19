@@ -139,4 +139,26 @@ for (let i = 0; i < 21; i++) {
   }, svg(KIND_GLYPH[k.kind], 6, KEY_EN[i][1], KEY_EN[i][0]), `key-${i}.png`);
   count++;
 }
-console.log(`wrote ${count} json files to ${OUT} (base ${BASE}); real icons ${realArt}, placeholders ${count - realArt}`);
+// furnaces (ERC-721, metadata per tier: <base>furnace/<tier>.json)
+const FURNACE_EN = ["", "Clay Furnace", "Iron Furnace", "Brass Furnace", "Athanor"];
+const FURNACE_SLUG = ["", "furnace-clay", "furnace-iron", "furnace-brass", "furnace-athanor"];
+fs.mkdirSync(path.join(OUT, "furnace"), { recursive: true });
+let furnaceIcons = 0;
+for (let t = 1; t <= 4; t++) {
+  const src = path.join(ART, `${FURNACE_SLUG[t]}-t0.png`);
+  const hasIcon = fs.existsSync(src);
+  if (hasIcon) { fs.copyFileSync(src, path.join(OUT, "furnace", `${t}.png`)); furnaceIcons++; }
+  else fs.writeFileSync(path.join(OUT, "furnace", `${t}.svg`), svg("🔥", t, FURNACE_EN[t], `tier ${t}`));
+  fs.writeFileSync(path.join(OUT, "furnace", `${t}.json`), JSON.stringify({
+    name: FURNACE_EN[t],
+    description: `Tier ${t} furnace of the Alchemists workshop. Built from tier ${TIER[t]} ingredients; refines ingredients up to tier ${TIER[t]} (a hotter furnace adds a success bonus). One firing per cooldown.`,
+    image: `${BASE}furnace/${t}.${hasIcon ? "png" : "svg"}`,
+    attributes: [
+      { trait_type: "Kind", value: "Furnace" },
+      { trait_type: "Tier", value: TIER[t] },
+      { trait_type: "Tier Index", value: t, display_type: "number" },
+      { trait_type: "Refines up to", value: TIER[t] },
+    ],
+  }, null, 2));
+}
+console.log(`wrote ${count} json files to ${OUT} (base ${BASE}); real icons ${realArt}, placeholders ${count - realArt}; furnace tiers 4 (${furnaceIcons} real icons)`);

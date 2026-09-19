@@ -1,6 +1,7 @@
 {
   "_comment": "Multi-address testnet profile: mainnet bit depths (floor 30, ceiling 43, real 60s sessions) with unlocks, K and reference scaled to one shared RTX 3060 split across ~8 addresses. Tiny start price so test wallets last. Governance: deployer stands in for the Safe with a 2-minute timelock.",
   "materialsURI": "https://alchemists.example/api/materials/{id}.json",
+  "furnacesURI": "https://alchemists.example/api/metadata/furnace/",
   "alchemistsBaseURI": "https://alchemists.example/api/alchemists/",
   "summonFeeWei": "0",
   "mine": {
@@ -13,8 +14,18 @@
     "mCap": 2,
     "price0Wei": "1000000000000",
     "priceD": 500,
-    "unlockHashrate": ["200000000", "400000000", "600000000", "800000000"],
-    "extraK": [100, 30, 8, 2],
+    "unlockHashrate": [
+      "200000000",
+      "400000000",
+      "600000000",
+      "800000000"
+    ],
+    "extraK": [
+      100,
+      30,
+      8,
+      2
+    ],
     "keyChance": 512,
     "upgradeChance": 16,
     "firstHourSec": 3600,
@@ -27,29 +38,132 @@
   },
   "workshop": {
     "furnaceCooldown": 120,
-    "refineSuccess": [90, 80, 65, 50],
+    "refineSuccess": [
+      90,
+      80,
+      65,
+      50
+    ],
     "furnaceBonus": 5,
     "refineBaseInputs": 10,
     "refineInputDrop": 4,
-    "rerollOutCategory": [5, 5, 5, 4, 3],
+    "rerollOutCategory": [
+      5,
+      5,
+      5,
+      4,
+      3
+    ],
     "rerollOutAny": 5,
     "rerollUpPct": 5,
     "rerollUp2PerMille": 5,
-    "rerollDown": [0, 5, 10, 20, 30],
-    "keyChance": [1000, 300, 100, 30, 10],
+    "rerollDown": [
+      0,
+      5,
+      10,
+      20,
+      30
+    ],
+    "keyChance": [
+      1000,
+      300,
+      100,
+      30,
+      10
+    ],
     "craftUpgradePct": 5
   },
-  "governance": { "safe": "deployer", "guardian": "safe", "timelockDelay": 120 },
+  "governance": {
+    "safe": "deployer",
+    "guardian": "safe",
+    "timelockDelay": 120
+  },
   "itemRecipe": [
-    [0, 0, 1, 2, 2],
-    [0, 0, 2, 0, 3],
-    [3, 2, 0, 0, 0],
-    [0, 3, 0, 0, 2],
-    [3, 0, 0, 2, 0],
-    [2, 0, 3, 0, 0],
-    [2, 3, 0, 0, 0],
-    [0, 0, 0, 2, 3]
+    [
+      0,
+      0,
+      1,
+      2,
+      2
+    ],
+    [
+      0,
+      0,
+      2,
+      0,
+      3
+    ],
+    [
+      3,
+      2,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      3,
+      0,
+      0,
+      2
+    ],
+    [
+      3,
+      0,
+      0,
+      2,
+      0
+    ],
+    [
+      2,
+      0,
+      3,
+      0,
+      0
+    ],
+    [
+      2,
+      3,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      2,
+      3
+    ]
   ],
-  "furnaceRecipe": [4, 3, 0, 3, 0],
-  "keyKinds": [0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 7]
+  "furnaceRecipe": [
+    4,
+    3,
+    0,
+    3,
+    0
+  ],
+  "keyKinds": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    5,
+    5,
+    6,
+    6,
+    6,
+    7,
+    7
+  ]
 }

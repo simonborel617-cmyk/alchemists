@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alchemists · Rules and recipes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=13">
+<style>
+  .doc { max-width: 1000px; }
+  .doc h2 { display:flex; align-items:center; gap:12px; }
+  .doc h2 img { width:36px; height:36px; }
+  .doc td.mono, .doc th.mono { font-family: var(--mono); }
+  .doc .live { font:11px var(--mono); color:var(--muted); }
+  .doc .live.on { color:var(--verd); }
+  .keyrow img { width:40px; height:40px; vertical-align:middle; margin-right:8px; border:2px solid var(--bevel-lo); }
+  .tier-c { color: var(--c1) } .tier-u { color: var(--c2) } .tier-r { color: var(--c3) } .tier-e { color: var(--c4) } .tier-l { color: var(--c5) } .tier-m { color: var(--c6) }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1><a href="./" style="text-decoration:none;color:inherit">ALCHEMISTS</a><small>rules and recipes</small></h1>
+    <span class="tag" id="live">reading the contracts…</span>
+    <span class="sp"></span>
+    <a class="btn" href="./">Back to the mine</a>
+  </div>
+</header>
+
+<div class="wrap doc">
+  <div class="panel">
+    <h2><img class="px" src="img/ore.png" alt="">Mining</h2>
+    <p>The mine runs in one-minute sessions. Every minute has a <b>challenge</b> and a <b>threshold</b> in bits. You hash
+    <code>sha256(address ‖ nonce ‖ challenge)</code> for the whole minute and keep the hash with the most leading zero bits.
+    In the next minute you submit that hash together with the submit price in ETH. One address submits once per minute.
+    The ingredient is sealed until the challenge of the minute after your submit exists; your next submit reveals it, or you press Reveal.</p>
+    <table>
+      <tr><th>Rule</th><th>Value</th></tr>
+      <tr><td>Threshold corridor</td><td id="r-corridor">30 … 43 bits</td></tr>
+      <tr><td>Retarget</td><td id="r-retarget">every window, at most a few bits per step, from the estimated network hashrate and the target of K mints per hour</td></tr>
+      <tr><td>Tier by work above the threshold</td><td>Common at the threshold, <span class="tier-u">Uncommon +2 bits</span>, <span class="tier-r">Rare +4</span>, <span class="tier-e">Epic +7</span>, <span class="tier-l">Legendary +10</span></td></tr>
+      <tr><td>Supply extras</td><td id="r-extras">every N minted pieces of a type at a tier raise that tier's bar for that type by one bit</td></tr>
+      <tr><td>Rarity unlocks</td><td id="r-unlocks">tiers unlock permanently as the estimated network hashrate grows</td></tr>
+      <tr><td>Upgrade roll</td><td id="r-upgrade">1 in 16 reveals come out one tier higher</td></tr>
+      <tr><td>Mythic key roll on reveal</td><td id="r-key">one in N reveals drops an unclaimed mythic key</td></tr>
+      <tr><td>Submit price</td><td id="r-price">price0 × (1 + √(E / D)) × network pressure, where E is mined minus burned; no ceiling</td></tr>
+      <tr><td>Network pressure</td><td>±12.5 % per window when the mint rate is above or below K; floor 1, ceiling ×1000</td></tr>
+      <tr><td>Ore</td><td id="r-ore">a fixed reserve; every submit consumes one ore; K halves at 50 %, 25 % and 12.5 % left; the vein is exhausted at 0</td></tr>
+      <tr><td>Farm multiplier</td><td id="r-farm">K grows with log2 of the network hashrate over a reference, capped</td></tr>
+      <tr><td>Type</td><td>one of 40 ingredient types, uniformly random: 8 metals, 8 minerals, 8 herbs, 8 woods, 8 beast parts</td></tr>
+    </table>
+
+    <h2><img class="px" src="img/potion.png" alt="">Potion of Purification</h2>
+    <p>Two herbs of one tier brew instantly into one potion of that tier. Every refining attempt burns one potion.</p>
+
+    <h2><img class="px" src="img/furnace-2.png" alt="">Furnaces and refining</h2>
+    <p>A furnace is built from ingredients of its own tier; it refines ingredients up to its tier, and a furnace hotter than the
+    ingredient adds a bonus. Refining burns <span id="r-inputs">N</span> ingredients of one type and tier plus a potion of that tier;
+    on success one ingredient of the next tier comes out, on failure everything is lost. N follows the heat of the network:
+    <span id="r-inputs2">10 at the corridor floor, fewer when the threshold is high</span>.</p>
+    <table id="t-furnace">
+      <tr><th>Furnace</th><th>Built from (tier of the furnace)</th><th>Refines</th><th>Cooldown</th></tr>
+    </table>
+    <table id="t-refine">
+      <tr><th>Refining tier</th><th>Success</th><th>Hot furnace bonus</th></tr>
+    </table>
+
+    <h2><img class="px" src="img/crucible.png" alt="">Crucible</h2>
+    <p>Ten ingredients of one tier melt into random ingredients of the same tier. Choosing the output category costs pieces.
+    Every output piece rolls for a tier up (Legendary cannot rise) and, at higher tiers, risks a tier down.</p>
+    <table id="t-reroll">
+      <tr><th>Tier</th><th>Out, any category</th><th>Out, chosen category</th><th>Tier up</th><th>Two tiers up</th><th>Tier down</th></tr>
+    </table>
+
+    <h2><img class="px" src="metadata/2001.png" alt="">Ritual items</h2>
+    <p>Five ingredients by the item's recipe are sealed into a ritual item of their tier. There is a chance of one tier higher and a
+    roll for a mythic key bound to the item kind. The first five kinds are required for the summoning, the last three are optional enhancers
+    (an empty enhancer slot counts as Common).</p>
+    <table id="t-items">
+      <tr><th>Item</th><th>Metals</th><th>Minerals</th><th>Herbs</th><th>Woods</th><th>Beasts</th><th>Role</th></tr>
+    </table>
+    <table id="t-craft">
+      <tr><th>Tier</th><th>Tier up</th><th>Mythic key</th></tr>
+    </table>
+
+    <h2><img class="px" src="metadata/3000.png" alt="">Mythic keys</h2>
+    <p>Twenty-one unique keys, each the signature belonging of a named alchemist and bound to one item kind. A key drops from a reveal or
+    a craft roll while unclaimed keys remain. In the summoning a key in its slot yields the named 1/1 alchemist.</p>
+    <table id="t-keys">
+      <tr><th>Key</th><th>Alchemist</th><th>Slot</th></tr>
+    </table>
+
+    <h2><img class="px" src="img/cauldron.png" alt="">The Cauldron and stage two</h2>
+    <p>Every submit price flows into the Cauldron, a Safe treasury behind a 48-hour timelock. Stage two, after the core loop shows demand:
+    summoning alchemists from eight items (rank = floor of the average item tier, quotas per rank, cap 5555, named 1/1s from keys),
+    a daily stream of 30 % of the Cauldron to holders by cohort and rarity, and 70 % brewing for the ritual of the Philosopher's Stone.</p>
+    <p class="live" id="src"></p>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<script src="rules.js?v=1"></script>
+</body>
+</html>

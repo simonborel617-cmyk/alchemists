@@ -63,6 +63,7 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
     await (await materials.setMinter(await c.getAddress(), true)).wait();
   }
   await (await furnaces.setWorkshop(await workshop.getAddress())).wait();
+  if (P.furnacesURI) await (await furnaces.setBaseURI(P.furnacesURI)).wait(); // per-tier metadata: <base><tier>.json
   log("wired", "minters + workshop set");
 
   if (P.workshop) {

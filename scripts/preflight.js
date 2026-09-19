@@ -25,6 +25,7 @@ function preflight(P, env) {
   if (m.keyChance < 10000) problems.push("mine.keyChance must be mainnet-scale (65536)");
   if (m.windowSecEarly !== 60 || m.windowSec !== 120 || m.firstHourSec !== 3600) problems.push("mine windows must be 60/120 with a 3600s first hour");
   if (!P.materialsURI || P.materialsURI.includes("example")) problems.push("materialsURI still points at the placeholder host");
+  if (!P.furnacesURI || P.furnacesURI.includes("example")) problems.push("furnacesURI still points at the placeholder host");
   const w = P.workshop || {};
   if (!w.keyChance || w.keyChance[4] < 100 || w.keyChance[0] < 1000000) problems.push("workshop.keyChance must be mainnet-scale (1e6 .. 100)");
   if (w.furnaceCooldown < 600) problems.push("workshop.furnaceCooldown must be at least 600s");
