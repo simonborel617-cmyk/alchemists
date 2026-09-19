@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body data-app="8">
 <header>
@@ -62,6 +62,7 @@
       <div class="bm-stage">
         <div class="stage" id="stage" data-bg="1"><canvas width="255" height="171"></canvas><div class="hud"><div class="cap">the fire is out</div><div class="bits" style="display:none"></div><div class="labels" style="display:none"></div></div></div>
         <p class="small">The fire burns with your hashrate and the brew brightens as the best hash of the minute climbs to the bar. A find rises as a sealed vial and waits on the rack; what is inside is only known at the reveal.</p>
+        <div class="row" style="margin-top:10px;align-items:center;gap:10px"><button class="btn" id="stageDemo">Preview a round</button><span class="small" style="font-size:12px;color:var(--muted)">plays a scripted minute in the scene, nothing is mined and nothing is signed</span></div>
       </div>
       <div class="bm-live">
         <div class="stat" style="grid-template-columns:1fr 1fr">
@@ -267,7 +268,7 @@
 <script src="sha256.js?v=13"></script>
 <script src="gpu.js?v=13"></script>
 <script src="fx.js?v=13"></script>
-<script src="stage.js?v=2"></script>
+<script src="stage.js?v=3"></script>
 <script src="app.js?v=15"></script>
 </body>
 </html>

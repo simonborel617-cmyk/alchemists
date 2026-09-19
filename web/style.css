@@ -249,3 +249,4 @@ footer b { font:9px var(--pix); color:var(--ink2); display:block; margin-bottom:
 .stage .reveal.out { opacity:0; transition:opacity .4s steps(4); }
 @keyframes stagepop { from { transform:translate(-50%,-50%) scale(.4); opacity:0 } to { transform:translate(-50%,-50%) scale(1); opacity:1 } }
 @media (prefers-reduced-motion: reduce) { .stage .reveal { animation:none; } }
+.stage.demo::after { content:"DEMO ROUND · nothing is mined"; position:absolute; right:26px; top:9px; font:8px var(--pix); color:#1a1408; background:var(--gold2); border:2px solid var(--line); padding:5px 6px; pointer-events:none; }

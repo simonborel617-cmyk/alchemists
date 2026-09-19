@@ -262,7 +262,8 @@
   const ev = (type, d) => document.dispatchEvent(new CustomEvent("alch:stage", { detail: { type, ...d } }));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   window.alchStage = { mode, demo: async () => {
-    S.demo = true; // the real miner's rate ticks are ignored while the scripted round plays
+    if (S.demo || S.running) return; // never over a real mining session
+    S.demo = true; el.classList.add("demo"); // the real miner's rate ticks are ignored while the scripted round plays
     document.dispatchEvent(new CustomEvent("alch:mining", { detail: { running: true } }));
     let sec = 5; const rate = 1.8e9; const m = 1000;
     const tick = () => ev("rate", { rate, running: true, sec: sec++ % 60, sessionSec: 60, chainNow: 0, demo: true });
@@ -275,7 +276,9 @@
     await sleep(2000); ev("skip", { reason: "threshold", bits: 29.4, thr: 30 });
     await sleep(3500); S.vials.forEach((v) => { v.status = "ready"; });
     await sleep(2500); document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id: 205, tier: 4, label: "Epic Yew" } }));
-    await sleep(6000); clearInterval(timer); document.dispatchEvent(new CustomEvent("alch:mining", { detail: { running: false } })); S.demo = false;
+    await sleep(6000); clearInterval(timer); document.dispatchEvent(new CustomEvent("alch:mining", { detail: { running: false } })); S.vials.length = 0; S.demo = false; el.classList.remove("demo");
   } };
-  if (q.get("stagedemo")) setTimeout(() => window.alchStage.demo(), 1500);
+  // the scripted round only ever starts from the button under the scene, never on page load
+  const demoBtn = document.getElementById("stageDemo");
+  if (demoBtn) demoBtn.onclick = () => window.alchStage.demo();
 })();
