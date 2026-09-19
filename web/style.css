@@ -226,5 +226,8 @@ footer b { font:9px var(--pix); color:var(--ink2); display:block; margin-bottom:
 .cauldron .big { animation:brew 3s steps(6) infinite; }
 @keyframes brew { 0%,100% { text-shadow:3px 3px 0 var(--line) } 50% { text-shadow:3px 3px 0 var(--line), 0 0 10px rgba(53,201,232,.7) } }
 .panel > h2 { position:relative; }
-.btn.gold:hover { animation:glint 1.2s steps(6) infinite; }
+/* gold buttons glow around the bevel on hover; no text-shadow, the dark label on gold would look doubled */
+@keyframes goldglint { 0%,88%,100% { filter:brightness(1.12) } 94% { filter:brightness(1.25) drop-shadow(0 0 7px var(--gold2)) } }
+.btn.gold:hover { animation:goldglint 1.2s steps(6) infinite; }
+.btn.done:hover { animation:none; filter:none; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; } .hero .art canvas.fx { display:none; } }
