@@ -1,7 +1,7 @@
 // Alchemists dapp: mine status, in-browser mining (CPU workers or WebGPU) with a local session wallet, inventory, workshop.
 (async () => {
   // the page and this script are deployed together; a stale cached page would lack elements this script expects
-  const APP_VER = "7";
+  const APP_VER = "8";
   if (document.body.dataset.app !== APP_VER) { const u = new URL(location.href); u.searchParams.set("r", String(Date.now())); location.replace(u.toString()); return; }
   // a missing element must never break the whole app: writes to it go to a harmless dummy
   const NULL_EL = new Proxy({}, {
@@ -159,6 +159,7 @@
   function saveSettings() { try { const s = {}; for (const k of SETTINGS) if ($(k)) s[k] = $(k).value; localStorage.setItem("alch.minerSettings", JSON.stringify(s)); } catch {} }
   const num = (id, d = 0) => { const v = parseFloat($(id).value); return Number.isFinite(v) && v >= 0 ? v : d; };
 
+  const stage = (type, d = {}) => document.dispatchEvent(new CustomEvent("alch:stage", { detail: { type, ...d } })); // the pixel scene in stage.js
   const warn = (msg) => { const el = $("mineWarn"); el.textContent = msg; el.style.display = msg ? "block" : "none"; };
   const miner = {
     running: false, engine: "cpu", signerMode: "session", workers: [], gpu: null, m: null, ch: null, thrQ8: 0, floor: 0,
@@ -249,6 +250,7 @@
       if (!ch || BigInt(ch) === 0n || this.m !== m) return;
       this.ch = ch; this.thrQ8 = tq || Number(await mine.tQ8()); this.floor = Math.floor(this.thrQ8 / 256);
       mlog(`minute ${m}: challenge ${ch.slice(0, 10)}… threshold ${(this.thrQ8 / 256).toFixed(2)} bits`);
+      stage("minute", { m, thrQ8: this.thrQ8 });
       if (this.engine === "cpu") this.cpuJob(); else if (this.gpu) { this.gpu.setJob(this.address(), ch, this.floor, this.rnd32(), this.rnd32()); this.lastFloor = this.floor; }
     },
     // run fn once the pending submit (if any) has finished
@@ -274,7 +276,7 @@
       const ctx = this._ctx && this._ctx.ch === this.ch && this._ctx.addr === addr ? this._ctx.ctx : (this._ctx = { ch: this.ch, addr, ctx: MineHash.setup(addr, this.ch) }).ctx;
       const d = MineHash.digest(ctx, hi, lo);
       const wq8 = MineHash.workQ8(d);
-      if (!this.best || wq8 > this.best.wq8) { this.best = { wq8, hi, lo }; return true; }
+      if (!this.best || wq8 > this.best.wq8) { this.best = { wq8, hi, lo }; stage("best", { wq8 }); return true; }
       return false;
     },
     async gpuLoop() {
@@ -292,34 +294,35 @@
     },
     async settle(m, best) {
       const thr = this.thrQ8;
-      if (!best) { this.skip("threshold"); mlog(`minute ${m}: nothing found`); return; }
-      if (best.wq8 < thr) { this.skip("threshold"); mlog(`minute ${m}: best ${(best.wq8 / 256).toFixed(2)} bits < threshold ${(thr / 256).toFixed(2)}, no submit`); return; }
-      if (this.busy) { const msg = `minute ${m}: the previous submit is still pending${this.signerMode === "own" ? " (waiting for your confirmation in the wallet)" : ""}, this find is skipped`; mlog(msg); warn(msg); this.skip("pending"); return; }
+      if (!best) { this.skip("threshold"); stage("skip", { reason: "threshold", bits: 0, thr: thr / 256 }); mlog(`minute ${m}: nothing found`); return; }
+      if (best.wq8 < thr) { this.skip("threshold"); stage("skip", { reason: "threshold", bits: best.wq8 / 256, thr: thr / 256 }); mlog(`minute ${m}: best ${(best.wq8 / 256).toFixed(2)} bits < threshold ${(thr / 256).toFixed(2)}, no submit`); return; }
+      if (this.busy) { const msg = `minute ${m}: the previous submit is still pending${this.signerMode === "own" ? " (waiting for your confirmation in the wallet)" : ""}, this find is skipped`; mlog(msg); warn(msg); this.skip("pending"); stage("skip", { reason: "pending" }); return; }
       this.busy = true;
       try {
         const L = this.limits();
         const n = await this.need();
         const price = n.price, value = n.value;
-        if (L.maxPrice && price > L.maxPrice) { const msg = `Skipped: the submit price ${fmtEth(price, 7)} ETH is above your limit ${fmtEth(L.maxPrice, 7)} ETH.`; mlog(`minute ${m}: ${msg}`); warn(msg); this.skip("price"); return; }
-        if (L.budget && this.stats.spent + price > L.budget) { this.skip("price"); this.stop(`budget ${fmtEth(L.budget)} ETH would be exceeded`); return; }
+        if (L.maxPrice && price > L.maxPrice) { const msg = `Skipped: the submit price ${fmtEth(price, 7)} ETH is above your limit ${fmtEth(L.maxPrice, 7)} ETH.`; mlog(`minute ${m}: ${msg}`); warn(msg); this.skip("price"); stage("skip", { reason: "price" }); return; }
+        if (L.budget && this.stats.spent + price > L.budget) { this.skip("price"); stage("skip", { reason: "price" }); this.stop(`budget ${fmtEth(L.budget)} ETH would be exceeded`); return; }
         const who = this.address();
         const bal = await provider.getBalance(who);
-        if (bal < n.total) { const msg = this.fundsMsg(who, bal, n); mlog(`minute ${m}: found ${(best.wq8 / 256).toFixed(2)} bits, skipped. ${msg}`); warn(msg); this.skip("funds"); return; }
+        if (bal < n.total) { const msg = this.fundsMsg(who, bal, n); mlog(`minute ${m}: found ${(best.wq8 / 256).toFixed(2)} bits, skipped. ${msg}`); warn(msg); this.skip("funds"); stage("skip", { reason: "funds" }); return; }
         const nonce = MineHash.nonceBig(best.hi, best.lo);
         mlog(`minute ${m}: submitting ${(best.wq8 / 256).toFixed(2)} bits for ${fmtEth(price, 7)} ETH${this.signerMode === "own" ? " — confirm in your wallet" : ""}…`);
+        stage("submit", { m, bits: best.wq8 / 256 });
         if (this.signerMode === "own") { document.title = "⚠ Confirm the submit · Alchemists"; }
         let tx;
         try { tx = await C("Mine", this.signer()).submit(m, nonce, { value, gasLimit: GAS.submit }); }
         finally { document.title = "Alchemists · Mine, Workshop and the Cauldron"; }
         const rc = await tx.wait();
-        if (rc.status !== 1) { mlog(`minute ${m}: submit reverted ${tx.hash}`); warn(`The submit for minute ${m} reverted, see the log.`); return; }
-        this.stats.submits++; this.stats.spent += price; warn("");
+        if (rc.status !== 1) { stage("submitfail", { m, msg: "reverted" }); mlog(`minute ${m}: submit reverted ${tx.hash}`); warn(`The submit for minute ${m} reverted, see the log.`); return; }
+        this.stats.submits++; this.stats.spent += price; warn(""); stage("submitted", { m, revealMinute: m + 2 });
         const found = [];
         for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") { this.stats.minted++; found.push(`${TIERS[Number(ev.args.tier)]} ${names.types[Number(ev.args.typeId)]}${ev.args.upgraded ? " (upgraded!)" : ""}`); this.addResult(Number(ev.args.id)); } if (ev.name === "KeyMined") { this.stats.keys++; found.push("MYTHIC KEY " + names.keys[Number(ev.args.keyIndex)].key); this.addResult(3000 + Number(ev.args.keyIndex)); } }
         mlog(`minute ${m}: submitted (gas ${rc.gasUsed})${found.length ? " · revealed " + found.join(", ") : " · reveal comes with the next submit"}`);
         refreshInventory(); refreshBurner();
         if (L.maxSubmits && this.stats.submits >= L.maxSubmits) this.stop(`${L.maxSubmits} submits done`);
-      } catch (e) { const msg = e.reason || e.shortMessage || e.message; mlog(`minute ${m}: ${msg}`); warn(/reject|denied/i.test(msg) ? "You rejected the submit in the wallet; the find was dropped." : `Submit failed: ${msg}`); }
+      } catch (e) { const msg = e.reason || e.shortMessage || e.message; stage("submitfail", { m, msg }); mlog(`minute ${m}: ${msg}`); warn(/reject|denied/i.test(msg) ? "You rejected the submit in the wallet; the find was dropped." : `Submit failed: ${msg}`); }
       finally { this.busy = false; }
     },
     addResult(id) {
@@ -327,7 +330,8 @@
       const tier = id >= 3000 ? 6 : id >= 2000 ? (id - 2000) % 8 : id >= 1000 ? id - 1000 : (id - 1) % 8;
       el.insertAdjacentHTML("afterbegin", `<div class="card t${tier}" style="width:84px"><img class="px" src="metadata/${id}.png" alt=""><div class="s">${TIERS[tier]}</div></div>`);
       while (el.children.length > 12) el.lastElementChild.remove();
-      document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id, tier, el: el.firstElementChild } }));
+      const label = id >= 3000 ? names.keys[id - 3000].key : id >= 2000 ? `${TIERS[tier]} ${names.kinds[Math.floor((id - 2000) / 8)]}` : id >= 1000 ? `${TIERS[tier]} Potion` : `${TIERS[tier]} ${names.types[Math.floor((id - 1) / 8)]}`;
+      document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id, tier, label, el: el.firstElementChild } }));
       if (tier === 6) document.dispatchEvent(new CustomEvent("alch:key", { detail: { id } }));
     },
     tickUi() {
@@ -336,6 +340,7 @@
       const span = this.hist.length ? Math.max(1000, now - this.hist[0][0]) : 1000;
       const rate = this.hist.reduce((a, h) => a + h[1], 0) / (span / 1000);
       $("hashrate").innerHTML = this.running ? fmtHs(rate) : "–";
+      stage("rate", { rate, running: this.running, sec: Math.floor(chainNow() % sessionSec), sessionSec, chainNow: chainNow(), m: this.m });
       $("bestBits").innerHTML = this.best ? `${(this.best.wq8 / 256).toFixed(2)} <small>bits</small>` : "–";
       $("bestBits").style.color = this.best && this.best.wq8 >= this.thrQ8 ? "var(--verd)" : "";
       const w = this.stats.why || {};
@@ -610,6 +615,11 @@
       return rc;
     } catch (e) { log(`${label}: ${e.reason || e.shortMessage || e.message}`, "warn"); return null; }
   }
+  function minedIds(rc) {
+    const out = [];
+    for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") out.push(Number(ev.args.id)); if (ev.name === "KeyMined") out.push(3000 + Number(ev.args.keyIndex)); }
+    return out;
+  }
   function minedFrom(rc) {
     const out = [];
     for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") out.push(`${TIERS[Number(ev.args.tier)]} ${names.types[Number(ev.args.typeId)]}${ev.args.upgraded ? " (upgraded)" : ""}`); if (ev.name === "KeyMined") out.push("MYTHIC KEY " + names.keys[Number(ev.args.keyIndex)].key); }
@@ -625,6 +635,7 @@
     if (!rc) { revealStatus("The reveal did not go through, see the log.", "warn"); return; }
     if (rc.status !== 1) { revealStatus("The reveal transaction reverted.", "warn"); return; }
     const got = minedFrom(rc);
+    for (const id of minedIds(rc)) miner.addResult(id);
     revealStatus(got.length ? `Revealed: ${got.join(", ")}. It is in the inventory below.` : "Nothing was ready yet: the find needs the next minute's challenge before it can be revealed. Wait for the timer and try again.", got.length ? "on" : "warn");
   };
   $("revealWs").onclick = () => { const ids = JSON.parse($("revealWs").dataset.ids || "[]"); tx(`reveal crafts ${ids.join(",")}`, () => C("Workshop", signer).revealMany(ids, { gasLimit: GAS.revealMany })); };

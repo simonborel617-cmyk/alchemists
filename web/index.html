@@ -18,9 +18,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
-<body data-app="7">
+<body data-app="8">
 <header>
   <div class="wrap">
     <h1>ALCHEMISTS<small>mine · workshop · the Cauldron · <a href="rules.html" style="color:var(--gold2);text-decoration:none">rules</a></small></h1>
@@ -58,6 +58,23 @@
 <main class="wrap">
   <section class="panel" id="bm" style="margin-bottom:26px">
     <h2>Mine in your browser <span class="tag" id="mineState">stopped</span></h2>
+    <div class="bm-top">
+      <div class="bm-stage">
+        <div class="stage" id="stage" data-bg="1"><canvas width="255" height="171"></canvas><div class="hud"><div class="cap">the fire is out</div><div class="bits" style="display:none"></div><div class="labels" style="display:none"></div></div></div>
+        <p class="small">The fire burns with your hashrate, the brew brightens as the best hash of the minute climbs to the bar and takes the tier colour above it. A find rises as a sealed vial and waits on the rack until its reveal.</p>
+      </div>
+      <div class="bm-live">
+        <div class="stat" style="grid-template-columns:1fr 1fr">
+          <div><b>my hashrate</b><span id="hashrate">–</span></div>
+          <div><b>best this minute</b><span id="bestBits">–</span></div>
+        </div>
+        <div class="tag" id="mstats" style="margin-top:10px;display:block">rounds 0 · submits 0 · skips 0 · minted 0 · spent 0 ETH</div>
+        <div class="tag warn" id="mineWarn" style="display:none;margin-top:8px;line-height:1.5;white-space:normal"></div>
+        <h3 style="margin-top:14px">latest loot</h3>
+        <div class="inv" id="results" style="grid-template-columns:repeat(auto-fill,84px)"></div>
+        <div class="log" id="mlog" style="margin-top:12px;max-height:150px"></div>
+      </div>
+    </div>
     <div class="bm">
       <div class="bm-wallet">
         <h3>signer</h3>
@@ -91,17 +108,6 @@
         <div id="cpuOpts"><label class="f range">threads<span id="cpuThreadsLbl">4</span><input type="range" id="cpuThreads" min="1" max="8" value="4"></label><p class="small">Every thread is one CPU core. Start with half of your cores if you want to keep using the computer.</p></div>
         <div id="gpuOpts" style="display:none"><label class="f range">intensity<span id="gpuIntLbl">100 %</span><input type="range" id="gpuInt" min="10" max="100" value="100" step="10"></label><p class="small" id="gpuNote">Lower intensity leaves the card idle between batches so the desktop stays smooth.</p></div>
         <div class="row" style="margin-top:6px"><button class="btn gold" id="mineStart">Start mining</button><button class="btn" id="mineStop" disabled>Stop</button></div>
-      </div>
-      <div class="bm-live">
-        <div class="stat" style="grid-template-columns:1fr 1fr">
-          <div><b>my hashrate</b><span id="hashrate">–</span></div>
-          <div><b>best this minute</b><span id="bestBits">–</span></div>
-        </div>
-        <div class="tag" id="mstats" style="margin-top:10px;display:block">rounds 0 · submits 0 · skips 0 · minted 0 · spent 0 ETH</div>
-        <div class="tag warn" id="mineWarn" style="display:none;margin-top:8px;line-height:1.5;white-space:normal"></div>
-        <h3 style="margin-top:14px">latest loot</h3>
-        <div class="inv" id="results" style="grid-template-columns:repeat(auto-fill,84px)"></div>
-        <div class="log" id="mlog" style="margin-top:12px;max-height:150px"></div>
       </div>
     </div>
   </section>
@@ -261,6 +267,7 @@
 <script src="sha256.js?v=13"></script>
 <script src="gpu.js?v=13"></script>
 <script src="fx.js?v=13"></script>
-<script src="app.js?v=13"></script>
+<script src="stage.js?v=1"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

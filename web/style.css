@@ -180,7 +180,7 @@ footer b { font:9px var(--pix); color:var(--ink2); display:block; margin-bottom:
 .doc th { font:10px var(--pix); color:var(--muted); text-transform:uppercase; }
 
 /* browser miner */
-.bm { display:grid; grid-template-columns:1.1fr 0.8fr 0.8fr 1.2fr; gap:16px; }
+.bm { display:grid; grid-template-columns:1.1fr 0.9fr 0.9fr; gap:16px; }
 .bm > div { background:var(--bg2); border:2px solid var(--bevel-lo); padding:14px; }
 .bm p { margin:6px 0 0; font-size:13px; color:var(--ink2); line-height:1.4; }
 .bm p.small { font-size:12px; color:var(--muted); }
@@ -196,6 +196,7 @@ footer b { font:9px var(--pix); color:var(--ink2); display:block; margin-bottom:
 .bm-limits label.f { margin-bottom:8px; }
 .bm-limits input { width:100%; }
 @media (max-width:1200px) { .bm { grid-template-columns:1fr 1fr; } }
+@media (max-width:900px) { .bm-top { grid-template-columns:1fr; } }
 @media (max-width:700px) { .bm { grid-template-columns:1fr; } }
 
 /* magic: embers over the hero, candle flicker, glints, pops and bubbles; all pixel-stepped, off with reduced motion */
@@ -231,3 +232,20 @@ footer b { font:9px var(--pix); color:var(--ink2); display:block; margin-bottom:
 .btn.gold:hover { animation:goldglint 1.2s steps(6) infinite; }
 .btn.done:hover { animation:none; filter:none; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; } .hero .art canvas.fx { display:none; } }
+
+/* mining stage: pixel scene of the brew (stage.js), live numbers beside it */
+.bm-top { display:grid; grid-template-columns:1.45fr 1fr; gap:16px; margin-bottom:16px; }
+.bm-top > div { background:var(--bg2); border:2px solid var(--bevel-lo); padding:14px; min-width:0; }
+.stage { position:relative; width:100%; aspect-ratio:255/171; background:#0b0d0f; border:3px solid var(--line); box-shadow:inset 0 0 0 2px var(--bevel-hi); overflow:hidden; }
+.stage canvas { display:block; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; }
+.stage .hud { position:absolute; inset:0; pointer-events:none; }
+.stage .cap { position:absolute; left:8px; top:9px; max-width:66%; font:10px/1.5 var(--mono); color:var(--ink2); background:rgba(11,13,15,.78); border:1px solid var(--bevel-hi); padding:3px 6px; }
+.stage .bits { position:absolute; left:8px; bottom:8px; font:8px var(--pix); color:var(--ink); background:rgba(11,13,15,.78); border:1px solid var(--bevel-hi); padding:5px 6px; }
+.stage .labels { position:absolute; inset:0; }
+.stage .gl { position:absolute; right:calc(16px + 3.2%); transform:translateY(50%); font:8px var(--mono); line-height:1; }
+.stage .reveal { position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); text-align:center; background:rgba(11,13,15,.88); border:3px solid var(--tc,var(--gold2)); box-shadow:4px 4px 0 var(--line); padding:10px 14px 9px; animation:stagepop .45s steps(5); }
+.stage .reveal img { width:72px; height:72px; display:block; margin:0 auto 7px; }
+.stage .reveal b { font:9px var(--pix); color:var(--tc,var(--gold2)); line-height:1.5; }
+.stage .reveal.out { opacity:0; transition:opacity .4s steps(4); }
+@keyframes stagepop { from { transform:translate(-50%,-50%) scale(.4); opacity:0 } to { transform:translate(-50%,-50%) scale(1); opacity:1 } }
+@media (prefers-reduced-motion: reduce) { .stage .reveal { animation:none; } }
