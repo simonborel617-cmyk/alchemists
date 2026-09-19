@@ -1,16 +1,14 @@
-// Mining stage: a pixel scene of the brew that follows the browser miner. Three renderers share one state machine:
-//   hybrid  a generated background (img/stage-N.png) with the fire, liquid and particles drawn by code
-//   code    everything procedural, no image at all
-//   sprite  a boiling loop cut from a generated video (img/stage-sprite.png, frames stacked vertically) for the
-//           brewing state, the cold still when idle, particles and vials by code on top
-// Pick with `data-stage` on #stage or `?stage=hybrid|code|sprite`; `?bg=N` picks the hybrid/sprite background.
+// Mining stage: a pixel scene of the brew that follows the browser miner. The scene is a sprite sheet cut from a
+// generated clip (img/stage-sprite.png: cell 0 the cold cauldron for idle, cells 1..N the boiling loop, played
+// ping-pong) with the brew tint, embers, vials, smoke and the reveal drawn by code on top; the still (img/stage-1.png)
+// stands in while the sheet loads, and `?stage=hybrid` keeps the older still-plus-code renderer for comparison.
 //
 // What the scene may show before a reveal: whether the brew is cold, warming (best hash below the bar) or over the bar.
 // It never hints at a tier: the type, the supply extras of that type, the unlocked tiers and the upgrade roll are only
 // known at the reveal, so a sealed vial looks the same whatever the bits. The tier appears on the reveal card only.
 //
-// Input: `alch:stage` events from app.js ({type: minute|best|rate|skip|submit|submitted|submitfail, ...}),
-// `alch:mining` ({running}) and `alch:loot` ({id, tier, label}). `?stagedemo=1` plays a scripted round.
+// Input: `alch:stage` events from app.js ({type: minute|best|rate|skip|submit|submitted|submitfail|pending, ...}),
+// `alch:mining` ({running}) and `alch:loot` ({id, tier, label, via}). The Preview button plays a scripted round.
 (() => {
   const el = document.getElementById("stage");
   if (!el) return;
@@ -20,21 +18,17 @@
   // anchors in grid cells: the liquid surface, the fire (particles die above `top`), the glow centre, the vial rack
   const BG = {
     1: { src: "img/stage-1.png", liquid: { cx: 126, cy: 77, rx: 19, ry: 5 }, fire: { cx: 126, cy: 130, rx: 22, top: 96 }, glow: { cx: 126, cy: 60 }, rack: [[54, 154], [38, 158], [22, 162], [8, 166]] }, // the floor left of the tripod, clear of its foot
-    2: { src: "img/stage-2.png", liquid: { cx: 104, cy: 46, rx: 20, ry: 5 }, fire: { cx: 90, cy: 136, rx: 12, top: 112 }, glow: { cx: 104, cy: 30 }, rack: [[180, 94], [198, 92], [216, 94], [234, 100]] },
-    3: { src: "img/stage-3.png", liquid: { cx: 126, cy: 58, rx: 25, ry: 6 }, fire: { cx: 126, cy: 120, rx: 30, top: 92 }, glow: { cx: 126, cy: 40 }, rack: [[192, 84], [208, 90], [224, 96], [240, 102]], candles: [[25, 62], [43, 80]] },
   };
-  const CODE = { liquid: { cx: 126, cy: 72, rx: 27, ry: 5 }, fire: { cx: 126, cy: 132, rx: 24, top: 100 }, glow: { cx: 126, cy: 52 }, rack: [[54, 156], [38, 160], [22, 164], [8, 168]] };
   const q = new URLSearchParams(location.search);
-  const mode = ["hybrid", "code", "sprite"].includes(q.get("stage")) ? q.get("stage") : (el.dataset.stage || "hybrid");
-  const bgN = q.get("bg") || el.dataset.bg || "1";
-  const cfg = mode === "code" ? CODE : (BG[bgN] || BG[1]);
+  const mode = ["hybrid", "sprite"].includes(q.get("stage")) ? q.get("stage") : (el.dataset.stage || "sprite");
+  const cfg = BG[1];
   el.dataset.mode = mode;
   const cv = el.querySelector("canvas");
   cv.width = W; cv.height = H;
   const g = cv.getContext("2d");
   g.imageSmoothingEnabled = false;
   const hud = { cap: el.querySelector(".cap"), bits: el.querySelector(".bits"), labels: el.querySelector(".labels") };
-  const bg = new Image(); if (mode !== "code") bg.src = cfg.src;
+  const bg = new Image(); bg.src = cfg.src;
   const SPRITE_VER = "5"; // bump when the sheet is rebuilt: /img/* is cached for a day
   const sprite = new Image(); if (mode === "sprite") sprite.src = `img/stage-sprite.png?v=${SPRITE_VER}`;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -141,36 +135,8 @@
     for (const v of S.vials) if (v.rise < 1) v.rise = Math.min(1, v.rise + 0.09);
   };
 
-  // procedural scene: flagstone floor, a stone fire pit, an iron tripod and a hanging cauldron
-  let seed = 7; const srnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-  const drawCodeScene = () => {
-    seed = 7;
-    px(0, 0, W, H, "#15181c");
-    px(0, 56, W, 8, "#1e2226"); for (let x = 0; x < W; x += 14) px(x + 2, 58, 10, 3, "#262b30"); // wall course
-    const stones = ["#3a2f28", "#463a31", "#33291f", "#4a3b30"];
-    for (let y = 64; y < H; y += 12) { const off = ((y / 12) & 1) * 9; for (let x = -9 + off; x < W; x += 19) { const c = stones[Math.floor(srnd() * stones.length)]; px(x + 1, y + 1, 17, 10, c); px(x + 1, y + 1, 17, 1, lerp(c, "#ffffff", 0.08)); } }
-    for (let y = 64; y < H; y++) px(0, y, W, 1, hex("#0b0d0f", clamp(Math.abs(y - 128) / 90, 0, 0.55))); // light falls off from the pit
-    for (let x = 0; x < W; x++) px(x, 64, 1, H - 64, hex("#0b0d0f", clamp(Math.abs(x - 126) / 200, 0, 0.5)));
-    pxEllipse(126, 134, 46, 15, "#4a433b"); pxEllipse(126, 132, 46, 15, "#8a8073"); pxEllipse(126, 131, 36, 10, "#2b2320"); // pit ring and coals
-    for (let i = 0; i < 26; i++) { const a = srnd() * Math.PI * 2, r = Math.sqrt(srnd()) * 0.9; px(126 + Math.cos(a) * r * 33, 131 + Math.sin(a) * r * 8, 3, 2, i % 3 ? "#1c1a18" : "#3a3330"); }
-    pxLine(126, 116, 126, 22, 3, "#1c2126"); // back leg
-    pxLine(70, 140, 126, 22, 3, "#1c2126"); pxLine(70, 140, 126, 22, 1, "#3a434c"); // front legs
-    pxLine(182, 140, 126, 22, 3, "#1c2126"); pxLine(183, 140, 127, 22, 1, "#3a434c");
-    px(68, 138, 6, 4, "#1c2126"); px(180, 138, 6, 4, "#1c2126"); px(122, 18, 9, 6, "#2b3138"); px(123, 18, 7, 1, "#5b6166");
-    for (let y = 24; y < 50; y += 3) px(125, y, 3, 2, y % 2 ? "#3a434c" : "#5b6166"); // chain
-    px(120, 50, 13, 3, "#2b3138"); // handle bar
-    pxEllipse(126, 94, 36, 30, "#0b0d0f"); pxEllipse(126, 93, 34, 28, "#1c2126"); // body
-    for (let dy = -22; dy <= 8; dy++) { const w = Math.round(34 * Math.sqrt(Math.max(0, 1 - (dy * dy) / (28 * 28)))); px(126 - w + 2, 93 + dy, Math.max(0, Math.round(w * 0.55) - 6), 1, "#2b3138"); } // left-top highlight
-    for (let dy = 8; dy <= 26; dy++) { const w = Math.round(34 * Math.sqrt(Math.max(0, 1 - (dy * dy) / (28 * 28)))); px(126 - w + 3, 93 + dy, 2 * w - 6, 1, hex("#0b0d0f", 0.35)); } // bottom shade
-    px(90, 70, 6, 8, "#1c2126"); px(158, 70, 6, 8, "#1c2126"); px(91, 71, 1, 6, "#3a434c"); px(159, 71, 1, 6, "#3a434c"); // lugs
-    pxEllipse(126, 71, 33, 8, "#0b0d0f"); pxEllipse(126, 70, 33, 8, "#2b3138"); pxEllipse(126, 70, 31, 6, "#101316"); // rim and mouth
-    pxEllipse(126, 72, 27, 5, "#17303a"); // still surface
-    for (let i = 0; i < cfg.rack.length; i++) { const [x, y] = cfg.rack[i]; px(x - 6, y, 13, 3, "#4a3b30"); px(x - 6, y, 13, 1, "#6b5a48"); } // rack shelf steps
-  };
-
   const spriteFrames = () => (sprite.complete && sprite.naturalHeight >= H ? Math.floor(sprite.naturalHeight / H) : 0);
   const drawBase = () => {
-    if (mode === "code") { drawCodeScene(); return; }
     const n = mode === "sprite" ? spriteFrames() : 0;
     if (n > 1) { // sheet: frame 0 = the cold cauldron for idle, frames 1..n-1 = the boiling loop, played ping-pong
       let f = 0;
@@ -192,7 +158,6 @@
     if (S.I > 0 && mode !== "sprite") {
       for (let i = 0; i < 7; i++) { const x = cfg.fire.cx - cfg.fire.rx + Math.round((i + 0.5) * (cfg.fire.rx * 2) / 7); px(x, cfg.fire.cy - 1 + ((i * 7 + S.frame) % 3), 2, 1, hex((S.frame + i) % 3 ? "#ff9a2e" : "#ffe680", 0.25 + 0.45 * S.I * Math.random())); }
       for (const p of S.fire) px(p.x, p.y, p.s, p.s, fireColor(p.age / p.life));
-      if (mode === "code") for (let y = cfg.fire.cy - 6; y < cfg.fire.cy + 4; y++) px(cfg.fire.cx - 40, y, 80, 1, hex("#ff9a2e", 0.05 * S.I)); // pit glow
     }
     if (S.I > 0 && mode === "sprite") { // the clip's own fire is dim: warm the coals and throw a few embers over it
       pxEllipse(cfg.fire.cx, cfg.fire.cy, cfg.fire.rx + 4, 6, hex("#ff9a2e", 0.10 + 0.12 * S.I));
