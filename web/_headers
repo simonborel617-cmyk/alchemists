@@ -1,11 +1,14 @@
-# Cloudflare Pages headers. HTML and scripts revalidate on every load (assets are cache-busted with ?v=);
-# metadata and art are public, cacheable and CORS-open for wallets, explorers and marketplaces.
+# Cloudflare static-asset headers. Rules accumulate top to bottom, so later rules detach (!) a header before resetting it.
+# HTML, scripts and data revalidate on every load (assets are cache-busted with ?v=); metadata and art are public,
+# cacheable for a day and CORS-open for wallets, explorers and marketplaces.
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Cache-Control: no-cache
 /metadata/*
-  Access-Control-Allow-Origin: *
+  ! Cache-Control
   Cache-Control: public, max-age=86400
+  Access-Control-Allow-Origin: *
 /img/*
+  ! Cache-Control
   Cache-Control: public, max-age=86400
