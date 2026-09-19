@@ -52,7 +52,7 @@ print(f"clip: {n} frames at {fps} fps, {frames[0].shape[1]}x{frames[0].shape[0]}
 lo, hi = int(n * a.start), int(n * a.end) - 1
 idx = [round(lo + (hi - lo) * i / (a.frames - 1)) for i in range(a.frames)]
 
-def to_cell(arr):
+def to_grid(arr):
     im = Image.fromarray(arr).convert("RGB")
     w, h = im.size
     target = W / H
@@ -60,8 +60,25 @@ def to_cell(arr):
         nw = round(h * target); im = im.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
     else:
         nh = round(w / target); im = im.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
-    im = im.resize((W, H), Image.BOX)
-    return im.quantize(palette=pal, dither=Image.Dither.NONE).convert("RGB")
+    return np.asarray(im.resize((W, H), Image.BOX), dtype=np.float64)
+
+# the clip starts from the still itself but reframed, so the pixels do not line up while the colour statistics do:
+# match each channel's histogram of frame 0 to the still's (a 256-entry LUT per channel) and apply the LUTs to every
+# frame, which restores the saturation the video model washed out before the frames are snapped to the palette
+f0 = to_grid(frames[0]).astype(np.uint8)
+st = np.asarray(still, dtype=np.uint8)
+LUT = np.zeros((3, 256), dtype=np.uint8)
+for c in range(3):
+    src_cdf = np.cumsum(np.bincount(f0[..., c].ravel(), minlength=256)) / f0[..., c].size
+    dst_cdf = np.cumsum(np.bincount(st[..., c].ravel(), minlength=256)) / st[..., c].size
+    LUT[c] = np.clip(np.searchsorted(dst_cdf, src_cdf, side="left"), 0, 255)
+sat = lambda a: (a.max(axis=2) - a.min(axis=2)).mean()
+print("colour match: mean saturation still %.1f, clip frame 0 %.1f -> %.1f" % (sat(st.astype(int)), sat(f0.astype(int)), sat(np.stack([LUT[c][f0[..., c]] for c in range(3)], axis=2).astype(int))))
+
+def to_cell(arr):
+    f = to_grid(arr).astype(np.uint8)
+    f = np.stack([LUT[c][f[..., c]] for c in range(3)], axis=2)
+    return Image.fromarray(f).quantize(palette=pal, dither=Image.Dither.NONE).convert("RGB")
 
 # cell 0 is the clip's first frame (the cold cauldron, the start image): stage.js shows it while idle and loops the rest,
 # so the idle-to-brewing switch keeps the clip's own framing and colours instead of jumping to the separate still

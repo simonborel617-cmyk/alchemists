@@ -169,14 +169,18 @@
     drawBase();
     const lc = liquidColor();
     const brewing = S.running || cold();
-    if (brewing && (mode !== "sprite" || cold() || over())) {
-      pxEllipse(cfg.liquid.cx, cfg.liquid.cy, cfg.liquid.rx, cfg.liquid.ry, hex(lc, mode === "sprite" ? 0.35 : 0.55));
+    if (brewing) { // the tint of the brew is the state feedback in every mode; the sprite keeps its own bubbles underneath
+      pxEllipse(cfg.liquid.cx, cfg.liquid.cy, cfg.liquid.rx, cfg.liquid.ry, hex(lc, mode === "sprite" ? 0.42 : 0.55));
       for (const b of S.bubbles) { px(b.x, b.y, 1, 1, hex(COL.white, 0.7)); if (b.big && b.age < b.life - 1) { px(b.x - 1, b.y, 1, 1, hex(COL.white, 0.7)); px(b.x + 1, b.y, 1, 1, hex(COL.white, 0.7)); px(b.x, b.y - 1, 1, 1, hex(COL.white, 0.7)); } }
     }
     if (S.I > 0 && mode !== "sprite") {
       for (let i = 0; i < 7; i++) { const x = cfg.fire.cx - cfg.fire.rx + Math.round((i + 0.5) * (cfg.fire.rx * 2) / 7); px(x, cfg.fire.cy - 1 + ((i * 7 + S.frame) % 3), 2, 1, hex((S.frame + i) % 3 ? "#ff9a2e" : "#ffe680", 0.25 + 0.45 * S.I * Math.random())); }
       for (const p of S.fire) px(p.x, p.y, p.s, p.s, fireColor(p.age / p.life));
       if (mode === "code") for (let y = cfg.fire.cy - 6; y < cfg.fire.cy + 4; y++) px(cfg.fire.cx - 40, y, 80, 1, hex("#ff9a2e", 0.05 * S.I)); // pit glow
+    }
+    if (S.I > 0 && mode === "sprite") { // the clip's own fire is dim: warm the coals and throw a few embers over it
+      pxEllipse(cfg.fire.cx, cfg.fire.cy, cfg.fire.rx + 4, 6, hex("#ff9a2e", 0.10 + 0.12 * S.I));
+      for (let i = 0; i < 5; i++) if (((S.frame * 7 + i * 13) % 11) < 4) px(cfg.fire.cx + ((i * 37 + S.frame * 3) % (cfg.fire.rx * 2)) - cfg.fire.rx, cfg.fire.cy - 6 - ((S.frame + i * 5) % 14), 1, 1, i % 2 ? "#ffe680" : "#ff9a2e");
     }
     if (cfg.candles && S.running) for (const [x, y] of cfg.candles) { const f = (S.frame >> 1) & 1; px(x, y - 1 - f, 1, 2 + f, "#ffe680"); px(x - 1, y + 1, 3, 2, "#ff9a2e"); }
     // glow above the cauldron: grows as the brew warms, gold once over the bar
@@ -247,15 +251,23 @@
         else say(d.reason === "funds" ? "found, but no ETH for the submit" : d.reason === "price" ? "found, but the price is above your limit" : "found, but the previous submit is still pending", 6000);
         break;
       case "submit": burstAt(cfg.liquid.cx, cfg.liquid.cy - 2, [COL.white, COL.gold2, COL.potion], 24, 2.4); addVial(d.m, d.bits); say("found · sealing the vial…", 8000); break;
-      case "submitted": { const v = S.vials.find((x) => x.m === d.m && x.status === "submitting"); if (v) { v.status = "sealed"; v.revealMinute = d.revealMinute || d.m + 2; } say(`sealed · reveal after minute ${d.revealMinute || d.m + 2}`, 6000); break; }
+      case "submitted": { const v = S.vials.find((x) => x.m === d.m && x.status === "submitting"); if (v) { v.status = "sealed"; v.revealMinute = d.revealMinute || d.m + 2; v.sealedAt = now(); } say(`sealed · your next submit reveals it, or reveal by hand after minute ${d.revealMinute || d.m + 2}`, 7000); break; }
       case "submitfail": dropVial((x) => x.m === d.m, true); say("the submit did not go through", 6000); break;
+      case "pending": { // the chain's list of sealed finds for this address: add what the scene missed (a reload, the standalone miner), drop what is gone
+        if (S.demo) break;
+        const finds = d.finds || [], t = now();
+        for (const f of finds) { const v = S.vials.find((x) => x.m === f.m); if (v) { if (v.status !== "submitting") v.status = f.ready ? "ready" : "sealed"; v.revealMinute = f.revealMinute; } else S.vials.push({ m: f.m, bits: f.bits, status: f.ready ? "ready" : "sealed", revealMinute: f.revealMinute, rise: 1, sealedAt: t }); }
+        S.vials = S.vials.filter((v) => v.status === "submitting" || finds.some((f) => f.m === v.m) || (v.sealedAt && t - v.sealedAt < 120000));
+        S.vials.sort((a, b) => a.m - b.m);
+        break;
+      }
     }
   });
   document.addEventListener("alch:loot", (e) => {
     const d = e.detail || {};
     dropVial((x) => x.status === "ready", true) || dropVial((x) => x.status === "sealed", true);
     showReveal(d);
-    say(`revealed: ${d.label || ""}`, 6000);
+    say(`${d.via === "submit" ? "this submit revealed an earlier find" : "revealed"}: ${d.label || ""}`, 7000);
   });
 
   // ---------------------------------------------------------------- scripted round for review (?stagedemo=1)
@@ -264,19 +276,24 @@
   window.alchStage = { mode, demo: async () => {
     if (S.demo || S.running) return; // never over a real mining session
     S.demo = true; el.classList.add("demo"); // the real miner's rate ticks are ignored while the scripted round plays
+    const stash = S.vials; S.vials = []; // the real rack is set aside and comes back after the round
     document.dispatchEvent(new CustomEvent("alch:mining", { detail: { running: true } }));
+    // three compressed minutes, the real order of events: a find is sealed in minute m, minute m+1 misses the bar, and the
+    // submit of minute m+2 reveals the find of minute m while sealing a new one
     let sec = 5; const rate = 1.8e9; const m = 1000;
-    const tick = () => ev("rate", { rate, running: true, sec: sec++ % 60, sessionSec: 60, chainNow: 0, demo: true });
+    const tick = () => ev("rate", { rate, running: true, sec: (sec += 4) % 60, sessionSec: 60, chainNow: 0, demo: true });
     const timer = setInterval(tick, 1000); tick();
     await sleep(1500); ev("minute", { m, thrQ8: 30 * 256 });
-    for (const b of [22.4, 25.1, 26.8, 28.3, 29.2, 29.7, 30.4, 31.6]) { await sleep(900); ev("best", { wq8: Math.round(b * 256) }); }
-    await sleep(2500); ev("submit", { m, bits: 31.6 }); await sleep(2500); ev("submitted", { m, revealMinute: m + 2 });
-    await sleep(2500); ev("minute", { m: m + 1, thrQ8: 30 * 256 });
-    for (const b of [21.0, 24.4, 27.9, 29.4]) { await sleep(900); ev("best", { wq8: Math.round(b * 256) }); }
+    for (const b of [22.4, 25.1, 26.8, 28.3, 29.2, 29.7, 30.4, 31.6]) { await sleep(800); ev("best", { wq8: Math.round(b * 256) }); }
+    await sleep(2000); ev("submit", { m, bits: 31.6 }); await sleep(2500); ev("submitted", { m, revealMinute: m + 2 });
+    await sleep(3000); sec = 5; ev("minute", { m: m + 1, thrQ8: 30 * 256 });
+    for (const b of [21.0, 24.4, 27.9, 29.4]) { await sleep(800); ev("best", { wq8: Math.round(b * 256) }); }
     await sleep(2000); ev("skip", { reason: "threshold", bits: 29.4, thr: 30 });
-    await sleep(3500); S.vials.forEach((v) => { v.status = "ready"; });
-    await sleep(2500); document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id: 205, tier: 4, label: "Epic Yew" } }));
-    await sleep(6000); clearInterval(timer); document.dispatchEvent(new CustomEvent("alch:mining", { detail: { running: false } })); S.vials.length = 0; S.demo = false; el.classList.remove("demo");
+    await sleep(4000); sec = 5; ev("minute", { m: m + 2, thrQ8: 30 * 256 }); S.vials.forEach((v) => { v.status = "ready"; });
+    for (const b of [23.9, 27.2, 29.1, 30.7]) { await sleep(800); ev("best", { wq8: Math.round(b * 256) }); }
+    await sleep(2000); ev("submit", { m: m + 2, bits: 30.7 });
+    await sleep(2500); document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id: 205, tier: 4, label: "Epic Yew", via: "submit" } })); ev("submitted", { m: m + 2, revealMinute: m + 4 });
+    await sleep(6500); clearInterval(timer); document.dispatchEvent(new CustomEvent("alch:mining", { detail: { running: false } })); S.vials = stash; S.thr = 0; S.best = 0; S.demo = false; el.classList.remove("demo");
   } };
   // the scripted round only ever starts from the button under the scene, never on page load
   const demoBtn = document.getElementById("stageDemo");

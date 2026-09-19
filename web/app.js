@@ -127,7 +127,7 @@
     $("pending").textContent = `to reveal: ${n}`;
     $("pending").className = "tag" + (n > 0 ? " on" : "");
     let ready = 0;
-    const rows = [];
+    const rows = [], finds = [];
     for (let i = 0; i < Math.min(n, 8); i++) {
       try {
         const pd = await mine.pendingAt(me, i);
@@ -135,11 +135,13 @@
         const e = await mine.entropy(rm);
         const ok = BigInt(e) !== 0n;
         if (ok) ready++;
+        finds.push({ m: rm - 2, revealMinute: rm, ready: ok, bits: Number(pd.workQ8) / 256 });
         const wait = Math.max(0, rm * sessionSec - Math.floor(chainNow()));
         rows.push(`find mined in minute ${rm - 2} · ${(Number(pd.workQ8) / 256).toFixed(2)} bits · ${ok ? "<span style=\"color:var(--verd)\">ready to reveal</span>" : wait > 0 ? `reveals in ${wait} s (minute ${rm} must start and be ticked)` : "waiting for the keeper to tick minute " + rm}`);
       } catch {}
     }
     if (n > 8) rows.push(`… and ${n - 8} more`);
+    stage("pending", { who: me, finds }); // the rack in the scene mirrors the chain, also after a reload
     $("pendList").innerHTML = rows.join("<br>");
     $("revealMine").disabled = ready === 0;
     $("revealMine").textContent = n > 0 ? `Reveal finds (${ready} ready)` : "Reveal finds";
@@ -318,20 +320,20 @@
         if (rc.status !== 1) { stage("submitfail", { m, msg: "reverted" }); mlog(`minute ${m}: submit reverted ${tx.hash}`); warn(`The submit for minute ${m} reverted, see the log.`); return; }
         this.stats.submits++; this.stats.spent += price; warn(""); stage("submitted", { m, revealMinute: m + 2 });
         const found = [];
-        for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") { this.stats.minted++; found.push(`${TIERS[Number(ev.args.tier)]} ${names.types[Number(ev.args.typeId)]}${ev.args.upgraded ? " (upgraded!)" : ""}`); this.addResult(Number(ev.args.id)); } if (ev.name === "KeyMined") { this.stats.keys++; found.push("MYTHIC KEY " + names.keys[Number(ev.args.keyIndex)].key); this.addResult(3000 + Number(ev.args.keyIndex)); } }
+        for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") { this.stats.minted++; found.push(`${TIERS[Number(ev.args.tier)]} ${names.types[Number(ev.args.typeId)]}${ev.args.upgraded ? " (upgraded!)" : ""}`); this.addResult(Number(ev.args.id), "submit"); } if (ev.name === "KeyMined") { this.stats.keys++; found.push("MYTHIC KEY " + names.keys[Number(ev.args.keyIndex)].key); this.addResult(3000 + Number(ev.args.keyIndex), "submit"); } }
         mlog(`minute ${m}: submitted (gas ${rc.gasUsed})${found.length ? " · revealed " + found.join(", ") : " · reveal comes with the next submit"}`);
         refreshInventory(); refreshBurner();
         if (L.maxSubmits && this.stats.submits >= L.maxSubmits) this.stop(`${L.maxSubmits} submits done`);
       } catch (e) { const msg = e.reason || e.shortMessage || e.message; stage("submitfail", { m, msg }); mlog(`minute ${m}: ${msg}`); warn(/reject|denied/i.test(msg) ? "You rejected the submit in the wallet; the find was dropped." : `Submit failed: ${msg}`); }
       finally { this.busy = false; }
     },
-    addResult(id) {
+    addResult(id, via) {
       const el = $("results");
       const tier = id >= 3000 ? 6 : id >= 2000 ? (id - 2000) % 8 : id >= 1000 ? id - 1000 : (id - 1) % 8;
       el.insertAdjacentHTML("afterbegin", `<div class="card t${tier}" style="width:84px"><img class="px" src="metadata/${id}.png" alt=""><div class="s">${TIERS[tier]}</div></div>`);
       while (el.children.length > 12) el.lastElementChild.remove();
       const label = id >= 3000 ? names.keys[id - 3000].key : id >= 2000 ? `${TIERS[tier]} ${names.kinds[Math.floor((id - 2000) / 8)]}` : id >= 1000 ? `${TIERS[tier]} Potion` : `${TIERS[tier]} ${names.types[Math.floor((id - 1) / 8)]}`;
-      document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id, tier, label, el: el.firstElementChild } }));
+      document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id, tier, label, via, el: el.firstElementChild } }));
       if (tier === 6) document.dispatchEvent(new CustomEvent("alch:key", { detail: { id } }));
     },
     tickUi() {
@@ -635,7 +637,7 @@
     if (!rc) { revealStatus("The reveal did not go through, see the log.", "warn"); return; }
     if (rc.status !== 1) { revealStatus("The reveal transaction reverted.", "warn"); return; }
     const got = minedFrom(rc);
-    for (const id of minedIds(rc)) miner.addResult(id);
+    for (const id of minedIds(rc)) miner.addResult(id, "reveal");
     revealStatus(got.length ? `Revealed: ${got.join(", ")}. It is in the inventory below.` : "Nothing was ready yet: the find needs the next minute's challenge before it can be revealed. Wait for the timer and try again.", got.length ? "on" : "warn");
   };
   $("revealWs").onclick = () => { const ids = JSON.parse($("revealWs").dataset.ids || "[]"); tx(`reveal crafts ${ids.join(",")}`, () => C("Workshop", signer).revealMany(ids, { gasLimit: GAS.revealMany })); };
