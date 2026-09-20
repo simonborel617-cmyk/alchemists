@@ -94,8 +94,9 @@ describe("Scenarios: pressure, ore, multiplier", function () {
     const { owner, miners } = await loadFixture(deployFixture);
     const cfg = mineConfig(P);
     cfg.oreR0 = 4;
-    const materials = await ethers.deployContract("Materials", [P.materialsURI, P.keyKinds]);
-    const tiny = await ethers.deployContract("Mine", [await materials.getAddress(), owner.address, cfg, 60]);
+    const materials = await ethers.deployContract("Materials", [P.materialsURI]);
+    const keys = await ethers.deployContract("Keys", [P.keyKinds]);
+    const tiny = await ethers.deployContract("Mine", [await materials.getAddress(), await keys.getAddress(), owner.address, cfg, 60]);
     await materials.setMinter(await tiny.getAddress(), true);
     const k0 = await tiny.kWindow3(60);
     expect(await tiny.halvings()).to.equal(0n);

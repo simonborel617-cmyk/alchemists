@@ -1,6 +1,8 @@
 {
   "_comment": "Solo testnet profile: one CPU miner walks the whole ladder in minutes. Not for mainnet.",
   "materialsURI": "https://alchemist-mine.com/metadata/{id}.json",
+
+  "keysURI": "https://alchemist-mine.com/metadata/keys/",
   "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",
   "mine": {

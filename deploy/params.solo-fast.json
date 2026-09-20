@@ -1,6 +1,8 @@
 {
   "_comment": "Fast solo testnet profile: 15-second sessions, 60 ore, one GPU walks the whole season (halvings, exhaustion) in ~20 minutes. Not for mainnet.",
   "materialsURI": "https://alchemist-mine.com/metadata/{id}.json",
+
+  "keysURI": "https://alchemist-mine.com/metadata/keys/",
   "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",
   "mine": {

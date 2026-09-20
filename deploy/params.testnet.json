@@ -1,6 +1,8 @@
 {
   "materialsURI": "https://alchemist-mine.com/metadata/{id}.json",
   "furnacesURI": "https://alchemist-mine.com/metadata/furnace/",
+
+  "keysURI": "https://alchemist-mine.com/metadata/keys/",
   "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",
   "mine": {

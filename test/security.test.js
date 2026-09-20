@@ -46,8 +46,9 @@ describe("Security", function () {
   it("keeps mining alive when the treasury refuses ETH and lets the owner sweep the escrow", async function () {
     const { owner, alice } = await loadFixture(deployFixture);
     const rejecting = await ethers.deployContract("RejectingTreasury", []);
-    const materials = await ethers.deployContract("Materials", [P.materialsURI, P.keyKinds]);
-    const mine = await ethers.deployContract("Mine", [await materials.getAddress(), await rejecting.getAddress(), mineConfig(P), 60]);
+    const materials = await ethers.deployContract("Materials", [P.materialsURI]);
+    const keys = await ethers.deployContract("Keys", [P.keyKinds]);
+    const mine = await ethers.deployContract("Mine", [await materials.getAddress(), await keys.getAddress(), await rejecting.getAddress(), mineConfig(P), 60]);
     await materials.setMinter(await mine.getAddress(), true);
     await nextMinute();
     await mine.tick();

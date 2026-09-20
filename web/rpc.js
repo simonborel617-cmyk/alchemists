@@ -10,6 +10,8 @@
 //
 // The chain id is required: with a known network ethers never asks a node for eth_chainId, and that detection is the
 // one request that would bypass the rotation (it goes through the provider's own transport before any `send`).
+// Writes (eth_sendRawTransaction) go to the current endpoint once, with no timeout and no retry: a node that took the
+// transaction but answered late would otherwise see it again with the same nonce.
 (function () {
   const RETRYABLE = /429|rate limit|too many|timeout|timed out|failed to fetch|network|econn|502|503|504|server error|bad gateway/i;
   function create(urls, chainId, opts = {}) {
@@ -46,8 +48,12 @@
         const i = cur, n = nodes[i];
         if (tried.has(i)) break;
         tried.add(i);
+        // a transaction is never retried elsewhere (the node may have taken it: a repeat is a nonce clash) and never cut
+        // short by our timeout (the node holds the connection until the sequencer answers); everything else is a read
+        const isWrite = method === "eth_sendRawTransaction" || method === "eth_sendTransaction";
+        if (isWrite) return n.provider.send(method, params);
         try {
-          return await withTimeout(n.provider.send(method, params), opts.timeoutMs || 12000);
+          return await withTimeout(n.provider.send(method, params), opts.timeoutMs || 25000);
         } catch (e) {
           lastErr = e;
           const msg = String((e && (e.shortMessage || e.message)) || e);

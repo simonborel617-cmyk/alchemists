@@ -1,0 +1,28 @@
+{
+  "name": "Pestle (key of Baba Yaga)",
+  "description": "Mythic key: Pestle, the signature Scepter of Baba Yaga. Unique. Summons the named 1/1 alchemist when offered in the Scepter slot.",
+  "image": "https://alchemist-mine.com/metadata/keys/12.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Mythic Key"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Scepter"
+    },
+    {
+      "trait_type": "Alchemist",
+      "value": "Baba Yaga"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Mythic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 6,
+      "display_type": "number"
+    }
+  ]
+}

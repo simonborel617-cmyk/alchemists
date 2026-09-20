@@ -1,6 +1,8 @@
 {
   "materialsURI": "http://localhost/materials/{id}.json",
   "furnacesURI": "http://localhost/metadata/furnace/",
+
+  "keysURI": "http://localhost/metadata/keys/",
   "alchemistsBaseURI": "http://localhost/alchemists/",
   "summonFeeWei": "0",
   "mine": {

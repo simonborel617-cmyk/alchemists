@@ -70,8 +70,9 @@ describe("Stage 1: mining", function () {
     // fresh Mine with ore 1
     const cfg = mineConfig(P);
     cfg.oreR0 = 1;
-    const materials = await ethers.deployContract("Materials", [P.materialsURI, P.keyKinds]);
-    const tiny = await ethers.deployContract("Mine", [await materials.getAddress(), owner.address, cfg, 60]);
+    const materials = await ethers.deployContract("Materials", [P.materialsURI]);
+    const keys = await ethers.deployContract("Keys", [P.keyKinds]);
+    const tiny = await ethers.deployContract("Mine", [await materials.getAddress(), await keys.getAddress(), owner.address, cfg, 60]);
     await materials.setMinter(await tiny.getAddress(), true);
     await mineOnce(tiny, alice);
     expect(await tiny.oreRemaining()).to.equal(0n);
@@ -141,7 +142,7 @@ describe("Stage 1: workshop", function () {
   });
 
   it("hands out a key of the crafted kind and falls back to an item when that kind is exhausted", async function () {
-    const { materials, workshop, alice, mine, owner } = await loadFixture(deployFixture);
+    const { materials, keys, workshop, alice, mine, owner } = await loadFixture(deployFixture);
     await workshop.connect(owner).setCraft([1, 1, 1, 1, 1], 0); // every craft rolls a key
     // censer (kind 5) has two keys: 14 and 15
     await materials.mintCraftedBatch(alice.address, [ing(0, 1), ing(16, 1)], [6, 9]);
@@ -150,12 +151,13 @@ describe("Stage 1: workshop", function () {
     await mine.tick();
     const rc = await (await workshop.revealMany([0, 1, 2])).wait();
     const evs = parse(rc, workshop, "Crafted");
-    const keys = evs.filter((e) => Number(e.args.outTier) === 6).map((e) => Number(e.args.keyIndex)).sort();
-    expect(keys).to.deep.equal([14, 15]);
+    const won = evs.filter((e) => Number(e.args.outTier) === 6).map((e) => Number(e.args.keyIndex)).sort();
+    expect(won).to.deep.equal([14, 15]);
     const items = evs.filter((e) => Number(e.args.outTier) !== 6);
     expect(items.length).to.equal(1);
-    expect(await materials.unclaimedOfKind(5)).to.equal(0n);
-    expect(await materials.balanceOf(alice.address, 3014)).to.equal(1n);
-    expect(await materials.balanceOf(alice.address, 3015)).to.equal(1n);
+    expect(await keys.unclaimedOfKind(5)).to.equal(0n);
+    expect(await keys.ownerOf(14)).to.equal(alice.address);
+    expect(await keys.ownerOf(15)).to.equal(alice.address);
+    expect(await keys.tokenURI(14)).to.equal(P.keysURI + "14.json");
   });
 });

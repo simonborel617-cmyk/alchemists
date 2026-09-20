@@ -14,13 +14,18 @@
   const dep = await (await fetch("./deployment.json", { cache: "no-cache" })).json();
   const names = await (await fetch("./names.json", { cache: "no-cache" })).json();
   const abi = {};
-  for (const n of ["Materials", "Mine", "Furnaces", "Workshop"]) abi[n] = await (await fetch(`./abi/${n}.json`, { cache: "no-cache" })).json();
+  for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop"]) { try { const r = await fetch(`./abi/${n}.json`, { cache: "no-cache" }); if (r.ok) abi[n] = await r.json(); } catch {} }
   // the public RPC stalls on big JSON-RPC batches (ethers would pack up to 100 calls into one request); 8 per request is fast
   // rpc.js rotates through the public endpoints in deployment.json on errors, rate limits and timeouts
   const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId);
   provider.onSwitch((url, why) => log(`rpc: switched to ${url.replace(/^https?:\/\//, "")} (${why})`, "warn"));
   const C = (n, p) => new ethers.Contract(dep.contracts[n], abi[n], p || provider);
   const mine = C("Mine"), materials = C("Materials"), furnaces = C("Furnaces"), workshop = C("Workshop");
+  // a deployment without the Keys contract (before v10) still runs: keys are simply never found
+  const keysC = dep.contracts.Keys && abi.Keys ? C("Keys") : { ownerOf: async () => { throw new Error("no Keys contract"); } };
+  // mythic keys are an ERC-721 (token id = key index); the dapp carries a key as the virtual id 3000 + index
+  const KEY_ID = 3000, isKeyId = (id) => id >= KEY_ID && id < KEY_ID + 21, keyImg = (id) => `metadata/keys/${id - KEY_ID}.png`;
+  const img = (id) => (isKeyId(id) ? keyImg(id) : `metadata/${id}.png`);
   $("net").textContent = `${dep.chainName} · ${dep.chainId}`;
   $("netFoot").textContent = `${dep.chainName}, chainId ${dep.chainId}, RPC ${(dep.rpcs || [dep.rpc]).length} public endpoints`;
   $("mineAddr").textContent = dep.contracts.Mine.slice(0, 10) + "…";
@@ -339,7 +344,7 @@
     addResult(id, via) {
       const el = $("results");
       const tier = id >= 3000 ? 6 : id >= 2000 ? (id - 2000) % 8 : id >= 1000 ? id - 1000 : (id - 1) % 8;
-      el.insertAdjacentHTML("afterbegin", `<div class="card t${tier}" style="width:84px"><img class="px" src="metadata/${id}.png" alt=""><div class="s">${TIERS[tier]}</div></div>`);
+      el.insertAdjacentHTML("afterbegin", `<div class="card t${tier}" style="width:84px"><img class="px" src="${img(id)}" alt=""><div class="s">${TIERS[tier]}</div></div>`);
       while (el.children.length > 12) el.lastElementChild.remove();
       const label = id >= 3000 ? names.keys[id - 3000].key : id >= 2000 ? `${TIERS[tier]} ${names.kinds[Math.floor((id - 2000) / 8)]}` : id >= 1000 ? `${TIERS[tier]} Potion` : `${TIERS[tier]} ${names.types[Math.floor((id - 1) / 8)]}`;
       document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id, tier, label, via, el: el.firstElementChild } }));
@@ -401,7 +406,10 @@
       if (ids.length) { mlog(`moving ${ids.length} kinds of loot to ${short(main.address)}…`); const tx = await C("Materials", burner).safeBatchTransferFrom(burner.address, main.address, ids, amts, "0x", { gasLimit: 200_000n + 60_000n * BigInt(ids.length) }); await tx.wait(); mlog("loot moved"); }
       const mf = await myFurnaceIds(burner.address);
       for (const id of mf) { const tx = await C("Furnaces", burner).transferFrom(burner.address, main.address, id, { gasLimit: GAS.transfer }); await tx.wait(); mlog(`furnace #${id} moved`); }
-      if (!ids.length && !mf.length) mlog("nothing to move");
+      const mk = [];
+      for (let i = 0; i < 21; i++) { try { if ((await keysC.ownerOf(i)).toLowerCase() === burner.address.toLowerCase()) mk.push(i); } catch {} }
+      for (const i of mk) { const tx = await C("Keys", burner).transferFrom(burner.address, main.address, i, { gasLimit: GAS.transfer }); await tx.wait(); mlog(`mythic key ${names.keys[i].key} moved`); }
+      if (!ids.length && !mf.length && !mk.length) mlog("nothing to move");
       refreshAll();
     } catch (e) { mlog("withdraw: " + (e.reason || e.shortMessage || e.message)); }
   };
@@ -419,7 +427,6 @@
     for (let t = 0; t < 40; t++) for (let tier = 1; tier <= 5; tier++) ids.push(ing(t, tier));
     for (let tier = 1; tier <= 5; tier++) ids.push(1000 + tier);
     for (let k = 0; k < 8; k++) for (let tier = 1; tier <= 5; tier++) ids.push(item(k, tier));
-    for (let i = 0; i < 21; i++) ids.push(3000 + i);
     return ids;
   }
   async function myFurnaceIds(addr) {
@@ -437,12 +444,14 @@
     const ids = allIds();
     const bal = await materials.balanceOfBatch(ids.map(() => me), ids);
     inv = new Map(); ids.forEach((id, i) => { if (bal[i] > 0n) inv.set(id, Number(bal[i])); });
+    // the keys: 21 ownerOf reads in chunks of 8 (an unclaimed key reverts, which means "not mine")
+    for (let i = 0; i < 21; i += 8) { const rs = await Promise.all(Array.from({ length: Math.min(8, 21 - i) }, (_, j) => keysC.ownerOf(i + j).catch(() => null))); rs.forEach((o, j) => { if (o && o.toLowerCase() === me.toLowerCase()) inv.set(KEY_ID + i + j, 1); }); }
     cards = [];
     let ingCount = 0;
     for (let t = 0; t < 40; t++) for (let tier = 5; tier >= 1; tier--) { const n = inv.get(ing(t, tier)); if (n) { ingCount += n; cards.push({ cat: String(Math.floor(t / 8)), tier, n, img: `metadata/${ing(t, tier)}.png`, name: names.types[t], sub: TIERS[tier], title: `${names.categories[Math.floor(t / 8)]} · ${names.types[t]} · ${TIERS[tier]}` }); } }
     for (let tier = 5; tier >= 1; tier--) { const n = inv.get(1000 + tier); if (n) cards.push({ cat: "potion", tier, n, img: `metadata/${1000 + tier}.png`, name: "Potion", sub: TIERS[tier], title: `Potion of Purification · ${TIERS[tier]}` }); }
     for (let k = 0; k < 8; k++) for (let tier = 5; tier >= 1; tier--) { const n = inv.get(item(k, tier)); if (n) cards.push({ cat: "item", tier, n, img: `metadata/${item(k, tier)}.png`, name: names.kinds[k], sub: TIERS[tier], title: `${names.kinds[k]} · ${TIERS[tier]}` }); }
-    for (let i = 0; i < 21; i++) if (inv.get(3000 + i)) cards.push({ cat: "key", tier: 6, n: 1, img: `metadata/${3000 + i}.png`, name: names.keys[i].key, sub: names.keys[i].alchemist, title: `${names.keys[i].key} — ${names.keys[i].alchemist}` });
+    for (let i = 0; i < 21; i++) if (inv.get(KEY_ID + i)) cards.push({ cat: "key", tier: 6, n: 1, img: keyImg(KEY_ID + i), name: names.keys[i].key, sub: names.keys[i].alchemist, title: `${names.keys[i].key} — ${names.keys[i].alchemist}` });
     myFurnaces = [];
     for (const id of await myFurnaceIds(me)) { try { myFurnaces.push({ id, tier: Number(await furnaces.tier(id)) }); } catch {} }
     for (const f of myFurnaces) cards.push({ cat: "furnace", tier: f.tier, n: 1, img: `img/furnace-${f.tier}.png`, name: `Furnace #${f.id}`, sub: FURNACE[f.tier], title: `Furnace #${f.id}, tier ${f.tier}` });

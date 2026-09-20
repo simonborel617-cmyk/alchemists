@@ -4,42 +4,30 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @notice Ingredients (40 types x 5 tiers), purification potions, sealed ritual items (8 kinds x 5 tiers)
-///         and the 21 mythic keys, all in one ERC-1155. Game contracts are whitelisted minters.
+/// @notice Ingredients (40 types x 5 tiers), purification potions and sealed ritual items (8 kinds x 5 tiers) in one
+///         ERC-1155. The 21 mythic keys live in the Keys ERC-721. Game contracts are whitelisted minters.
 contract Materials is ERC1155, Ownable {
     uint256 public constant TYPES = 40;
     uint256 public constant KINDS = 8;
-    uint8 public constant KEYS = 21;
 
     uint256 public constant ING_BASE = 1; // id = 1 + type*8 + tier, tier 1..5
     uint256 public constant POTION_BASE = 1000; // id = 1000 + tier
     uint256 public constant ITEM_BASE = 2000; // id = 2000 + kind*8 + tier
-    uint256 public constant KEY_BASE = 3000; // id = 3000 + keyIndex
 
     mapping(address => bool) public minters;
     mapping(uint256 => uint256) public circulating; // minted - burned, per id
     uint256 public minedTotal; // M: ingredients minted by the Mine
     uint256 public burnedIngredients; // B: ingredient units burned anywhere
 
-    uint8[21] public keyKind;
-    uint8[] private _unclaimed;
-    mapping(uint8 => bool) public keyClaimed;
 
     event MinterSet(address indexed who, bool on);
-    event KeyClaimed(uint8 indexed keyIndex, address indexed to, address indexed by);
 
     modifier onlyMinter() {
         require(minters[msg.sender], "Materials: not minter");
         _;
     }
 
-    constructor(string memory uri_, uint8[21] memory kinds) ERC1155(uri_) Ownable(msg.sender) {
-        for (uint8 i = 0; i < KEYS; i++) {
-            require(kinds[i] < KINDS, "Materials: kind");
-            keyKind[i] = kinds[i];
-            _unclaimed.push(i);
-        }
-    }
+    constructor(string memory uri_) ERC1155(uri_) Ownable(msg.sender) {}
 
     function setMinter(address who, bool on) external onlyOwner {
         minters[who] = on;
@@ -98,18 +86,6 @@ contract Materials is ERC1155, Ownable {
         return uint8((id - ITEM_BASE) % 8);
     }
 
-    function keyId(uint8 idx) public pure returns (uint256) {
-        return KEY_BASE + idx;
-    }
-
-    function isKey(uint256 id) public pure returns (bool) {
-        return id >= KEY_BASE && id < KEY_BASE + KEYS;
-    }
-
-    function keyIndex(uint256 id) public pure returns (uint8) {
-        return uint8(id - KEY_BASE);
-    }
-
     // ---------------------------------------------------------------- mint / burn
     function mintMined(address to, uint256 id, uint256 amt) external onlyMinter {
         require(isIngredient(id), "Materials: mined must be ingredient");
@@ -119,17 +95,13 @@ contract Materials is ERC1155, Ownable {
     }
 
     function mintCrafted(address to, uint256 id, uint256 amt) external onlyMinter {
-        require(!isKey(id), "Materials: keys via claim");
         circulating[id] += amt;
         _mint(to, id, amt, "");
     }
 
     function mintCraftedBatch(address to, uint256[] calldata ids, uint256[] calldata amts) external onlyMinter {
         require(ids.length == amts.length, "Materials: len");
-        for (uint256 i = 0; i < ids.length; i++) {
-            require(!isKey(ids[i]), "Materials: keys via claim");
-            circulating[ids[i]] += amts[i];
-        }
+        for (uint256 i = 0; i < ids.length; i++) circulating[ids[i]] += amts[i];
         _mintBatch(to, ids, amts, "");
     }
 
@@ -146,47 +118,5 @@ contract Materials is ERC1155, Ownable {
         circulating[id] -= amt;
         if (isIngredient(id)) burnedIngredients += amt;
         _burn(from, id, amt);
-    }
-
-    // ---------------------------------------------------------------- mythic keys
-    function unclaimedCount() public view returns (uint256) {
-        return _unclaimed.length;
-    }
-
-    function unclaimedOfKind(uint8 kind) public view returns (uint256 c) {
-        for (uint256 i = 0; i < _unclaimed.length; i++) if (keyKind[_unclaimed[i]] == kind) c++;
-    }
-
-    function claimAny(address to, uint256 rand) external onlyMinter returns (uint8 idx) {
-        uint256 n = _unclaimed.length;
-        require(n > 0, "Materials: no keys");
-        uint256 p = rand % n;
-        idx = _unclaimed[p];
-        _take(p, idx, to);
-    }
-
-    function claimOfKind(address to, uint8 kind, uint256 rand) external onlyMinter returns (bool ok, uint8 idx) {
-        uint256 c = unclaimedOfKind(kind);
-        if (c == 0) return (false, 0);
-        uint256 target = rand % c;
-        uint256 seen;
-        for (uint256 i = 0; i < _unclaimed.length; i++) {
-            if (keyKind[_unclaimed[i]] != kind) continue;
-            if (seen == target) {
-                idx = _unclaimed[i];
-                _take(i, idx, to);
-                return (true, idx);
-            }
-            seen++;
-        }
-    }
-
-    function _take(uint256 pos, uint8 idx, address to) internal {
-        _unclaimed[pos] = _unclaimed[_unclaimed.length - 1];
-        _unclaimed.pop();
-        keyClaimed[idx] = true;
-        circulating[KEY_BASE + idx] = 1;
-        _mint(to, KEY_BASE + idx, 1, "");
-        emit KeyClaimed(idx, to, msg.sender);
     }
 }

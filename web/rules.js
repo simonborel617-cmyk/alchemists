@@ -59,5 +59,5 @@
     $("live").textContent = "showing design values"; $("live").className = "tag warn";
     if (!names) { try { names = await (await fetch("./names.json", { cache: "no-cache" })).json(); } catch {} }
   }
-  if (names) for (let i = 0; i < 21; i++) { const k = names.keys[i]; $("t-keys").insertAdjacentHTML("beforeend", `<tr class="keyrow"><td><img class="px" src="metadata/${3000 + i}.png" alt="">${k.key}</td><td>${k.alchemist}</td><td>${names.kinds[k.kind]}</td></tr>`); }
+  if (names) for (let i = 0; i < 21; i++) { const k = names.keys[i]; $("t-keys").insertAdjacentHTML("beforeend", `<tr class="keyrow"><td><img class="px" src="metadata/keys/${i}.png" alt="">${k.key}</td><td>${k.alchemist}</td><td>${names.kinds[k.kind]}</td></tr>`); }
 })();

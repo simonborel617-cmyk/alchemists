@@ -17,6 +17,7 @@ async function deployFixture() {
   const [owner, alice, bob, treasury] = await ethers.getSigners();
   const d = await deployAll(ethers, P, treasury.address);
   await d.materials.setMinter(owner.address, true); // test fixtures mint directly
+  await d.keys.setMinter(owner.address, true);
   return { ...d, owner, alice, bob, treasury };
 }
 
@@ -190,16 +191,16 @@ describe("Alchemists", function () {
     const full = [];
     for (let k = 0; k < 8; k++) full.push(item(k, 5));
     await give(materials, alice.address, full.map((id) => [id, 1]));
-    await expect(alchemists.connect(alice).summon(full)).to.emit(alchemists, "Summoned").withArgs(1n, alice.address, 5, 500, 255);
+    await expect(alchemists.connect(alice).summon(full, 255)).to.emit(alchemists, "Summoned").withArgs(1n, alice.address, 5, 500, 255);
     expect(await alchemists.ownerOf(1)).to.equal(alice.address);
     expect(await alchemists.mintedByRank(5)).to.equal(1);
 
     // five legendary required + three empty enhancers -> (25 + 3) / 8 = 3.5 -> rank 3
     const five = [item(0, 5), item(1, 5), item(2, 5), item(3, 5), item(4, 5), 0, 0, 0];
     await give(materials, alice.address, five.filter(Boolean).map((id) => [id, 1]));
-    await expect(alchemists.connect(alice).summon(five)).to.emit(alchemists, "Summoned").withArgs(2n, alice.address, 3, 350, 255);
+    await expect(alchemists.connect(alice).summon(five, 255)).to.emit(alchemists, "Summoned").withArgs(2n, alice.address, 3, 350, 255);
 
-    await expect(alchemists.connect(alice).summon([0, item(1, 1), item(2, 1), item(3, 1), item(4, 1), 0, 0, 0])).to.be.revertedWith("Alchemists: required slot empty");
+    await expect(alchemists.connect(alice).summon([0, item(1, 1), item(2, 1), item(3, 1), item(4, 1), 0, 0, 0], 255)).to.be.revertedWith("Alchemists: required slot empty");
 
     await expect(alchemists.reveal(1)).to.be.revertedWith("Alchemists: not yet");
     await nextMinute();
@@ -215,26 +216,34 @@ describe("Alchemists", function () {
   });
 
   it("summons a named 1/1 with a key of the right kind", async function () {
-    const { materials, alchemists, alice, owner } = await loadFixture(deployFixture);
-    await materials.claimOfKind(alice.address, 4, 7); // some scepter key (kind 4, indices 11..13)
+    const { materials, keys, alchemists, alice, owner } = await loadFixture(deployFixture);
+    await keys.claimOfKind(alice.address, 4, 7); // some scepter key (kind 4, indices 11..13)
     let key = null;
-    for (const i of [11, 12, 13]) if ((await materials.balanceOf(alice.address, 3000 + i)) === 1n) key = 3000 + i;
+    for (const i of [11, 12, 13]) if ((await keys.keyClaimed(i)) && (await keys.ownerOf(i)) === alice.address) key = i;
     expect(key, "key minted").to.not.equal(null);
-    expect(await materials.unclaimedOfKind(4)).to.equal(2n);
-    expect(await materials.unclaimedCount()).to.equal(20n);
+    expect(await keys.unclaimedOfKind(4)).to.equal(2n);
+    expect(await keys.unclaimedCount()).to.equal(20n);
+    expect(await keys.balanceOf(alice.address)).to.equal(1n);
 
     await give(materials, alice.address, [[item(1, 1), 1], [item(2, 1), 1], [item(3, 1), 1], [item(4, 1), 1]]);
-    // wrong slot: a scepter key offered as the grimoire
-    await expect(alchemists.connect(alice).summon([key, item(1, 1), item(2, 1), item(3, 1), item(4, 1), 0, 0, 0])).to.be.revertedWith("Alchemists: key kind");
+    // the key fills the scepter slot, so an item there is refused
+    await expect(alchemists.connect(alice).summon([0, item(1, 1), item(2, 1), item(3, 1), item(4, 1), 0, 0, 0], key)).to.be.revertedWith("Alchemists: key slot taken");
+    // a key nobody holds cannot be offered
+    await expect(alchemists.connect(alice).summon([0, item(1, 1), item(2, 1), item(3, 1), 0, 0, 0, 0], 0)).to.be.revertedWithCustomError(keys, "ERC721NonexistentToken");
+    // the key of another holder cannot be offered
+    await keys.claimOfKind(owner.address, 4, 11);
+    let other = null;
+    for (const i of [11, 12, 13]) if (i !== key && (await keys.keyClaimed(i))) other = i;
+    await expect(alchemists.connect(alice).summon([0, item(1, 1), item(2, 1), item(3, 1), 0, 0, 0, 0], other)).to.be.revertedWith("Keys: not owner");
 
     await give(materials, alice.address, [[item(0, 1), 1]]);
-    await expect(alchemists.connect(alice).summon([item(0, 1), item(1, 1), item(2, 1), item(3, 1), key, 0, 0, 0])).to.emit(alchemists, "Summoned");
+    await expect(alchemists.connect(alice).summon([item(0, 1), item(1, 1), item(2, 1), item(3, 1), 0, 0, 0, 0], key)).to.emit(alchemists, "Summoned");
     const d = await alchemists.data(1);
     expect(d.rank).to.equal(6);
-    expect(d.nameId).to.equal(key - 3000);
+    expect(d.nameId).to.equal(key);
     expect(await alchemists.weight(1)).to.equal(16000000n);
-    expect(await materials.balanceOf(alice.address, key)).to.equal(0n);
+    expect(await keys.balanceOf(alice.address)).to.equal(0n); // the key was burned by the summoning
+    expect(await materials.balanceOf(alice.address, item(4, 1))).to.equal(1n); // the scepter item stayed, the key filled its slot
     expect(await alchemists.mintedByRank(6)).to.equal(1);
-    void owner;
   });
 });

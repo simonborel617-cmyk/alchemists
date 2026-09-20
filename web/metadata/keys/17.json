@@ -1,0 +1,28 @@
+{
+  "name": "Prism (key of Isaac Newton)",
+  "description": "Mythic key: Prism, the signature Mirror of Isaac Newton. Unique. Summons the named 1/1 alchemist when offered in the Mirror slot.",
+  "image": "https://alchemist-mine.com/metadata/keys/17.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Mythic Key"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Mirror"
+    },
+    {
+      "trait_type": "Alchemist",
+      "value": "Isaac Newton"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Mythic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 6,
+      "display_type": "number"
+    }
+  ]
+}

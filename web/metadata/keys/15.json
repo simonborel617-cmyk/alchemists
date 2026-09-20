@@ -1,0 +1,28 @@
+{
+  "name": "Censer of Sal Ammoniac (key of Al-Razi)",
+  "description": "Mythic key: Censer of Sal Ammoniac, the signature Censer of Al-Razi. Unique. Summons the named 1/1 alchemist when offered in the Censer slot.",
+  "image": "https://alchemist-mine.com/metadata/keys/15.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Mythic Key"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Censer"
+    },
+    {
+      "trait_type": "Alchemist",
+      "value": "Al-Razi"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Mythic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 6,
+      "display_type": "number"
+    }
+  ]
+}

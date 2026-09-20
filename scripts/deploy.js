@@ -37,6 +37,7 @@ async function main() {
     block: await hre.ethers.provider.getBlockNumber(),
     contracts: {
       Materials: await d.materials.getAddress(),
+      Keys: await d.keys.getAddress(),
       Mine: await d.mine.getAddress(),
       Furnaces: await d.furnaces.getAddress(),
       Workshop: await d.workshop.getAddress(),

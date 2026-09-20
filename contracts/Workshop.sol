@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Guarded.sol";
 import "./Mine.sol";
 import "./Materials.sol";
+import "./Keys.sol";
 import "./Furnaces.sol";
 
 /// @notice Refining (tier up), reroll (type shuffle), ritual item / potion / furnace crafting.
@@ -12,6 +13,7 @@ import "./Furnaces.sol";
 contract Workshop is Guarded, ReentrancyGuard {
     Mine public immutable mine;
     Materials public immutable materials;
+    Keys public immutable keys;
     Furnaces public immutable furnaces;
 
     uint8 public constant OP_REFINE = 1;
@@ -54,9 +56,10 @@ contract Workshop is Guarded, ReentrancyGuard {
     event PotionCrafted(address indexed user, uint8 tier);
     event FurnaceCrafted(address indexed user, uint8 tier, uint256 furnaceId);
 
-    constructor(Mine m, Materials mat, Furnaces f, uint8[5][8] memory recipes, uint8[5] memory fr) Ownable(msg.sender) {
+    constructor(Mine m, Materials mat, Keys k, Furnaces f, uint8[5][8] memory recipes, uint8[5] memory fr) Ownable(msg.sender) {
         mine = m;
         materials = mat;
+        keys = k;
         furnaces = f;
         for (uint256 k = 0; k < 8; k++) {
             uint256 sum;
@@ -251,7 +254,7 @@ contract Workshop is Guarded, ReentrancyGuard {
         uint8 kind = c.a;
         uint8 tier = c.b;
         if (r % keyChance[tier - 1] == 0) {
-            (bool ok, uint8 idx) = materials.claimOfKind(c.user, kind, r >> 32);
+            (bool ok, uint8 idx) = keys.claimOfKind(c.user, kind, r >> 32);
             if (ok) {
                 emit Crafted(id, c.user, kind, tier, 6, idx);
                 return;

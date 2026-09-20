@@ -27,11 +27,15 @@ function mineConfig(P) {
 }
 
 async function deployAll(ethers, P, treasury, log = () => {}) {
-  const materials = await ethers.deployContract("Materials", [P.materialsURI, P.keyKinds]);
+  const materials = await ethers.deployContract("Materials", [P.materialsURI]);
   await materials.waitForDeployment();
   log("Materials", await materials.getAddress());
 
-  const mine = await ethers.deployContract("Mine", [await materials.getAddress(), treasury, mineConfig(P), P.mine.sessionSec || 60]);
+  const keys = await ethers.deployContract("Keys", [P.keyKinds]);
+  await keys.waitForDeployment();
+  log("Keys", await keys.getAddress());
+
+  const mine = await ethers.deployContract("Mine", [await materials.getAddress(), await keys.getAddress(), treasury, mineConfig(P), P.mine.sessionSec || 60]);
   await mine.waitForDeployment();
   log("Mine", await mine.getAddress());
 
@@ -42,6 +46,7 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   const workshop = await ethers.deployContract("Workshop", [
     await mine.getAddress(),
     await materials.getAddress(),
+    await keys.getAddress(),
     await furnaces.getAddress(),
     P.itemRecipe,
     P.furnaceRecipe,
@@ -52,6 +57,7 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   const alchemists = await ethers.deployContract("Alchemists", [
     await mine.getAddress(),
     await materials.getAddress(),
+    await keys.getAddress(),
     P.alchemistsBaseURI,
     BigInt(P.summonFeeWei),
     treasury,
@@ -61,7 +67,9 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
 
   for (const c of [mine, workshop, alchemists]) {
     await (await materials.setMinter(await c.getAddress(), true)).wait();
+    await (await keys.setMinter(await c.getAddress(), true)).wait();
   }
+  if (P.keysURI) await (await keys.setBaseURI(P.keysURI)).wait(); // per-key metadata: <base><id>.json
   await (await furnaces.setWorkshop(await workshop.getAddress())).wait();
   if (P.furnacesURI) await (await furnaces.setBaseURI(P.furnacesURI)).wait(); // per-tier metadata: <base><tier>.json
   log("wired", "minters + workshop set");
@@ -84,11 +92,11 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
     log("Timelock", `${await timelock.getAddress()} (delay ${g.timelockDelay}s, safe ${safe})`);
     const guardian = g.guardian && g.guardian !== "safe" ? g.guardian : safe;
     for (const c of [mine, workshop, alchemists]) await (await c.setGuardian(guardian)).wait();
-    for (const c of [materials, mine, furnaces, workshop, alchemists]) await (await c.transferOwnership(await timelock.getAddress())).wait();
-    log("governance", `guardian ${guardian}; ownership of all five contracts moved to the timelock`);
+    for (const c of [materials, keys, mine, furnaces, workshop, alchemists]) await (await c.transferOwnership(await timelock.getAddress())).wait();
+    log("governance", `guardian ${guardian}; ownership of all six contracts moved to the timelock`);
   }
 
-  return { materials, mine, furnaces, workshop, alchemists, timelock };
+  return { materials, keys, mine, furnaces, workshop, alchemists, timelock };
 }
 
 module.exports = { deployAll, mineConfig, Q8 };

@@ -13,7 +13,7 @@ Order of operations and checks. None of this is automated on purpose: every step
    `timelockDelay: 172800`. `materialsURI` → `https://alchemist-mine.com/metadata/{id}.json` (already set in `params.mainnet.json`).
    Check: `node scripts/preflight.js deploy/params.mainnet.json`.
 3. **Metadata and art.** `node scripts/metadata.js` (base `https://alchemist-mine.com/metadata/`), publish as static
-   files. Open `{id}.json` for 2, 1001, 2013 and 3000 in a browser.
+   files. Open `{id}.json` for 2, 1001 and 2013, `furnace/3.json` and `keys/0.json` in a browser.
 4. **Audit.** External report on `Mine`, `Workshop`, `Materials`, `Guarded`; every High and Critical closed, tests green
    (`npx hardhat test`).
 5. **Simulation** with the final constants: `npx hardhat run scripts/simulate.js` in two regimes, a normal season and the

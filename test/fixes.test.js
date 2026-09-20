@@ -56,8 +56,9 @@ describe("Fixes", function () {
     const cfg = mineConfig(P);
     cfg.oreR0 = 8;
     cfg.kPerHour = 60; // 1000 (x1000) per 60s window before halvings
-    const materials = await ethers.deployContract("Materials", [P.materialsURI, P.keyKinds]);
-    const tiny = await ethers.deployContract("Mine", [await materials.getAddress(), owner.address, cfg, 60]);
+    const materials = await ethers.deployContract("Materials", [P.materialsURI]);
+    const keys = await ethers.deployContract("Keys", [P.keyKinds]);
+    const tiny = await ethers.deployContract("Mine", [await materials.getAddress(), await keys.getAddress(), owner.address, cfg, 60]);
     await materials.setMinter(await tiny.getAddress(), true);
     expect(await tiny.kWindow3(60)).to.equal(1000n);
     const { m, nonces } = await mineRound(tiny, miners.slice(0, 4)); // ore 8 -> 4: one halving

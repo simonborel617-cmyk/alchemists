@@ -130,7 +130,7 @@ async function main() {
   const mined = stats.tiers.slice(1).reduce((a, b) => a + b, 0);
   console.log(`submitted ${stats.submitted}, skipped (below threshold) ${stats.skipped}, skipped (price) ${priceSkips}, reverted ${stats.reverted}, revealed ${mined}, keys ${stats.keys}, upgraded ${stats.upgraded}`);
   console.log(`tiers C/U/R/E/L: ${stats.tiers.slice(1).join(" / ")}  (${stats.tiers.slice(1).map((x) => ((100 * x) / Math.max(1, mined)).toFixed(1) + "%").join(" / ")})`);
-  console.log(`minedTotal ${await materials.minedTotal()}, burned ${await materials.burnedIngredients()}, keys unclaimed ${await materials.unclaimedCount()}`);
+  console.log(`minedTotal ${await materials.minedTotal()}, burned ${await materials.burnedIngredients()}, keys unclaimed ${await d.keys.unclaimedCount()}`);
   console.log(`wall time ${((Date.now() - t0) / 1000).toFixed(0)}s`);
 }
 

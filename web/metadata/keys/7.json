@@ -1,0 +1,28 @@
+{
+  "name": "Cup of Madeira (key of Rasputin)",
+  "description": "Mythic key: Cup of Madeira, the signature Chalice of Rasputin. Unique. Summons the named 1/1 alchemist when offered in the Chalice slot.",
+  "image": "https://alchemist-mine.com/metadata/keys/7.png",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Mythic Key"
+    },
+    {
+      "trait_type": "Item",
+      "value": "Chalice"
+    },
+    {
+      "trait_type": "Alchemist",
+      "value": "Rasputin"
+    },
+    {
+      "trait_type": "Tier",
+      "value": "Mythic"
+    },
+    {
+      "trait_type": "Tier Index",
+      "value": 6,
+      "display_type": "number"
+    }
+  ]
+}

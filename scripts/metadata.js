@@ -1,5 +1,6 @@
-// Generates ERC-1155 metadata JSON and placeholder SVG icons for every Materials id:
-// ingredients (40 types x 5 tiers), potions, ritual items (8 kinds x 5 tiers) and the 21 mythic keys.
+// Generates ERC-1155 metadata JSON and placeholder SVG icons for every Materials id (ingredients 40 types x 5 tiers,
+// potions, ritual items 8 kinds x 5 tiers), plus the per-token files of the Keys ERC-721 (metadata/keys/<i>.json) and
+// the per-tier files of the Furnaces ERC-721 (metadata/furnace/<tier>.json).
 //   node scripts/metadata.js [--out web/metadata] [--base https://alchemist-mine.com/metadata/]
 // The base URL is what Materials.setURI should point at: "<base>{id}.json" (decimal and 64-hex names both exist). Real icons are picked up from
 // --art <dir> (default art/final) as <slug>-t<tier-1>.png for ingredients/potions/items (slug = lowercase English
@@ -125,14 +126,19 @@ for (let k = 0; k < 8; k++) {
     count++;
   }
 }
-// mythic keys
+// mythic keys (ERC-721 Keys, token id = key index): <base>keys/<i>.json
+fs.mkdirSync(path.join(OUT, "keys"), { recursive: true });
+let keyIcons = 0;
 for (let i = 0; i < 21; i++) {
-  const id = 3000 + i;
   const k = keys.keys[i];
-  write(id, {
+  const src = path.join(ART, `key-${i}.png`);
+  const hasIcon = fs.existsSync(src);
+  if (hasIcon) { fs.copyFileSync(src, path.join(OUT, "keys", `${i}.png`)); keyIcons++; }
+  else fs.writeFileSync(path.join(OUT, "keys", `${i}.svg`), svg(KIND_GLYPH[k.kind], 6, KEY_EN[i][1], KEY_EN[i][0]));
+  fs.writeFileSync(path.join(OUT, "keys", `${i}.json`), JSON.stringify({
     name: `${KEY_EN[i][1]} (key of ${KEY_EN[i][0]})`,
     description: `Mythic key: ${k.key}, the signature ${keys.kinds[k.kind]} of ${k.alchemist}. Unique. Summons the named 1/1 alchemist when offered in the ${KIND_EN[k.kind]} slot.`,
-    image: `${BASE}${id}.svg`,
+    image: `${BASE}keys/${i}.${hasIcon ? "png" : "svg"}`,
     attributes: [
       { trait_type: "Kind", value: "Mythic Key" },
       { trait_type: "Item", value: KIND_EN[k.kind] },
@@ -140,8 +146,7 @@ for (let i = 0; i < 21; i++) {
       { trait_type: "Tier", value: "Mythic" },
       { trait_type: "Tier Index", value: 6, display_type: "number" },
     ],
-  }, svg(KIND_GLYPH[k.kind], 6, KEY_EN[i][1], KEY_EN[i][0]), `key-${i}.png`);
-  count++;
+  }, null, 2));
 }
 // furnaces (ERC-721, metadata per tier: <base>furnace/<tier>.json)
 const FURNACE_EN = ["", "Clay Furnace", "Iron Furnace", "Brass Furnace", "Athanor"];
@@ -165,4 +170,4 @@ for (let t = 1; t <= 4; t++) {
     ],
   }, null, 2));
 }
-console.log(`wrote ${count} json files to ${OUT} (base ${BASE}); real icons ${realArt}, placeholders ${count - realArt}; furnace tiers 4 (${furnaceIcons} real icons)`);
+console.log(`wrote ${count} Materials json files to ${OUT} (base ${BASE}); real icons ${realArt}, placeholders ${count - realArt}; 21 keys (${keyIcons} real icons); furnace tiers 4 (${furnaceIcons} real icons)`);

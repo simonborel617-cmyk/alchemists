@@ -7,12 +7,14 @@ import "./Guarded.sol";
 import "./FixedMath.sol";
 import "./Mine.sol";
 import "./Materials.sol";
+import "./Keys.sol";
 
 /// @notice Summoning. Burns eight ritual items (five required, three enhancers), rank = floor(average tier),
 ///         appearance seed settled with the next minute's challenge. Hard quotas per rank, cap 5555.
 contract Alchemists is ERC721, Guarded {
     Mine public immutable mine;
     Materials public immutable materials;
+    Keys public immutable keys;
 
     uint256 public constant CAP = 5555;
     uint8 public constant SLOTS = 8;
@@ -39,12 +41,13 @@ contract Alchemists is ERC721, Guarded {
     event Summoned(uint256 indexed id, address indexed to, uint8 rank, uint16 avgTier100, uint8 nameId);
     event Revealed(uint256 indexed id, bytes32 seed);
 
-    constructor(Mine m, Materials mat, string memory baseURI_, uint256 fee, address treasury_)
+    constructor(Mine m, Materials mat, Keys k, string memory baseURI_, uint256 fee, address treasury_)
         ERC721("Alchemists", "ALCH")
         Ownable(msg.sender)
     {
         mine = m;
         materials = mat;
+        keys = k;
         baseURI = baseURI_;
         summonFee = fee;
         treasury = treasury_;
@@ -70,28 +73,36 @@ contract Alchemists is ERC721, Guarded {
         require(ok, "Alchemists: sweep");
     }
 
-    /// @param ids item ids by slot (kind index): 0 = empty, allowed only for enhancer slots 5..7.
-    function summon(uint256[8] calldata ids) external payable whenNotPaused returns (uint256 id) {
+    /// @param ids item ids by slot (kind index): 0 = empty, allowed only for enhancer slots 5..7, or for the slot the
+    ///        key fills.
+    /// @param keyIdx a mythic key offered in the slot of its kind (it counts as Legendary and names the alchemist),
+    ///        or NO_NAME for none.
+    function summon(uint256[8] calldata ids, uint8 keyIdx) external payable whenNotPaused returns (uint256 id) {
         require(msg.value >= summonFee, "Alchemists: fee");
         require(total < CAP, "Alchemists: cap");
         uint256 tierSum;
         uint8 nameId = NO_NAME;
+        uint8 keySlot = NO_NAME;
+        if (keyIdx != NO_NAME) {
+            require(keyIdx < keys.KEYS(), "Alchemists: key");
+            keySlot = keys.keyKind(keyIdx);
+            require(ids[keySlot] == 0, "Alchemists: key slot taken");
+            nameId = keyIdx;
+            keys.burn(msg.sender, keyIdx);
+        }
         for (uint8 i = 0; i < SLOTS; i++) {
             uint256 x = ids[i];
+            if (i == keySlot) {
+                tierSum += 5;
+                continue;
+            }
             if (x == 0) {
                 require(i >= REQUIRED, "Alchemists: required slot empty");
                 tierSum += 1;
                 continue;
             }
-            if (materials.isKey(x)) {
-                require(materials.keyKind(materials.keyIndex(x)) == i, "Alchemists: key kind");
-                require(nameId == NO_NAME, "Alchemists: one key");
-                nameId = materials.keyIndex(x);
-                tierSum += 5;
-            } else {
-                require(materials.isItem(x) && materials.itemKind(x) == i, "Alchemists: item kind");
-                tierSum += materials.itemTier(x);
-            }
+            require(materials.isItem(x) && materials.itemKind(x) == i, "Alchemists: item kind");
+            tierSum += materials.itemTier(x);
             materials.burn(msg.sender, x, 1);
         }
         uint8 rank;

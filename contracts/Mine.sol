@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Guarded.sol";
 import "./FixedMath.sol";
 import "./Materials.sol";
+import "./Keys.sol";
 
 /// @notice One-minute PoW sessions that mint random ingredients. GAME_DESIGN.md section 2.
 ///         Preimage: sha256(miner ‖ nonce ‖ challenge[minute]). Type, upgrade and mythic-key rolls are
@@ -42,6 +43,7 @@ contract Mine is Guarded, ReentrancyGuard {
     }
 
     Materials public immutable materials;
+    Keys public immutable keys;
     address public treasury;
     uint64 public immutable genesisTime;
     uint32 public immutable sessionSec; // 60 on mainnet; shorter only for test deployments
@@ -83,12 +85,13 @@ contract Mine is Guarded, ReentrancyGuard {
     event Escrowed(uint256 amount);
     event EscrowSwept(address to, uint256 amount);
 
-    constructor(Materials m, address treasury_, Config memory c, uint32 sessionSec_) Ownable(msg.sender) {
+    constructor(Materials m, Keys k, address treasury_, Config memory c, uint32 sessionSec_) Ownable(msg.sender) {
         _checkConfig(c);
         require(c.oreR0 > 0, "Mine: ore");
         require(sessionSec_ >= 5 && sessionSec_ <= 3600, "Mine: session");
         sessionSec = sessionSec_;
         materials = m;
+        keys = k;
         treasury = treasury_;
         cfg = c;
         genesisTime = uint64(block.timestamp);
@@ -304,8 +307,8 @@ contract Mine is Guarded, ReentrancyGuard {
             tier += 1;
             upgraded = true;
         }
-        if (((r >> 16) % cfg.keyChance) == 0 && materials.unclaimedCount() > 0) {
-            uint8 k = materials.claimAny(miner, r >> 32);
+        if (((r >> 16) % cfg.keyChance) == 0 && keys.unclaimedCount() > 0) {
+            uint8 k = keys.claimAny(miner, r >> 32);
             emit KeyMined(miner, k);
             return;
         }
