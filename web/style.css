@@ -157,7 +157,7 @@ header .sp { flex:1; }
 .cauldron .big { font:22px var(--pix); color:var(--potion); text-shadow:3px 3px 0 var(--line); }
 .cauldron p { margin:6px 0 0; color:var(--ink2); font-size:14px; }
 .split { display:flex; height:16px; border:2px solid var(--bevel-hi); margin-top:12px; }
-.split i:first-child { width:30%; background:var(--verd); }
+.split i:first-child { width:60%; background:var(--verd); }
 .split i:last-child { flex:1; background:var(--potion); opacity:.55; }
 @media (max-width:520px) { .cauldron { grid-template-columns:1fr; } }
 
