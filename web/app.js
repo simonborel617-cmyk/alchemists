@@ -58,6 +58,13 @@
   $("invWho").onchange = () => setMode($("invWho").value);
   $("burnerAddr").textContent = burner.address;
   $("burnerAddr").href = `${dep.explorer}/address/${burner.address}`;
+  // the address to top the session wallet up from anywhere; the button confirms itself for a moment
+  $("copyAddrBtn").onclick = async () => {
+    const btn = $("copyAddrBtn"), label = btn.textContent;
+    const show = (t, cls) => { btn.textContent = t; btn.classList.add(cls); setTimeout(() => { btn.textContent = label; btn.classList.remove(cls); }, 1800); };
+    try { await navigator.clipboard.writeText(burner.address); show("Copied", "done"); }
+    catch { window.prompt("Copy the session wallet address:", burner.address); }
+  };
 
   async function refreshBurner() {
     try {
