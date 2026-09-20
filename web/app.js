@@ -30,7 +30,9 @@
   $("netFoot").textContent = `${dep.chainName}, chainId ${dep.chainId}, RPC ${(dep.rpcs || [dep.rpc]).length} public endpoints`;
   $("mineAddr").textContent = dep.contracts.Mine.slice(0, 10) + "…";
   $("wsAddr").textContent = dep.contracts.Workshop.slice(0, 10) + "…";
-  $("contracts").innerHTML = Object.entries(dep.contracts).map(([k, v]) => `<div><code><a href="${dep.explorer}/address/${v}">${k}</a> ${v.slice(0, 8)}…${v.slice(-4)}</code></div>`).join("");
+  $("contracts").innerHTML = Object.entries(dep.contracts).map(([k, v]) => `<div><code><a href="${dep.explorer}/address/${v}" target="_blank" rel="noopener">${k}</a> ${v.slice(0, 8)}…${v.slice(-4)}</code></div>`).join("");
+  // every link that leaves this origin opens a new tab: a plain navigation would kill a running miner
+  document.addEventListener("click", (e) => { const a = e.target.closest && e.target.closest("a[href]"); if (!a) return; let u; try { u = new URL(a.href, location.href); } catch { return; } if (u.origin !== location.origin) { a.target = "_blank"; a.rel = "noopener"; } });
   const TIERS = ["", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"];
   const TC = ["", "var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)"];
   const FURNACE = ["", "clay", "iron", "brass", "athanor"];
@@ -63,6 +65,7 @@
   $("invWho").onchange = () => setMode($("invWho").value);
   $("burnerAddr").textContent = burner.address;
   $("burnerAddr").href = `${dep.explorer}/address/${burner.address}`;
+  $("burnerAddr").target = "_blank"; $("burnerAddr").rel = "noopener";
   // the address to top the session wallet up from anywhere; the button confirms itself for a moment
   $("copyAddrBtn").onclick = async () => {
     const btn = $("copyAddrBtn"), label = btn.textContent;
