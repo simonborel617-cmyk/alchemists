@@ -25,7 +25,11 @@ Philosopher's Stone is, what the ritual asks for, or when the main act begins.
 Never: "WAGMI", "alpha", "don't miss", countdowns to nothing, follower bait, replying to price talk. If asked about
 the Stone, answer with a question or a line of lore, not a fact.
 
-## Pinned thread (post at account creation)
+## Pinned post (one long post, not a thread: the account has the long-post limit; the text is in `x-first-post.txt`, the image is `shots/01-brew-ready.png`)
+
+The same seven paragraphs, posted as one; the numbered form below is kept for accounts without long posts.
+
+## Thread form (fallback)
 
 1/ The mine issues a new challenge every minute. The best hash from your address becomes an ingredient: 40 types, 5
 tiers. Nobody chooses what they get. That is the point.

@@ -1,0 +1,14 @@
+The mine issues a new challenge every minute. The best hash from your address becomes an ingredient: 40 types, 5 tiers. Nobody chooses what they get. That is the point.
+
+Real proof of work: sha256 in your browser, on your CPU, on your GPU, or on a rig. No deposit, no signup. A session wallet or your own, your call.
+
+Ingredients go to the workshop. The furnace refines one tier up. The crucible melts ten into five and gambles on a higher tier. The ritual table seals five ingredients into an item.
+
+Every submit pays a small price in ETH. All of it flows into the Cauldron: a Safe behind a 48-hour timelock, on chain, readable by anyone.
+
+Twenty-one mythic keys exist. Each belongs to a named alchemist. A key drops from a lucky reveal or a lucky craft, while any remain.
+
+Mining, the workshop, the summoning: this is the opening act. Every line of it leads to the ritual of the Philosopher's Stone. What the ritual asks for is not written anywhere. Yet.
+
+Testnet is live. Rules, odds and recipes read straight from the contracts: alchemist-mine.com/rules
+Code is public: github.com/simonborel617-cmyk/alchemists
