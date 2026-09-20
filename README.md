@@ -154,6 +154,15 @@ Metadata lives on the same host: `https://alchemist-mine.com/metadata/{id}.json`
 names both exist, so the ERC-1155 `{id}` convention and plain decimal clients both resolve) and
 `https://alchemist-mine.com/metadata/furnace/<tier>.json` for `Furnaces`.
 
+## RPC
+
+The dapp talks to the chain through the public endpoints listed in `web/deployment.json` (`rpcs`, written by
+`scripts/build-web.js`; only endpoints that answer browser requests with CORS headers belong there). `web/rpc.js` wraps
+them: requests go to the first endpoint, and a network error, a rate limit, a 5xx or a 12 s timeout demotes it for a
+minute and retries the request on the next one, so a burst of parallel reads survives one outage. Reverts and JSON-RPC
+errors from the node are answers, not outages, and are not retried. Batches stay at 8 calls per request because the
+public nodes stall on large ones. The first endpoint is also what a wallet gets when the site adds the chain.
+
 ## Metadata and art
 
 `node scripts/metadata.js` (base `https://alchemist-mine.com/metadata/` by default) writes `{id}.json` for all 266 `Materials`

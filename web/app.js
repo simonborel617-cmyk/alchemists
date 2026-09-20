@@ -16,11 +16,13 @@
   const abi = {};
   for (const n of ["Materials", "Mine", "Furnaces", "Workshop"]) abi[n] = await (await fetch(`./abi/${n}.json`, { cache: "no-cache" })).json();
   // the public RPC stalls on big JSON-RPC batches (ethers would pack up to 100 calls into one request); 8 per request is fast
-  const provider = new ethers.JsonRpcProvider(dep.rpc, undefined, { staticNetwork: true, batchMaxCount: 8, batchStallTime: 20 });
+  // rpc.js rotates through the public endpoints in deployment.json on errors, rate limits and timeouts
+  const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId);
+  provider.onSwitch((url, why) => log(`rpc: switched to ${url.replace(/^https?:\/\//, "")} (${why})`, "warn"));
   const C = (n, p) => new ethers.Contract(dep.contracts[n], abi[n], p || provider);
   const mine = C("Mine"), materials = C("Materials"), furnaces = C("Furnaces"), workshop = C("Workshop");
   $("net").textContent = `${dep.chainName} · ${dep.chainId}`;
-  $("netFoot").textContent = `${dep.chainName}, chainId ${dep.chainId}, RPC ${dep.rpc}`;
+  $("netFoot").textContent = `${dep.chainName}, chainId ${dep.chainId}, RPC ${(dep.rpcs || [dep.rpc]).length} public endpoints`;
   $("mineAddr").textContent = dep.contracts.Mine.slice(0, 10) + "…";
   $("wsAddr").textContent = dep.contracts.Workshop.slice(0, 10) + "…";
   $("contracts").innerHTML = Object.entries(dep.contracts).map(([k, v]) => `<div><code><a href="${dep.explorer}/address/${v}">${k}</a> ${v.slice(0, 8)}…${v.slice(-4)}</code></div>`).join("");
@@ -652,7 +654,7 @@
   $("invWhoAddr").textContent = short(me);
   await refreshMine();
   setInterval(tickClock, 1000); tickClock();
-  setInterval(refreshMine, 20000);
+  setInterval(refreshMine, 30000); // the minute boundary triggers its own refresh; this only catches price and pressure drift
   setInterval(refreshInventory, 90000);
   await refreshInventory();
   await refreshWorkshop();

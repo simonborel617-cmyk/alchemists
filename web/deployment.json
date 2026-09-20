@@ -15,6 +15,10 @@
     "Timelock": "0xC2b68F4c0f03b651637a1C760037BDF664C4d984"
   },
   "rpc": "https://rpc.testnet.chain.robinhood.com/rpc",
+  "rpcs": [
+    "https://rpc.testnet.chain.robinhood.com/rpc",
+    "https://robinhood-sepolia-rpc.publicnode.com"
+  ],
   "explorer": "https://explorer.testnet.chain.robinhood.com",
   "chainName": "Robinhood Chain Testnet"
 }

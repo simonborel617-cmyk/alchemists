@@ -12,7 +12,7 @@
     const dep = await (await fetch("./deployment.json", { cache: "no-cache" })).json();
     const abi = {};
     for (const n of ["Mine", "Workshop"]) abi[n] = await (await fetch(`./abi/${n}.json`, { cache: "no-cache" })).json();
-    const provider = new ethers.JsonRpcProvider(dep.rpc, undefined, { staticNetwork: true, batchMaxCount: 8, batchStallTime: 20 });
+    const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId);
     const mine = new ethers.Contract(dep.contracts.Mine, abi.Mine, provider);
     const ws = new ethers.Contract(dep.contracts.Workshop, abi.Workshop, provider);
     $("src").textContent = `Values read live from ${dep.chainName}: Mine ${dep.contracts.Mine}, Workshop ${dep.contracts.Workshop}.`;
