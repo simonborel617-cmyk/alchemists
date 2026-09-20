@@ -25,9 +25,11 @@ Philosopher's Stone is, what the ritual asks for, or when the main act begins.
 Never: "WAGMI", "alpha", "don't miss", countdowns to nothing, follower bait, replying to price talk. If asked about
 the Stone, answer with a question or a line of lore, not a fact.
 
-## Pinned post (one long post, not a thread: the account has the long-post limit; the text is in `x-first-post.txt`, the image is `shots/01-brew-ready.png`)
+## Pinned post (one long post: the account has the long-post limit; the text is in `x-first-post.txt`, the image is `shots/01-brew-ready.png`)
 
-The same seven paragraphs, posted as one; the numbered form below is kept for accounts without long posts.
+A compact article, ~3,800 characters, about three minutes to read: the mine, the workshop, the Cauldron, the keys,
+the opening act, where to play. Every number in it is the deployed value; re-check against `deploy/params.*.json`
+before reposting after a parameter change. The numbered thread below is the short fallback.
 
 ## Thread form (fallback)
 
