@@ -54,17 +54,25 @@ Philosopher's Stone. What the ritual asks for is not written anywhere. Yet.
 7/ Testnet is live now. Rules, odds and recipes read straight from the contracts: https://alchemist-mine.com/rules
 Code is public: https://github.com/simonborel617-cmyk/alchemists
 
-## First posts (one per day, in order; attach the named screenshot)
+## Images: story scenes, not interface shots
 
-1. "The fire burns with your hashrate." [screenshot: the brew scene mid-mining, gauge climbing]
-2. "Bar 30.00 bits. Best this minute 29.40. The brew went cold." [screenshot: the fizzle, grey liquid, smoke]
-3. "Sealed. What is inside is only known at the reveal." [screenshot: a vial on the rack]
+Every post gets its own scene in the game's style B, composed from the game's elements (ingredients, items, keys,
+stations, the Cauldron) into a small story beat. Interface frames from the site only where the post is literally about
+the interface (the rules page, the limits panel). Scenes live in `marketing/scenes/`, prompts follow the ART-BRIEF
+skeleton: 256x144 grid, 16:9, SNES palette, strong outline, no text, no characters. Renders: Higgsfield gpt_image_2_5.
+
+## First posts (one per day, in order; attach the named image)
+
+1. (published as the article) cover: shots/01-brew-ready.png
+2. "Bar 30.00 bits. Best this minute 29.40. The brew went cold." [scene: cold-hearth.png, the fire out at dawn, one ember]
+3. "Sealed. What is inside is only known at the reveal." [scene: sealed-vial.png, wax-sealed vial in a chalk ring]
 4. "Revealed: Rare Rowan." [screenshot: the reveal card] "Type, tier and the upgrade roll are decided by a challenge
    that did not exist when you mined it."
-5. "Threshold corridor 30 to 43 bits. The bar moves with the network's hashrate, every two minutes, at most two bits
+5. "Forty types. Metals, minerals, herbs, woods, beast parts. Uniformly random, nobody chooses." [scene: ingredient-shelf.png]
+5b. "Threshold corridor 30 to 43 bits. The bar moves with the network's hashrate, every two minutes, at most two bits
    at a time." [screenshot: the mine panel]
 6. "Ten Uncommon Hemlock into the crucible. Out: five Uncommon, one of them rolled Rare." [screenshot: workshop]
-7. "Twenty-one keys. Zero claimed." [screenshot: the keys table on the rules page]
+7. "Twenty-one keys. Zero claimed." [scene: keys.png, the ring of 21 keys, one glowing]
 8. "No GPU? The CPU tab works. Slower, same rules." [screenshot: CPU mining at a few MH/s]
 9. "Open source, MIT. Contracts, dapp, miner." [link to the repos]
 10. "The Cauldron: 60 % streams to the alchemists' holders once they are summoned. 40 % thickens." [screenshot: the
