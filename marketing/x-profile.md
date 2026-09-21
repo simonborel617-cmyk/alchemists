@@ -25,6 +25,10 @@ Philosopher's Stone is, what the ritual asks for, or when the main act begins.
 Never: "WAGMI", "alpha", "don't miss", countdowns to nothing, follower bait, replying to price talk. If asked about
 the Stone, answer with a question or a line of lore, not a fact.
 
+Never frame the player's money as something at risk: no "lose", "cost", "spend", "risk", "burn your ETH". The submit
+price is stated once, as a fact of the mechanics ("every submit pays a small price in ETH, it flows into the Cauldron"),
+and never as a warning or a hook. A miss is a beat of the rhythm, not an economic event.
+
 ## Pinned post (one long post: the account has the long-post limit; the text is in `x-first-post.txt`, the image is `shots/01-brew-ready.png`)
 
 A compact article, ~3,800 characters, about three minutes to read: the mine, the workshop, the Cauldron, the keys,
@@ -64,7 +68,7 @@ skeleton: 256x144 grid, 16:9, SNES palette, strong outline, no text, no characte
 ## First posts (one per day, in order; attach the named image)
 
 1. (published as the article) cover: shots/01-brew-ready.png
-2. "Bar 30.00 bits. Best this minute 29.40. The brew went cold." [scene: cold-hearth.png, the fire out at dawn, one ember]
+2. "Bar 30.00 bits. Best this minute 29.40. The brew went cold. Next minute, new challenge." [scene: cold-hearth.png, the fire out at dawn, one ember]
 3. "Sealed. What is inside is only known at the reveal." [scene: sealed-vial.png, wax-sealed vial in a chalk ring]
 4. "Revealed: Rare Rowan." [screenshot: the reveal card] "Type, tier and the upgrade roll are decided by a challenge
    that did not exist when you mined it."
@@ -78,7 +82,7 @@ skeleton: 256x144 grid, 16:9, SNES palette, strong outline, no text, no characte
 10. "The Cauldron: 60 % streams to the alchemists' holders once they are summoned. 40 % thickens." [screenshot: the
     Cauldron block] No more than that.
 11. "Every rule on one page, read live from the chain." [link: /rules]
-12. "A miss is free. A find costs a submit. A submit is the only way in." [screenshot: the limits panel]
+12. "Set a price ceiling, a budget, a number of rounds. The miner stops itself at any of them." [screenshot: the limits panel]
 
 ## Reply templates
 
