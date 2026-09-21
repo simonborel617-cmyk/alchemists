@@ -287,4 +287,7 @@
   // the scripted round only ever starts from the button under the scene, never on page load
   const demoBtn = document.getElementById("stageDemo");
   if (demoBtn) demoBtn.onclick = () => window.alchStage.demo();
+  // ?stagedev=1: a hand-driven frame for screenshots of any state (the render loop pauses in a hidden tab, so the
+  // marketing shots set the state through `set` and pull a frame through `frame`; nothing is mined or signed)
+  if (q.get("stagedev")) window.alchStage.dev = { S, cfg, set: (o) => Object.assign(S, o), step: (n = 1) => { for (let i = 0; i < n; i++) update(); }, frame: () => { draw(); return cv.toDataURL("image/png").split(",")[1]; }, smokeAt, burstAt, addVial };
 })();
