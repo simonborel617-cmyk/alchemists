@@ -3,6 +3,7 @@
 //   NET=robinhoodTestnet node scripts/govern.js execute  Mine setTreasury '["0x..."]'
 //   NET=robinhoodTestnet node scripts/govern.js schedule Mine setConfig  @deploy/params.mainnet.json   (builds the Config struct)
 //   NET=robinhoodTestnet node scripts/govern.js status   Mine setTreasury '["0x..."]'
+//   SALT=<text> makes the operation distinct, for a call the timelock has already executed once (e.g. a second grant)
 // The signer must be a proposer/executor of the timelock (the Safe on mainnet; on testnet the deployer).
 const { ethers } = require("ethers");
 const fs = require("fs");
@@ -35,7 +36,8 @@ async function main() {
   }
   const data = target.interface.encodeFunctionData(fn, args);
   const timelock = new ethers.Contract(dep.contracts.Timelock, tlAbi, wallet);
-  const salt = ethers.ZeroHash;
+  // a call the timelock has already run once (the same target and data) needs a fresh salt to run again: SALT=<any text>
+  const salt = process.env.SALT ? ethers.id(process.env.SALT) : ethers.ZeroHash;
   const pred = ethers.ZeroHash;
   const id = await timelock.hashOperation(await target.getAddress(), 0, data, pred, salt);
   const delay = await timelock.getMinDelay();
