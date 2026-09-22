@@ -250,3 +250,10 @@ footer b { font:9px var(--pix); color:var(--ink2); display:block; margin-bottom:
 @keyframes stagepop { from { transform:translate(-50%,-50%) scale(.4); opacity:0 } to { transform:translate(-50%,-50%) scale(1); opacity:1 } }
 @media (prefers-reduced-motion: reduce) { .stage .reveal { animation:none; } }
 .stage.demo::after { content:"DEMO ROUND · nothing is mined"; position:absolute; right:26px; top:9px; font:8px var(--pix); color:#1a1408; background:var(--gold2); border:2px solid var(--line); padding:5px 6px; pointer-events:none; }
+
+/* the soul station: eight slot selects in a grid, the stream block below */
+#soulSlots { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px 12px; }
+#soulSlots label.f { width:auto; }
+#soulSlots select { width:100%; }
+.chip.t0 { opacity:.75; }
+.chip.t6 { border-color:var(--c6); }

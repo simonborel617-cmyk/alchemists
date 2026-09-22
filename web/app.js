@@ -14,13 +14,17 @@
   const dep = await (await fetch("./deployment.json", { cache: "no-cache" })).json();
   const names = await (await fetch("./names.json", { cache: "no-cache" })).json();
   const abi = {};
-  for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop"]) { try { const r = await fetch(`./abi/${n}.json`, { cache: "no-cache" }); if (r.ok) abi[n] = await r.json(); } catch {} }
+  for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Souls", "Stream"]) { try { const r = await fetch(`./abi/${n}.json`, { cache: "no-cache" }); if (r.ok) abi[n] = await r.json(); } catch {} }
   // the public RPC stalls on big JSON-RPC batches (ethers would pack up to 100 calls into one request); 8 per request is fast
   // rpc.js rotates through the public endpoints in deployment.json on errors, rate limits and timeouts
   const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId);
   provider.onSwitch((url, why) => log(`rpc: switched to ${url.replace(/^https?:\/\//, "")} (${why})`, "warn"));
   const C = (n, p) => new ethers.Contract(dep.contracts[n], abi[n], p || provider);
   const mine = C("Mine"), materials = C("Materials"), furnaces = C("Furnaces"), workshop = C("Workshop");
+  // the soul and the stream came with testnet v11; an older deployment record simply hides the station
+  const soulsC = dep.contracts.Souls && abi.Souls ? C("Souls") : null, streamC = dep.contracts.Stream && abi.Stream ? C("Stream") : null;
+  if (!soulsC) { const b = document.querySelector('#wsNav button[data-st="soul"]'); if (b) b.style.display = "none"; }
+  const RANKS = ["", "Apprentice", "Adept", "Master", "Magister", "Archmage", "Named"];
   // a deployment without the Keys contract (before v10) still runs: keys are simply never found
   const keysC = dep.contracts.Keys && abi.Keys ? C("Keys") : { ownerOf: async () => { throw new Error("no Keys contract"); } };
   // mythic keys are an ERC-721 (token id = key index); the dapp carries a key as the virtual id 3000 + index
@@ -345,6 +349,7 @@
       finally { this.busy = false; }
     },
     addResult(id, via) {
+      if (!id) return; // a seal has no loot card; the souls list refreshes on its own
       const el = $("results");
       const tier = id >= 3000 ? 6 : id >= 2000 ? (id - 2000) % 8 : id >= 1000 ? id - 1000 : (id - 1) % 8;
       el.insertAdjacentHTML("afterbegin", `<div class="card t${tier}" style="width:84px"><img class="px" src="${img(id)}" alt=""><div class="s">${TIERS[tier]}</div></div>`);
@@ -476,6 +481,7 @@
     $("refFurnace").innerHTML = ""; for (const f of myFurnaces) $("refFurnace").add(new Option(`#${f.id} · ${FURNACE[f.tier]} (${TIERS[f.tier]}, tier ${f.tier})`, f.id));
     if (!myFurnaces.length) $("refFurnace").add(new Option("no furnace yet", ""));
     renderStations();
+    refreshSouls();
   }
 
   function pick(recipe, tier) {
@@ -584,7 +590,90 @@
       $("rc-item").innerHTML = html;
       $("rq-item").innerHTML = rec.map((n, c) => n ? req(`${CAT[c]} ${T[tier]}`, haveCat(c, tier), n) : "").join("") + `<span>${k < 5 ? "required for the summoning" : "optional enhancer"}</span>`;
       $("doItem").disabled = !inv || !ok; }
+    renderSoul();
   }
+  // ---- the soul: eight slots, one item each; the select of a slot lists the tiers the wallet holds for that kind
+  let mySoulIds = [], myKeys = [];
+  function soulSlotsInit() {
+    if ($("soulSlots").children.length) return;
+    $("soulSlots").innerHTML = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => `<label class="f">${names.kinds[k]}${k < 5 ? "" : " (enhancer)"}<select id="sl${k}" data-k="${k}"></select></label>`).join("") + `<label class="f">mythic key<select id="slKey"><option value="255">none</option></select></label>`;
+    for (let k = 0; k < 8; k++) $(`sl${k}`).addEventListener("change", renderSoul);
+    $("slKey").addEventListener("change", renderSoul);
+  }
+  function soulPlan() {
+    const ids = [], tiers = [];
+    for (let k = 0; k < 8; k++) { const v = +$(`sl${k}`).value || 0; ids.push(v ? item(k, v) : 0); tiers.push(v); }
+    const keyIdx = +$("slKey").value;
+    return { ids, tiers, keyIdx: Number.isFinite(keyIdx) ? keyIdx : 255 };
+  }
+  function renderSoul() {
+    if (!soulsC || !inv) return;
+    soulSlotsInit();
+    // refill each slot's options from the inventory, keeping the current choice when still held
+    for (let k = 0; k < 8; k++) {
+      const sel = $(`sl${k}`), cur = sel.value;
+      const opts = [`<option value="0">${k < 5 ? "— pick —" : "empty (Common)"}</option>`];
+      for (let t = 1; t <= 5; t++) if (have(item(k, t))) opts.push(`<option value="${t}">${TIERS[t]} (${have(item(k, t))})</option>`);
+      sel.innerHTML = opts.join(""); if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    }
+    const ks = $("slKey"); const curK = ks.value; ks.innerHTML = `<option value="255">none</option>` + myKeys.map((i) => `<option value="${i}">${names.keys[i].key} (${names.kinds[names.keys[i].kind]})</option>`).join(""); if ([...ks.options].some((o) => o.value === curK)) ks.value = curK;
+    const p = soulPlan();
+    let sum = 0, ok = true, keySlot = -1;
+    if (p.keyIdx !== 255) keySlot = names.keys[p.keyIdx].kind;
+    const parts = [];
+    for (let k = 0; k < 8; k++) {
+      if (k === keySlot) { sum += 5; parts.push(chip(KEY_ID + p.keyIdx, names.keys[p.keyIdx].key, "key · counts as Legendary", "ok", 6)); continue; }
+      const t = p.tiers[k];
+      if (!t) { if (k < 5) ok = false; sum += 1; parts.push(`<div class="chip ${k < 5 ? "bad" : ""} t0"><b>${names.kinds[k]}</b><small>${k < 5 ? "required" : "empty · Common"}</small></div>`); continue; }
+      sum += t; parts.push(chip(item(k, t), names.kinds[k], TIERS[t], "ok", t));
+    }
+    if (keySlot >= 0 && p.tiers[keySlot]) ok = false; // the key fills that slot, the item there must stay empty
+    const avg = sum / 8, rank = keySlot >= 0 ? 6 : Math.floor(avg);
+    const rarity = keySlot >= 0 ? 16 : Math.pow(2, avg - 1);
+    const n = Number(soulsC && $("soulCount").dataset.n || 0), nextId = n + 1, early = nextId >= 100 ? 1 : 2 - (nextId - 1) / 99;
+    $("rc-soul").innerHTML = parts.join(PLUS) + ARROW + `<div class="chip t${rank}"><img class="px" src="metadata/souls/${rank}.svg" alt=""><b>${RANKS[rank]} soul</b><small>#${nextId} if sealed now</small></div><div class="odds">average tier <b>${avg.toFixed(2)}</b><br>rarity <b>×${rarity.toFixed(2)}</b> · early <b>×${early.toFixed(2)}</b><br>stream weight <b>${(rarity * early).toFixed(2)}</b></div>`;
+    $("soulImg").src = `metadata/souls/${rank}.svg`;
+    $("rq-soul").innerHTML = `<span class="${ok ? "ok" : "bad"}">${ok ? "all five required slots filled" : "fill the five required slots (grimoire, candle, chalice, seal, scepter)"}</span><span>sealing is free · the items and the key burn</span>`;
+    $("doSoul").disabled = !ok || (rank >= 1 && rank <= 5 && false);
+  }
+  async function refreshSouls() {
+    if (!soulsC) return;
+    try {
+      const total = Number(await soulsC.total());
+      $("soulCount").textContent = `${total} sealed`; $("soulCount").dataset.n = total;
+      mySoulIds = [];
+      for (let i = 1; i <= total; i += 8) { const rs = await Promise.all(Array.from({ length: Math.min(8, total - i + 1) }, (_, j) => soulsC.ownerOf(i + j).catch(() => null))); rs.forEach((o, j) => { if (o && o.toLowerCase() === me.toLowerCase()) mySoulIds.push(i + j); }); }
+      myKeys = []; for (let i = 0; i < 21; i++) if (inv && inv.get(KEY_ID + i)) myKeys.push(i);
+      let open = false, openAt = 100, claimable = 0n;
+      if (streamC) { try { [open, openAt] = await Promise.all([streamC.isOpen(), streamC.openAt().then(Number)]); } catch {} }
+      const cards = [];
+      for (const id of mySoulIds) {
+        let d = null, w = 0n, c = 0n;
+        try { [d, w] = await Promise.all([soulsC.data(id), soulsC.weight(id)]); if (streamC) c = await streamC.claimable(0, id); } catch {}
+        claimable += c;
+        const rank = d ? Number(d.rank) : 0;
+        cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.svg" alt=""><div class="t">${RANKS[rank]} #${id}</div><div class="s">weight ${(Number(w) / 1e6).toFixed(2)}${c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
+      }
+      $("mySouls").innerHTML = cards.join("") || `<span class="small">no souls in this wallet yet</span>`;
+      $("streamState").textContent = open ? "open" : `opens at ${openAt} souls · ${total} / ${openAt}`;
+      $("streamState").className = "tag" + (open ? " on" : "");
+      $("doClaim").disabled = !open || claimable === 0n;
+      $("claimHint").textContent = claimable > 0n ? `${fmtEth(claimable, 6)} ETH claimable` : mySoulIds.length ? "nothing to claim yet" : "";
+      renderSoul();
+    } catch (e) { log("souls: " + (e.shortMessage || e.message), "warn"); }
+  }
+  $("doSoul").onclick = async () => {
+    if (!soulsC || !inv) return;
+    const p = soulPlan();
+    const rc = await tx("seal a soul", () => C("Souls", signer).seal(p.ids, p.keyIdx, { gasLimit: GAS.ws }));
+    if (rc) { let ev = null; for (const l of rc.logs) { try { ev = soulsC.interface.parseLog(l); } catch {} if (ev && ev.name === "Sealed") break; } if (ev) { const id = Number(ev.args.id); miner.addResult(0, "seal"); log(`soul #${id} sealed: ${RANKS[Number(ev.args.rank)]}`); } }
+    await refreshInventory(); await refreshSouls();
+  };
+  $("doClaim").onclick = async () => {
+    if (!streamC || !mySoulIds.length) return;
+    await tx(`claim for ${mySoulIds.length} soul${mySoulIds.length > 1 ? "s" : ""}`, () => C("Stream", signer).claimMany(0, mySoulIds, { gasLimit: 200_000n + 120_000n * BigInt(mySoulIds.length) }));
+    await refreshSouls(); refreshBurner();
+  };
   for (const id of ["potTier", "potA", "potB", "furTier", "refFurnace", "refType", "refTier", "rrTier", "rrCat", "itKind", "itTier"]) $(id).addEventListener("change", renderStations);
   async function refreshWorkshop() {
     try {

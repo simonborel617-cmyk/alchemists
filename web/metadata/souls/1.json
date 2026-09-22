@@ -1,0 +1,20 @@
+{
+  "name": "Apprentice Soul",
+  "description": "A Apprentice soul, sealed from eight ritual items. It carries the Cauldron's stream until the alchemist is summoned.",
+  "image": "https://alchemist-mine.com/metadata/souls/1.svg",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Soul"
+    },
+    {
+      "trait_type": "Rank",
+      "value": "Apprentice"
+    },
+    {
+      "trait_type": "Rank Index",
+      "value": 1,
+      "display_type": "number"
+    }
+  ]
+}

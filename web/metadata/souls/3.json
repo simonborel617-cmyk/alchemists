@@ -1,0 +1,20 @@
+{
+  "name": "Master Soul",
+  "description": "A Master soul, sealed from eight ritual items. It carries the Cauldron's stream until the alchemist is summoned.",
+  "image": "https://alchemist-mine.com/metadata/souls/3.svg",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Soul"
+    },
+    {
+      "trait_type": "Rank",
+      "value": "Master"
+    },
+    {
+      "trait_type": "Rank Index",
+      "value": 3,
+      "display_type": "number"
+    }
+  ]
+}

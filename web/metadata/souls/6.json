@@ -1,0 +1,20 @@
+{
+  "name": "Named Soul",
+  "description": "The soul of a named alchemist, sealed with a mythic key. It carries the Cauldron's stream until the alchemist is summoned.",
+  "image": "https://alchemist-mine.com/metadata/souls/6.svg",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Soul"
+    },
+    {
+      "trait_type": "Rank",
+      "value": "Named"
+    },
+    {
+      "trait_type": "Rank Index",
+      "value": 6,
+      "display_type": "number"
+    }
+  ]
+}

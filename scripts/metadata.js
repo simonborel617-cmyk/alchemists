@@ -170,4 +170,20 @@ for (let t = 1; t <= 4; t++) {
     ],
   }, null, 2));
 }
+// souls (ERC-721 Souls, metadata per rank: <base>souls/<rank>.json; 6 = a named soul)
+const RANK_EN = ["", "Apprentice", "Adept", "Master", "Magister", "Archmage", "Named"];
+fs.mkdirSync(path.join(OUT, "souls"), { recursive: true });
+for (let r = 1; r <= 6; r++) {
+  fs.writeFileSync(path.join(OUT, "souls", `${r}.json`), JSON.stringify({
+    name: `${RANK_EN[r]} Soul`,
+    description: r === 6 ? "The soul of a named alchemist, sealed with a mythic key. It carries the Cauldron's stream until the alchemist is summoned." : `A ${RANK_EN[r]} soul, sealed from eight ritual items. It carries the Cauldron's stream until the alchemist is summoned.`,
+    image: `${BASE}souls/${r}.svg`,
+    attributes: [
+      { trait_type: "Kind", value: "Soul" },
+      { trait_type: "Rank", value: RANK_EN[r] },
+      { trait_type: "Rank Index", value: r, display_type: "number" },
+    ],
+  }, null, 2));
+  fs.writeFileSync(path.join(OUT, "souls", `${r}.svg`), svg("\u2727", Math.min(r, 6), `${RANK_EN[r]} Soul`, r === 6 ? "named" : `rank ${r}`));
+}
 console.log(`wrote ${count} Materials json files to ${OUT} (base ${BASE}); real icons ${realArt}, placeholders ${count - realArt}; 21 keys (${keyIcons} real icons); furnace tiers 4 (${furnaceIcons} real icons)`);

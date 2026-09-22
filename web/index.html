@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body data-app="8">
 <header>
@@ -183,6 +183,7 @@
         <button data-st="refine"><img class="px" src="img/furnace-2.png" alt=""><span>Refining</span></button>
         <button data-st="reroll"><img class="px" src="img/crucible.png" alt=""><span>Crucible</span></button>
         <button data-st="item"><img class="px" src="metadata/2001.png" alt="" id="navItImg"><span>Ritual table</span></button>
+        <button data-st="soul"><img class="px" src="metadata/souls/5.svg" alt=""><span>Soul</span></button>
       </nav>
       <div class="ws-body">
         <div class="st on" id="st-potion">
@@ -219,6 +220,19 @@
           <div class="ctl"><label class="f">item<select id="itKind"></select></label><label class="f">tier<select id="itTier"></select></label></div>
           <div class="req" id="rq-item"></div>
           <div class="act"><button id="doItem" class="btn gold">Craft item</button><span class="hint" id="itHint"></span></div>
+        </div>
+        <div class="st" id="st-soul">
+          <div class="st-head"><img class="px" src="metadata/souls/5.svg" alt="" id="soulImg"><div><h3>Soul <span class="tag" id="soulCount"></span></h3><p>Eight ritual items, one per slot, are sealed into a soul: five required, three enhancers (an empty enhancer counts as Common), a mythic key in the slot of its kind. Sealing is free. Rank is the average tier, rounded down. The soul carries the Cauldron's stream until the alchemist is summoned from it.</p></div></div>
+          <div class="recipe" id="rc-soul"></div>
+          <div class="ctl" id="soulSlots"></div>
+          <div class="req" id="rq-soul"></div>
+          <div class="act"><button id="doSoul" class="btn gold">Seal a soul</button><span class="hint" id="soulHint"></span></div>
+          <div class="stream" id="streamBox" style="margin-top:16px;border-top:2px solid var(--bevel-lo);padding-top:12px">
+            <h3>The stream <span class="tag" id="streamState"></span></h3>
+            <p class="small" id="streamNote">The Cauldron pours its steam into the stream; every soul claims its share by weight. Claims open at the hundredth soul; the pours before that are all claimable at once.</p>
+            <div class="inv" id="mySouls" style="grid-template-columns:repeat(auto-fill,120px);margin-top:10px"></div>
+            <div class="act" style="margin-top:10px"><button id="doClaim" class="btn gold">Claim for my souls</button><span class="hint" id="claimHint"></span></div>
+          </div>
         </div>
       </div>
     </div>
@@ -273,6 +287,6 @@
 <script src="fx.js?v=13"></script>
 <script src="rpc.js?v=4"></script>
 <script src="stage.js?v=11"></script>
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

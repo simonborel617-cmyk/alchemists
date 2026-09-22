@@ -1,0 +1,20 @@
+{
+  "name": "Magister Soul",
+  "description": "A Magister soul, sealed from eight ritual items. It carries the Cauldron's stream until the alchemist is summoned.",
+  "image": "https://alchemist-mine.com/metadata/souls/4.svg",
+  "attributes": [
+    {
+      "trait_type": "Kind",
+      "value": "Soul"
+    },
+    {
+      "trait_type": "Rank",
+      "value": "Magister"
+    },
+    {
+      "trait_type": "Rank Index",
+      "value": 4,
+      "display_type": "number"
+    }
+  ]
+}
