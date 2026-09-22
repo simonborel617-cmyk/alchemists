@@ -38,6 +38,8 @@ async function main() {
     contracts: {
       Materials: await d.materials.getAddress(),
       Keys: await d.keys.getAddress(),
+      Souls: await d.souls.getAddress(),
+      Stream: await d.stream.getAddress(),
       Mine: await d.mine.getAddress(),
       Furnaces: await d.furnaces.getAddress(),
       Workshop: await d.workshop.getAddress(),

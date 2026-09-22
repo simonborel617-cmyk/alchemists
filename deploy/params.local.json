@@ -3,6 +3,12 @@
   "furnacesURI": "http://localhost/metadata/furnace/",
 
   "keysURI": "http://localhost/metadata/keys/",
+
+
+  "soulsURI": "http://localhost/metadata/souls/",
+
+
+  "streamOpenAt": 100,
   "alchemistsBaseURI": "http://localhost/alchemists/",
   "summonFeeWei": "0",
   "mine": {

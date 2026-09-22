@@ -4,6 +4,12 @@
   "furnacesURI": "https://alchemist-mine.com/metadata/furnace/",
 
   "keysURI": "https://alchemist-mine.com/metadata/keys/",
+
+
+  "soulsURI": "https://alchemist-mine.com/metadata/souls/",
+
+
+  "streamOpenAt": 100,
   "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",
   "mine": {

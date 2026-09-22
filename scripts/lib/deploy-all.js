@@ -65,7 +65,15 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   await alchemists.waitForDeployment();
   log("Alchemists", await alchemists.getAddress());
 
-  for (const c of [mine, workshop, alchemists]) {
+  const souls = await ethers.deployContract("Souls", [await mine.getAddress(), await materials.getAddress(), await keys.getAddress(), P.soulsURI || ""]);
+  await souls.waitForDeployment();
+  log("Souls", await souls.getAddress());
+
+  const stream = await ethers.deployContract("Stream", [await souls.getAddress(), P.streamOpenAt ?? 100]);
+  await stream.waitForDeployment();
+  log("Stream", `${await stream.getAddress()} (claims open at ${P.streamOpenAt ?? 100} souls)`);
+
+  for (const c of [mine, workshop, alchemists, souls]) {
     await (await materials.setMinter(await c.getAddress(), true)).wait();
     await (await keys.setMinter(await c.getAddress(), true)).wait();
   }
@@ -91,12 +99,12 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
     await timelock.waitForDeployment();
     log("Timelock", `${await timelock.getAddress()} (delay ${g.timelockDelay}s, safe ${safe})`);
     const guardian = g.guardian && g.guardian !== "safe" ? g.guardian : safe;
-    for (const c of [mine, workshop, alchemists]) await (await c.setGuardian(guardian)).wait();
-    for (const c of [materials, keys, mine, furnaces, workshop, alchemists]) await (await c.transferOwnership(await timelock.getAddress())).wait();
-    log("governance", `guardian ${guardian}; ownership of all six contracts moved to the timelock`);
+    for (const c of [mine, workshop, alchemists, souls, stream]) await (await c.setGuardian(guardian)).wait();
+    for (const c of [materials, keys, mine, furnaces, workshop, alchemists, souls, stream]) await (await c.transferOwnership(await timelock.getAddress())).wait();
+    log("governance", `guardian ${guardian}; ownership of all eight contracts moved to the timelock`);
   }
 
-  return { materials, keys, mine, furnaces, workshop, alchemists, timelock };
+  return { materials, keys, mine, furnaces, workshop, alchemists, souls, stream, timelock };
 }
 
 module.exports = { deployAll, mineConfig, Q8 };

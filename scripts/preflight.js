@@ -27,6 +27,8 @@ function preflight(P, env) {
   if (!P.materialsURI || P.materialsURI.includes("example")) problems.push("materialsURI still points at the placeholder host");
   if (!P.furnacesURI || P.furnacesURI.includes("example")) problems.push("furnacesURI still points at the placeholder host");
   if (!P.keysURI || P.keysURI.includes("example")) problems.push("keysURI still points at the placeholder host");
+  if (!P.soulsURI || P.soulsURI.includes("example")) problems.push("soulsURI still points at the placeholder host");
+  if (P.streamOpenAt !== 100) problems.push("streamOpenAt must be 100 on mainnet");
   const w = P.workshop || {};
   if (!w.keyChance || w.keyChance[4] < 100 || w.keyChance[0] < 1000000) problems.push("workshop.keyChance must be mainnet-scale (1e6 .. 100)");
   if (w.furnaceCooldown < 600) problems.push("workshop.furnaceCooldown must be at least 600s");
