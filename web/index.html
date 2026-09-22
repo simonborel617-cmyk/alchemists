@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=28">
+<link rel="stylesheet" href="style.css?v=29">
 </head>
 <body data-app="8">
 <header>
@@ -190,39 +190,47 @@
       </nav>
       <div class="ws-body">
         <div class="st on" id="st-potion">
-          <div class="st-head"><img class="px" src="img/potion.png" alt=""><div><h3>Potion of Purification</h3><p>Two herbs of one tier brew into one potion of that tier. Every refining attempt burns one potion. Brewing is instant, nothing to reveal.</p></div></div>
+          <div class="st-scene" id="sc-potion"></div>
+          <div class="st-head"><div><h3>Potion of Purification</h3><p>Two herbs of one tier brew into one potion of that tier. Every refining attempt burns one potion. Brewing is instant, nothing to reveal.</p></div></div>
           <div class="recipe" id="rc-potion"></div>
           <div class="ctl"><label class="f">tier<select id="potTier"></select></label><label class="f">first herb<select id="potA"></select></label><label class="f">second herb<select id="potB"></select></label></div>
           <div class="req" id="rq-potion"></div>
           <div class="act"><button id="doPotion" class="btn gold">Brew potion</button><span class="hint" id="potHint"></span></div>
         </div>
         <div class="st" id="st-furnace">
-          <div class="st-head"><img class="px" src="img/furnace-1.png" alt="" id="furImg"><div><h3>Furnace</h3><p>A furnace is built from ingredients of its own tier. Its tier caps the tier of ingredients you can refine in it, and a furnace hotter than the ingredient adds a success bonus. One firing per cooldown.</p></div></div>
+          <div class="st-scene" id="sc-furnace"></div>
+          <div class="st-head"><div><h3>Furnace</h3><p>A furnace is built from ingredients of its own tier. Its tier caps the tier of ingredients you can refine in it, and a furnace hotter than the ingredient adds a success bonus. One firing per cooldown.</p></div></div>
           <div class="recipe" id="rc-furnace"></div>
           <div class="ctl"><label class="f">furnace tier<select id="furTier"><option value="1">1 · clay (Common)</option><option value="2">2 · iron (Uncommon)</option><option value="3">3 · brass (Rare)</option><option value="4">4 · athanor (Epic)</option></select></label></div>
           <div class="req" id="rq-furnace"></div>
           <div class="act"><button id="doFurnace" class="btn gold">Build furnace</button><span class="hint" id="furHint"></span></div>
         </div>
         <div class="st" id="st-refine">
-          <div class="st-head"><img class="px" src="img/furnace-2.png" alt=""><div><h3>Refining</h3><p id="refDesc">Ingredients of one type and tier plus a potion of that tier go into a furnace; on success one ingredient of the next tier comes out. The result is sealed until the next minute.</p></div></div>
+          <div class="st-scene" id="sc-refine"></div>
+          <div class="st-head"><div><h3>Refining</h3><p id="refDesc">Ingredients of one type and tier plus a potion of that tier go into a furnace; on success one ingredient of the next tier comes out. The result is sealed until the next minute.</p></div></div>
           <div class="recipe" id="rc-refine"></div>
           <div class="ctl"><label class="f">furnace<select id="refFurnace"></select></label><label class="f">ingredient<select id="refType"></select></label><label class="f">tier in<select id="refTier"></select></label></div>
           <div class="req" id="rq-refine"></div>
           <div class="act"><button id="doRefine" class="btn gold">Refine</button><span class="hint" id="refHint"></span></div>
+          <div class="pend" id="pd-refine" style="display:none"></div>
         </div>
         <div class="st" id="st-reroll">
-          <div class="st-head"><img class="px" src="img/crucible.png" alt=""><div><h3>Crucible</h3><p>Ten ingredients of one tier melt into fewer random ones of the same tier. Choosing an output category costs a few pieces. Each piece rolls for a tier up, and there is a risk of a tier down at high tiers. Sealed until the next minute.</p></div></div>
+          <div class="st-scene" id="sc-reroll"></div>
+          <div class="st-head"><div><h3>Crucible</h3><p>Ten ingredients of one tier melt into fewer random ones of the same tier. Choosing an output category costs a few pieces. Each piece rolls for a tier up, and there is a risk of a tier down at high tiers. Sealed until the next minute.</p></div></div>
           <div class="recipe" id="rc-reroll"></div>
           <div class="ctl"><label class="f">tier<select id="rrTier"></select></label><label class="f">output category<select id="rrCat"><option value="255">any category</option><option value="0">metals</option><option value="1">minerals</option><option value="2">herbs</option><option value="3">woods</option><option value="4">beasts</option></select></label></div>
           <div class="req" id="rq-reroll"></div>
           <div class="act"><button id="doReroll" class="btn gold">Melt 10</button><span class="hint" id="rrHint"></span></div>
+          <div class="pend" id="pd-reroll" style="display:none"></div>
         </div>
         <div class="st" id="st-item">
-          <div class="st-head"><img class="px" src="metadata/2001.png" alt="" id="itImg"><div><h3>Ritual table</h3><p>Five ingredients by the recipe of the item are sealed into a ritual item of their tier. A small chance of one tier higher, and a roll for a mythic key bound to the item kind. Sealed until the next minute.</p></div></div>
+          <div class="st-scene" id="sc-item"></div>
+          <div class="st-head"><div><h3>Ritual table</h3><p>Five ingredients by the recipe of the item are sealed into a ritual item of their tier. A small chance of one tier higher, and a roll for a mythic key bound to the item kind. Sealed until the next minute.</p></div></div>
           <div class="recipe" id="rc-item"></div>
           <div class="ctl"><label class="f">item<select id="itKind"></select></label><label class="f">tier<select id="itTier"></select></label></div>
           <div class="req" id="rq-item"></div>
           <div class="act"><button id="doItem" class="btn gold">Craft item</button><span class="hint" id="itHint"></span></div>
+          <div class="pend" id="pd-item" style="display:none"></div>
         </div>
         <div class="st" id="st-soul">
           <div class="st-head"><img class="px" src="metadata/souls/5.png" alt="" id="soulImg"><div><h3>The soul <span class="tag" id="soulCount"></span></h3><p>The closing rite of the opening act. Eight ritual items on eight pedestals are sealed into a soul: five required, three enhancers, a mythic key in the slot of its kind. Sealing is free. The soul carries the Cauldron's stream until the alchemist is summoned from it.</p></div></div>
@@ -301,7 +309,7 @@
 <script src="stage.js?v=12"></script>
 <script src="rite.js?v=1"></script>
 <script src="reveal.js?v=2"></script>
-<script src="forge.js?v=1"></script>
-<script src="app.js?v=32"></script>
+<script src="workshop.js?v=1"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>

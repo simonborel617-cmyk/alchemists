@@ -325,10 +325,8 @@ body.connected .nowallet { display:none; }
 /* the mining panel stacks on narrow screens (this has to come after the .bm-top rule above, or that rule wins) */
 @media (max-width:900px) { .bm-top { grid-template-columns:1fr; } }
 
-/* the forge: forge.js plays refining (feeding the furnace, the melt) in a framed scene over the page */
-.forge { position:fixed; inset:0; z-index:94; display:grid; place-items:center; background:rgba(4,6,9,.62); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); cursor:pointer; outline:none; opacity:0; transition:opacity .35s; }
-.forge.on { opacity:1; }
-.forge.out { opacity:0; }
-.forge-frame { border:3px solid var(--line); box-shadow:inset 0 0 0 2px var(--bevel-hi), 6px 6px 0 var(--line); background:#0c0e11; line-height:0; transform:scale(.96); transition:transform .35s; }
-.forge.on .forge-frame { transform:scale(1); }
-.forge canvas { display:block; }
+/* workshop scenes: workshop.js draws the scene of each station; it stays on screen above the station's controls */
+.st-scene { width:100%; background:#0c0e11; border:3px solid var(--line); box-shadow:inset 0 0 0 2px var(--bevel-hi), 4px 4px 0 var(--line); line-height:0; }
+.st-scene canvas { display:block; width:100%; image-rendering:pixelated; image-rendering:crisp-edges; }
+.pend { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 12px; background:var(--bg); border:2px solid var(--gold3); font:12px var(--mono); color:var(--ink2); }
+.pend .btn { margin-left:auto; }

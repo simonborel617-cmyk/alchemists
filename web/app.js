@@ -99,7 +99,8 @@
     $("clock").textContent = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
     const ck = document.querySelector(".clock"); if (ck) ck.classList.toggle("soon", left <= 5);
     $("session").textContent = `minute ${m} · until the next challenge`;
-    if (m !== curMinute) { curMinute = m; refreshMine(); miner.onMinute(m); }
+    if (m !== curMinute) { curMinute = m; refreshMine(); miner.onMinute(m); renderPending(); }
+    coolTick();
     miner.tickUi();
   }
 
@@ -475,7 +476,7 @@
     for (let k = 0; k < 8; k++) for (let tier = 5; tier >= 1; tier--) { const n = inv.get(item(k, tier)); if (n) cards.push({ cat: "item", tier, n, img: `metadata/${item(k, tier)}.png`, name: names.kinds[k], sub: TIERS[tier], title: `${names.kinds[k]} · ${TIERS[tier]}` }); }
     for (let i = 0; i < 21; i++) if (inv.get(KEY_ID + i)) cards.push({ cat: "key", tier: 6, n: 1, img: keyImg(KEY_ID + i), name: names.keys[i].key, sub: names.keys[i].alchemist, title: `${names.keys[i].key} — ${names.keys[i].alchemist}` });
     myFurnaces = [];
-    for (const id of await myFurnaceIds(me)) { try { myFurnaces.push({ id, tier: Number(await furnaces.tier(id)) }); } catch {} }
+    for (const id of await myFurnaceIds(me)) { try { const [tier, lastFired] = await Promise.all([furnaces.tier(id), furnaces.lastFired(id).catch(() => 0n)]); myFurnaces.push({ id, tier: Number(tier), lastFired: Number(lastFired) }); } catch {} }
     for (const f of myFurnaces) cards.push({ cat: "furnace", tier: f.tier, n: 1, img: `img/furnace-${f.tier}.png`, name: `Furnace #${f.id}`, sub: FURNACE[f.tier], title: `Furnace #${f.id}, tier ${f.tier}` });
     $("invHint").textContent = cards.length ? `${cards.length} entries` : "empty";
     // loot in the session wallet can be moved to the main wallet in one click
@@ -554,8 +555,77 @@
     station = st;
     for (const b of $("wsNav").querySelectorAll("button")) b.classList.toggle("on", b.dataset.st === st);
     for (const el of document.querySelectorAll(".ws-body .st")) el.classList.toggle("on", el.id === "st-" + st);
+    if (window.AlchWS) window.AlchWS.show(st);
   }
   $("wsNav").onclick = (e) => { const b = e.target.closest("button"); if (b) showStation(b.dataset.st); };
+  // ---- the scenes of the stations (workshop.js) and what each one shows
+  const WSX = window.AlchWS;
+  if (WSX) for (const st of ["potion", "furnace", "refine", "reroll", "item"]) WSX.mount(st, $(`sc-${st}`));
+  let wsOpen = []; // this wallet's crafts waiting for their reveal: { id, op (1 refine, 2 melt, 3 rite), a, b, furnace, rm }
+  const coolUntil = (f) => (f && f.lastFired ? (f.lastFired + WS.cooldown) * 1000 : 0);
+  const minuteNow = () => Math.floor(chainNow() / sessionSec);
+  function sealedFor(op, pred) { const l = wsOpen.filter((c) => c.op === op && (!pred || pred(c))); return l.length ? { n: l.length, ready: l.some((c) => minuteNow() >= c.rm) } : null; }
+  function pushScenes() {
+    if (!WSX || !RC) return;
+    const pt = +$("potTier").value || 1; WSX.set("potion", { tier: pt, potions: inv ? have(1000 + pt) : 0 });
+    WSX.set("furnace", { tier: +$("furTier").value || 1, owned: myFurnaces.map((f) => ({ id: f.id, tier: f.tier })) });
+    const fid = +$("refFurnace").value, f = myFurnaces.find((x) => x.id === fid);
+    WSX.set("refine", { furnace: f ? f.tier : 0, furnaceId: f ? f.id : 0, coolUntil: coolUntil(f), cooldown: WS.cooldown * 1000, sealed: sealedFor(1, (c) => c.furnace === fid), now: () => chainNow() * 1000 });
+    WSX.set("reroll", { tier: +$("rrTier").value || 1, sealed: sealedFor(2) });
+    const k = +$("itKind").value || 0, it = +$("itTier").value || 1; WSX.set("item", { tier: it, kindName: names.kinds[k], itemSrc: img(item(k, it)), sealed: sealedFor(3) });
+  }
+  // sealed crafts of a station: how many, whether they can be revealed yet, and a button that reveals them right here
+  function renderPending() {
+    const m = minuteNow();
+    for (const [st, op, what] of [["refine", 1, "melt"], ["reroll", 2, "melt"], ["item", 3, "rite"]]) {
+      const el = $(`pd-${st}`), list = wsOpen.filter((c) => c.op === op), ready = list.filter((c) => m >= c.rm);
+      el.style.display = list.length ? "" : "none";
+      el.innerHTML = list.length ? `<span>${list.length} sealed ${what}${list.length > 1 ? "s" : ""} · ${ready.length ? `${ready.length} ready to reveal` : "reveals after the next minute"}</span><button class="btn gold" data-op="${op}" ${ready.length ? "" : "disabled"}>Reveal here</button>` : "";
+      el.onclick = (e) => { const b = e.target.closest("button"); if (b && !b.disabled) revealCrafts(wsOpen.filter((c) => c.op === op && minuteNow() >= c.rm).map((c) => c.id)); };
+    }
+    pushScenes();
+  }
+  // a furnace cooling after a firing: the refine button waits and counts down
+  let coolShown = false;
+  function coolTick() {
+    const f = myFurnaces.find((x) => x.id === +$("refFurnace").value), left = coolUntil(f) - chainNow() * 1000;
+    if (left > 0) { coolShown = true; $("doRefine").disabled = true; const s = Math.ceil(left / 1000); $("refHint").textContent = `the furnace cools · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+    else if (coolShown) { coolShown = false; $("refHint").textContent = ""; renderStations(); }
+  }
+  // the reveal of crafts plays each outcome in the scene of its station, one after another
+  async function revealCrafts(ids) {
+    if (!ids.length) return;
+    await tx(`reveal crafts ${ids.join(",")}`, () => wsSend("Workshop", "revealMany", [ids]), (rc) => {
+      const jobs = [];
+      for (const l of rc.logs) {
+        let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (!ev) continue;
+        if (ev.name === "Refined" && Number(ev.args.inputs) === 0) jobs.push({ st: "refine", id: Number(ev.args.id), t: Number(ev.args.typeId), tier: Number(ev.args.tier), success: ev.args.success });
+        if (ev.name === "Rerolled") jobs.push({ st: "reroll", id: Number(ev.args.id), tier: Number(ev.args.tier), outs: ev.args.outIds.map(Number) });
+        if (ev.name === "Crafted") { const j = { st: "item", id: Number(ev.args.id), kind: Number(ev.args.kind), tier: Number(ev.args.tier), outTier: Number(ev.args.outTier), key: Number(ev.args.keyIndex) }; if (j.key !== 255) keysHeld.add(j.key); jobs.push(j); }
+      }
+      playReveals(jobs);
+    });
+  }
+  async function playReveals(jobs) {
+    if (!WSX) { for (const j of jobs) if (j.st === "item" && j.key !== 255) announceKey(j.key, "craft", null, true); return; }
+    for (const j of jobs) {
+      showStation(j.st);
+      const r = $("ws").getBoundingClientRect(); if (r.top > innerHeight * 0.5 || r.bottom < innerHeight * 0.3) $("ws").scrollIntoView({ behavior: "smooth", block: "start" });
+      if (j.st === "refine") {
+        let ft = j.tier, fid = 0;
+        try { const c = await workshop.commits(j.id); fid = Number(c.furnace); const mf = myFurnaces.find((x) => x.id === fid); ft = mf ? mf.tier : Number(await furnaces.tier(fid)); } catch {}
+        if ([...$("refFurnace").options].some((o) => +o.value === fid)) $("refFurnace").value = fid;
+        await WSX.set("refine", { furnace: ft, furnaceId: fid });
+        await WSX.play("refine", "melt", { furnace: ft, outSrc: img(ing(j.t, j.tier + 1)), tier: j.tier, success: j.success, name: names.types[j.t], seed: j.id + 1 });
+      } else if (j.st === "reroll") {
+        await WSX.play("reroll", "deal", { tier: j.tier, outs: j.outs.map((id) => ({ src: img(id), tier: (id - 1) % 8 })), seed: j.id + 1 });
+      } else {
+        const isKey = j.outTier === 6 && j.key !== 255;
+        await WSX.play("item", "manifest", { tier: j.tier, outTier: isKey ? j.tier : j.outTier, key: isKey, itemSrc: isKey ? keyImg(KEY_ID + j.key) : img(item(j.kind, j.outTier)), kindName: names.kinds[j.kind], name: isKey ? names.keys[j.key].key : "", seed: j.id + 1 });
+        if (isKey) announceKey(j.key, "craft", $("sc-item"), true);
+      }
+    }
+  }
   // recipe strips and requirement badges for the selected options of every station
   function renderStations() {
     if (!RC) return;
@@ -585,7 +655,8 @@
       $("rc-refine").innerHTML = chip(ing(t, tier), `${n} × ${names.types[t]}`, T[tier], okcls(hIn, n), tier) + PLUS + chip(1000 + tier, "Potion", T[tier], okcls(hPot, 1), tier) + PLUS + chipImg(`img/furnace-${f ? f.tier : tier}.png`, f ? `${FURNACE[f.tier]} #${f.id}` : `${FURNACE[tier]} furnace`, f ? `${T[f.tier]} furnace` : `${T[tier]} or better needed`, f ? (fOk ? "ok" : "bad") : "bad", f ? f.tier : tier) + ARROW + chip(ing(t, tier + 1), names.types[t], T[tier + 1], "", tier + 1) + `<div class="odds">success <b>${p} %</b>${bonus ? ` (incl. +${bonus} % hot furnace)` : ""}<br>on failure the inputs are lost</div>`;
       $("rq-refine").innerHTML = req(`${names.types[t]} ${T[tier]}`, hIn, n) + req(`${T[tier]} potion`, hPot, 1) + badge(f ? `${FURNACE[f.tier]} furnace (${T[f.tier]}) ${fOk ? "can" : "cannot"} refine ${T[tier]}` : `no furnace: a ${FURNACE[tier]} (${T[tier]}) or better is needed`, fOk);
       $("refDesc").textContent = `${n} ingredients of one type and tier plus a potion of that tier go into a furnace; on success one ingredient of the next tier comes out. The count follows the heat of the network (10 at the corridor floor, fewer when it is hot). The result is sealed until the next minute's challenge.`;
-      $("doRefine").disabled = !inv || hIn < n || hPot < 1 || !fOk; }
+      const cool = coolUntil(f) - chainNow() * 1000;
+      $("doRefine").disabled = !inv || hIn < n || hPot < 1 || !fOk || cool > 0; }
     // crucible
     { const tier = +$("rrTier").value || 1, cat = +$("rrCat").value;
       let total = 0; for (let x = 0; x < 40; x++) total += have(ing(x, tier));
@@ -605,6 +676,7 @@
       $("rq-item").innerHTML = rec.map((n, c) => n ? req(`${CAT[c]} ${T[tier]}`, haveCat(c, tier), n) : "").join("") + `<span>${k < 5 ? "required for the summoning" : "optional enhancer"}</span>`;
       $("doItem").disabled = !inv || !ok; }
     renderSoul();
+    pushScenes();
   }
   // ---- the soul altar: eight pedestals in a ring; a pedestal opens a picker of the items the wallet holds for that kind
   let mySoulIds = [], myKeys = [], soulsBusy = false;
@@ -751,8 +823,9 @@
       $("wsStatus").className = "tag" + (paused ? " warn" : " on");
       renderStations();
       const n = Number(await workshop.commitCount());
-      let open = [];
-      for (let i = Math.max(0, n - 200); i < n; i++) { const c = await workshop.commits(i); if (!c.settled && c.user.toLowerCase() === me.toLowerCase()) open.push(i); }
+      let open = []; const det = [];
+      for (let i = Math.max(0, n - 200); i < n; i++) { const c = await workshop.commits(i); if (!c.settled && c.user.toLowerCase() === me.toLowerCase()) { open.push(i); det.push({ id: i, op: Number(c.op), a: Number(c.a), b: Number(c.b), furnace: Number(c.furnace), rm: Number(c.revealMinute) }); } }
+      wsOpen = det; renderPending();
       $("commits").textContent = `crafts to reveal: ${open.length}`;
       $("commits").className = "pill" + (open.length ? " on" : "");
       $("revealWs").disabled = !open.length;
@@ -786,7 +859,8 @@
     } catch (e) { log("connect: " + (e.shortMessage || e.message), "warn"); }
   }
 
-  async function tx(label, fn, onReceipt) {
+  async function tx(label, fn, onReceipt, hintId) {
+    if (hintId) $(hintId).textContent = "";
     try {
       log(`${label}: sending…`);
       const t = await fn();
@@ -796,8 +870,17 @@
       if (onReceipt && rc.status === 1) { try { onReceipt(rc); } catch (e) { log(`${label}: ${e.message}`, "warn"); } }
       await refreshAll();
       return rc;
-    } catch (e) { log(`${label}: ${e.reason || e.shortMessage || e.message}`, "warn"); return null; }
+    } catch (e) { const why = e.reason || e.shortMessage || e.message; log(`${label}: ${why}`, "warn"); if (hintId) $(hintId).textContent = /reject|denied/i.test(why) ? "rejected in the wallet" : why.replace(/^execution reverted:?\s*/i, "").replace(/^(Workshop|Furnaces|Materials): /, ""); return null; }
   }
+  // a workshop call with its gas estimated first: a craft the contract would refuse (a furnace still cooling, a missing
+  // ingredient) is refused before anything is sent, with the contract's reason; the margin covers the mine tick the
+  // call may have to catch up on
+  async function wsSend(name, fn, args) {
+    const c = C(name, signer); let gas = GAS.ws;
+    try { gas = ((await c[fn].estimateGas(...args)) * 13n) / 10n + 100_000n; } catch (e) { if (e.reason || /revert/i.test(e.shortMessage || e.message || "")) throw e; gas = 8_000_000n; }
+    return c[fn](...args, { gasLimit: gas });
+  }
+  const expand = (ids, amts) => ids.flatMap((id, i) => Array(Number(amts[i])).fill(id));
   function minedFinds(rc) {
     const out = [];
     for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") out.push({ id: Number(ev.args.id), upgraded: ev.args.upgraded }); if (ev.name === "KeyMined") out.push({ id: 3000 + Number(ev.args.keyIndex) }); }
@@ -805,9 +888,9 @@
   }
   // A mythic key is announced once: by the reveal that found it, by the craft that rolled it, or, a moment later, by a
   // refresh that notices a key this wallet did not hold the last time this browser looked (found elsewhere, sent here).
-  const keysShown = new Set();
-  function announceKey(idx, via, origin) {
-    if (keysShown.has(idx) || !names.keys[idx]) return;
+  const keysShown = new Set(), keysHeld = new Set(); // held: announced by the scene of its craft once that has played
+  function announceKey(idx, via, origin, force) {
+    if (!names.keys[idx] || keysShown.has(idx) || (keysHeld.has(idx) && !force)) return;
     keysShown.add(idx);
     const k = names.keys[idx];
     document.dispatchEvent(new CustomEvent("alch:key", { detail: { id: KEY_ID + idx, idx, key: k.key, alchemist: k.alchemist, kind: names.kinds[k.kind], src: keyImg(KEY_ID + idx), via, origin: origin || null } }));
@@ -835,35 +918,26 @@
     for (const f of minedFinds(rc)) miner.addResult(f.id, "reveal", f);
     revealStatus(got.length ? `Revealed: ${got.join(", ")}. It is in the inventory below.` : "Nothing was ready yet: the find needs the next minute's challenge before it can be revealed. Wait for the timer and try again.", got.length ? "on" : "warn");
   };
-  $("revealWs").onclick = async () => {
-    const ids = JSON.parse($("revealWs").dataset.ids || "[]");
-    const rc = await tx(`reveal crafts ${ids.join(",")}`, () => C("Workshop", signer).revealMany(ids, { gasLimit: GAS.revealMany }), (rc) => {
-      if (!window.AlchForge) return;
-      const melts = [];
-      for (const l of rc.logs) { let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (ev && ev.name === "Refined" && Number(ev.args.inputs) === 0) melts.push({ id: Number(ev.args.id), t: Number(ev.args.typeId), tier: Number(ev.args.tier), success: ev.args.success }); }
-      (async () => { for (const m of melts) {
-        let ft = m.tier; try { const c = await workshop.commits(m.id), fid = Number(c.furnace), mf = myFurnaces.find((x) => x.id === fid); ft = mf ? mf.tier : Number(await furnaces.tier(fid)); } catch {}
-        window.AlchForge.melt({ furnace: ft, outSrc: img(ing(m.t, m.tier + 1)), tier: m.tier, success: m.success, name: names.types[m.t], seed: m.id + 1 });
-      } })();
-    });
-    if (rc) for (const l of rc.logs) { let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (ev && ev.name === "Crafted" && Number(ev.args.keyIndex) !== 255) announceKey(Number(ev.args.keyIndex), "craft", $("revealWs")); }
+  $("revealWs").onclick = () => revealCrafts(JSON.parse($("revealWs").dataset.ids || "[]"));
+  $("doPotion").onclick = () => {
+    const tier = +$("potTier").value, a = +$("potA").value, b = +$("potB").value;
+    tx(`potion ${TIERS[tier]}`, () => wsSend("Workshop", "craftPotion", [tier, ing(a, tier), ing(b, tier)]), () => { if (WSX) WSX.play("potion", "brew", { herbA: img(ing(a, tier)), herbB: img(ing(b, tier)), tier, seed: Date.now() % 1000 }); }, "potHint");
   };
-  $("doPotion").onclick = () => { const tier = +$("potTier").value; tx(`potion ${TIERS[tier]}`, () => C("Workshop", signer).craftPotion(tier, ing(+$("potA").value, tier), ing(+$("potB").value, tier), { gasLimit: GAS.ws })); };
-  $("doFurnace").onclick = () => { const tier = +$("furTier").value; if (!inv) return; const p = pick(RC.F, tier); if (!p) { $("furHint").textContent = "not enough ingredients of this tier for the recipe"; return; } $("furHint").textContent = ""; tx(`furnace tier ${tier}`, () => C("Workshop", signer).craftFurnace(tier, p.ids, p.amts, { gasLimit: GAS.ws })); };
+  $("doFurnace").onclick = () => { const tier = +$("furTier").value; if (!inv) return; const p = pick(RC.F, tier); if (!p) { $("furHint").textContent = "not enough ingredients of this tier for the recipe"; return; } $("furHint").textContent = ""; tx(`furnace tier ${tier}`, () => wsSend("Workshop", "craftFurnace", [tier, p.ids, p.amts]), () => { if (WSX) WSX.play("furnace", "build", { tier, srcs: expand(p.ids, p.amts).map(img), seed: Date.now() % 1000 }); }, "furHint"); };
   $("doRefine").onclick = () => {
     const f = +$("refFurnace").value, t = +$("refType").value, tier = +$("refTier").value;
     if (!f) { $("refHint").textContent = "a furnace is required"; return; }
     $("refHint").textContent = "";
     const fur = myFurnaces.find((x) => x.id === f);
-    tx(`refine ${names.types[t]} ${TIERS[tier]} → ${TIERS[tier + 1]}`, () => C("Workshop", signer).refine(f, t, tier, { gasLimit: GAS.ws }), (rc) => {
-      if (!window.AlchForge) return;
+    tx(`refine ${names.types[t]} ${TIERS[tier]} → ${TIERS[tier + 1]}`, () => wsSend("Workshop", "refine", [f, t, tier]), (rc) => {
+      if (!WSX) return;
       let n = 0, id = 0;
       for (const l of rc.logs) { let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (ev && ev.name === "Refined") { n = Number(ev.args.inputs); id = Number(ev.args.id); } }
-      if (n) window.AlchForge.feed({ furnace: fur ? fur.tier : tier, ingSrc: img(ing(t, tier)), potionSrc: img(1000 + tier), n, tier, name: names.types[t], seed: id + 1 });
-    });
+      if (n) WSX.play("refine", "feed", { furnace: fur ? fur.tier : tier, ingSrc: img(ing(t, tier)), potionSrc: img(1000 + tier), n, tier, name: names.types[t], seed: id + 1 });
+    }, "refHint");
   };
-  $("doReroll").onclick = () => { const tier = +$("rrTier").value, cat = +$("rrCat").value; if (!inv) return; const ids = [], amts = []; let need = 10; for (let t = 0; t < 40 && need > 0; t++) { const h = inv.get(ing(t, tier)) || 0; if (!h) continue; const take = Math.min(h, need); ids.push(ing(t, tier)); amts.push(take); need -= take; } if (need > 0) { log("10 ingredients of this tier are required", "warn"); return; } tx(`reroll ${TIERS[tier]}`, () => C("Workshop", signer).reroll(tier, cat, ids, amts, { gasLimit: GAS.ws })); };
-  $("doItem").onclick = () => { const k = +$("itKind").value, tier = +$("itTier").value; if (!inv) return; const p = pick(RC.R[k], tier); if (!p) { $("itHint").textContent = `recipe: met/min/herb/wood/beast = ${RC.R[k].join("/")} of tier ${TIERS[tier]}`; return; } $("itHint").textContent = ""; tx(`craft ${names.kinds[k]} ${TIERS[tier]}`, () => C("Workshop", signer).craftItem(k, tier, p.ids, p.amts, { gasLimit: GAS.ws })); };
+  $("doReroll").onclick = () => { const tier = +$("rrTier").value, cat = +$("rrCat").value; if (!inv) return; const ids = [], amts = []; let need = 10; for (let t = 0; t < 40 && need > 0; t++) { const h = inv.get(ing(t, tier)) || 0; if (!h) continue; const take = Math.min(h, need); ids.push(ing(t, tier)); amts.push(take); need -= take; } if (need > 0) { log("10 ingredients of this tier are required", "warn"); return; } const used = expand(ids, amts); tx(`reroll ${TIERS[tier]}`, () => wsSend("Workshop", "reroll", [tier, cat, ids, amts]), () => { if (WSX) WSX.play("reroll", "pour", { tier, srcs: used.map(img), cats: used.map((id) => Math.floor((id - 1) / 64)), seed: Date.now() % 1000 }); }, "rrHint"); };
+  $("doItem").onclick = () => { const k = +$("itKind").value, tier = +$("itTier").value; if (!inv) return; const p = pick(RC.R[k], tier); if (!p) { $("itHint").textContent = `recipe: met/min/herb/wood/beast = ${RC.R[k].join("/")} of tier ${TIERS[tier]}`; return; } $("itHint").textContent = ""; tx(`craft ${names.kinds[k]} ${TIERS[tier]}`, () => wsSend("Workshop", "craftItem", [k, tier, p.ids, p.amts]), () => { if (WSX) WSX.play("item", "inscribe", { tier, kindName: names.kinds[k], srcs: expand(p.ids, p.amts).map(img).slice(0, 5), seed: Date.now() % 1000 }); }, "itHint"); };
 
   async function refreshAll() { await refreshMine(); await refreshWorkshop(); await refreshInventory(); }
   fillSelects(); renderInventory();
