@@ -507,7 +507,9 @@ window.AlchReveal = (() => {
     return job;
   }
 
-  const api = { find, key };
+  // the shared toolkit, for the other scenes built the same way (forge.js)
+  const fx = { DT, TAU, clamp, lerp, smooth, outCubic, inCubic, outBack, rng, hex, rgba, mix, snap, glow, arcRing, dots, rays, text, upd, prune, sil, keyed, plainSprite, tierColor, run, visible, reduce };
+  const api = { find, key, fx };
   // ?vfxdev=1: load a find or a key once, then render the frame at any moment (frames come out the same in any order)
   if (new URLSearchParams(location.search).get("vfxdev")) {
     api.dev = {

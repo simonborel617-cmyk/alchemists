@@ -786,13 +786,14 @@
     } catch (e) { log("connect: " + (e.shortMessage || e.message), "warn"); }
   }
 
-  async function tx(label, fn) {
+  async function tx(label, fn, onReceipt) {
     try {
       log(`${label}: sending…`);
       const t = await fn();
       log(`${label}: tx ${t.hash}`);
       const rc = await t.wait();
       log(`${label}: ${rc.status === 1 ? "done" : "REVERTED"} (gas ${rc.gasUsed})`);
+      if (onReceipt && rc.status === 1) { try { onReceipt(rc); } catch (e) { log(`${label}: ${e.message}`, "warn"); } }
       await refreshAll();
       return rc;
     } catch (e) { log(`${label}: ${e.reason || e.shortMessage || e.message}`, "warn"); return null; }
@@ -836,12 +837,31 @@
   };
   $("revealWs").onclick = async () => {
     const ids = JSON.parse($("revealWs").dataset.ids || "[]");
-    const rc = await tx(`reveal crafts ${ids.join(",")}`, () => C("Workshop", signer).revealMany(ids, { gasLimit: GAS.revealMany }));
+    const rc = await tx(`reveal crafts ${ids.join(",")}`, () => C("Workshop", signer).revealMany(ids, { gasLimit: GAS.revealMany }), (rc) => {
+      if (!window.AlchForge) return;
+      const melts = [];
+      for (const l of rc.logs) { let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (ev && ev.name === "Refined" && Number(ev.args.inputs) === 0) melts.push({ id: Number(ev.args.id), t: Number(ev.args.typeId), tier: Number(ev.args.tier), success: ev.args.success }); }
+      (async () => { for (const m of melts) {
+        let ft = m.tier; try { const c = await workshop.commits(m.id), fid = Number(c.furnace), mf = myFurnaces.find((x) => x.id === fid); ft = mf ? mf.tier : Number(await furnaces.tier(fid)); } catch {}
+        window.AlchForge.melt({ furnace: ft, outSrc: img(ing(m.t, m.tier + 1)), tier: m.tier, success: m.success, name: names.types[m.t], seed: m.id + 1 });
+      } })();
+    });
     if (rc) for (const l of rc.logs) { let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (ev && ev.name === "Crafted" && Number(ev.args.keyIndex) !== 255) announceKey(Number(ev.args.keyIndex), "craft", $("revealWs")); }
   };
   $("doPotion").onclick = () => { const tier = +$("potTier").value; tx(`potion ${TIERS[tier]}`, () => C("Workshop", signer).craftPotion(tier, ing(+$("potA").value, tier), ing(+$("potB").value, tier), { gasLimit: GAS.ws })); };
   $("doFurnace").onclick = () => { const tier = +$("furTier").value; if (!inv) return; const p = pick(RC.F, tier); if (!p) { $("furHint").textContent = "not enough ingredients of this tier for the recipe"; return; } $("furHint").textContent = ""; tx(`furnace tier ${tier}`, () => C("Workshop", signer).craftFurnace(tier, p.ids, p.amts, { gasLimit: GAS.ws })); };
-  $("doRefine").onclick = () => { const f = +$("refFurnace").value, t = +$("refType").value, tier = +$("refTier").value; if (!f) { $("refHint").textContent = "a furnace is required"; return; } $("refHint").textContent = ""; tx(`refine ${names.types[t]} ${TIERS[tier]} → ${TIERS[tier + 1]}`, () => C("Workshop", signer).refine(f, t, tier, { gasLimit: GAS.ws })); };
+  $("doRefine").onclick = () => {
+    const f = +$("refFurnace").value, t = +$("refType").value, tier = +$("refTier").value;
+    if (!f) { $("refHint").textContent = "a furnace is required"; return; }
+    $("refHint").textContent = "";
+    const fur = myFurnaces.find((x) => x.id === f);
+    tx(`refine ${names.types[t]} ${TIERS[tier]} → ${TIERS[tier + 1]}`, () => C("Workshop", signer).refine(f, t, tier, { gasLimit: GAS.ws }), (rc) => {
+      if (!window.AlchForge) return;
+      let n = 0, id = 0;
+      for (const l of rc.logs) { let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (ev && ev.name === "Refined") { n = Number(ev.args.inputs); id = Number(ev.args.id); } }
+      if (n) window.AlchForge.feed({ furnace: fur ? fur.tier : tier, ingSrc: img(ing(t, tier)), potionSrc: img(1000 + tier), n, tier, name: names.types[t], seed: id + 1 });
+    });
+  };
   $("doReroll").onclick = () => { const tier = +$("rrTier").value, cat = +$("rrCat").value; if (!inv) return; const ids = [], amts = []; let need = 10; for (let t = 0; t < 40 && need > 0; t++) { const h = inv.get(ing(t, tier)) || 0; if (!h) continue; const take = Math.min(h, need); ids.push(ing(t, tier)); amts.push(take); need -= take; } if (need > 0) { log("10 ingredients of this tier are required", "warn"); return; } tx(`reroll ${TIERS[tier]}`, () => C("Workshop", signer).reroll(tier, cat, ids, amts, { gasLimit: GAS.ws })); };
   $("doItem").onclick = () => { const k = +$("itKind").value, tier = +$("itTier").value; if (!inv) return; const p = pick(RC.R[k], tier); if (!p) { $("itHint").textContent = `recipe: met/min/herb/wood/beast = ${RC.R[k].join("/")} of tier ${TIERS[tier]}`; return; } $("itHint").textContent = ""; tx(`craft ${names.kinds[k]} ${TIERS[tier]}`, () => C("Workshop", signer).craftItem(k, tier, p.ids, p.amts, { gasLimit: GAS.ws })); };
 
