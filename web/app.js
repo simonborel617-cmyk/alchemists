@@ -445,14 +445,35 @@
     for (let k = 0; k < 8; k++) for (let tier = 1; tier <= 5; tier++) ids.push(item(k, tier));
     return ids;
   }
-  async function myFurnaceIds(addr) {
-    const out = [];
-    try { const next = Number(await furnaces.nextId()); for (let id = 1; id < next; id++) { try { if ((await furnaces.ownerOf(id)).toLowerCase() === addr.toLowerCase()) out.push(id); } catch {} } } catch {}
-    return out;
+  // Events of this wallet since the deployment: scanned once from the deployment block and then only from where the
+  // last scan ended. The official RPC takes the whole range at once; a capped one gets smaller and smaller chunks.
+  const logScans = {};
+  async function eventsOf(key, contract, filter) {
+    const st = logScans[key] || (logScans[key] = { from: dep.block || 0, logs: [] });
+    const latest = await provider.getBlockNumber();
+    let from = st.from, span = Math.max(1, latest - from + 1);
+    while (from <= latest) {
+      const to = Math.min(latest, from + span - 1);
+      try { st.logs.push(...(await contract.queryFilter(filter, from, to))); from = to + 1; }
+      catch (e) { if (span <= 5000) throw e; span = Math.ceil(span / 4); }
+    }
+    st.from = latest + 1;
+    return st.logs;
   }
+  // reads in parallel chunks, so hundreds of them do not queue one behind another
+  async function inChunks(items, fn, size = 16) { const out = []; for (let i = 0; i < items.length; i += size) out.push(...(await Promise.all(items.slice(i, i + size).map(fn)))); return out; }
+  const mine721 = async (c, key, addr, total) => { // the tokens of an ERC-721 this wallet holds now: its incoming transfers, checked against ownerOf
+    let ids;
+    try { ids = [...new Set((await eventsOf(`${key}:${addr.toLowerCase()}`, c, c.filters.Transfer(null, addr))).map((l) => Number(l.args.tokenId)))]; }
+    catch { ids = Array.from({ length: Math.max(0, total) }, (_, i) => i + 1); } // no events from this RPC: every token, in parallel
+    const own = await inChunks(ids, (id) => c.ownerOf(id).then((o) => o.toLowerCase() === addr.toLowerCase()).catch(() => false));
+    return ids.filter((_, i) => own[i]).sort((a, b) => a - b);
+  };
+  async function myFurnaceIds(addr) { try { return await mine721(furnaces, "furnaces", addr, Number(await furnaces.nextId()) - 1); } catch { return []; } }
+  const compact = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}m` : n >= 1e4 ? `${Math.round(n / 1e3)}k` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n));
   function renderInventory() {
     const list = cards.filter((c) => tab === "all" || c.cat === tab);
-    $("invGrid").innerHTML = list.map((c) => `<div class="card t${c.tier}" title="${c.title}"><img class="px" src="${c.img}" alt=""><span class="n">×${c.n}</span><div class="t">${c.name}</div><div class="s">${c.sub}</div></div>`).join("");
+    $("invGrid").innerHTML = list.map((c) => `<div class="card t${c.tier}" title="${c.title}"><img class="px" src="${c.img}" alt=""><span class="n">×${compact(c.n)}</span><div class="t">${c.name}</div><div class="s">${c.sub}</div></div>`).join("");
     $("invEmpty").style.display = list.length ? "none" : "";
     $("invEmpty").textContent = "Nothing here yet. Mined ingredients land in the miner wallet a minute after the submit that reveals them.";
   }
@@ -476,7 +497,8 @@
     for (let k = 0; k < 8; k++) for (let tier = 5; tier >= 1; tier--) { const n = inv.get(item(k, tier)); if (n) cards.push({ cat: "item", tier, n, img: `metadata/${item(k, tier)}.png`, name: names.kinds[k], sub: TIERS[tier], title: `${names.kinds[k]} · ${TIERS[tier]}` }); }
     for (let i = 0; i < 21; i++) if (inv.get(KEY_ID + i)) cards.push({ cat: "key", tier: 6, n: 1, img: keyImg(KEY_ID + i), name: names.keys[i].key, sub: names.keys[i].alchemist, title: `${names.keys[i].key} — ${names.keys[i].alchemist}` });
     myFurnaces = [];
-    for (const id of await myFurnaceIds(me)) { try { const [tier, lastFired] = await Promise.all([furnaces.tier(id), furnaces.lastFired(id).catch(() => 0n)]); myFurnaces.push({ id, tier: Number(tier), lastFired: Number(lastFired) }); } catch {} }
+    const fids = await myFurnaceIds(me);
+    (await inChunks(fids, (id) => Promise.all([furnaces.tier(id), furnaces.lastFired(id).catch(() => 0n)]).then(([tier, lastFired]) => ({ id, tier: Number(tier), lastFired: Number(lastFired) })).catch(() => null))).forEach((f) => f && myFurnaces.push(f));
     for (const f of myFurnaces) cards.push({ cat: "furnace", tier: f.tier, n: 1, img: `img/furnace-${f.tier}.png`, name: `Furnace #${f.id}`, sub: FURNACE[f.tier], title: `Furnace #${f.id}, tier ${f.tier}` });
     $("invHint").textContent = cards.length ? `${cards.length} entries` : "empty";
     // loot in the session wallet can be moved to the main wallet in one click
@@ -608,7 +630,8 @@
   }
   async function playReveals(jobs) {
     if (!WSX) { for (const j of jobs) if (j.st === "item" && j.key !== 255) announceKey(j.key, "craft", null, true); return; }
-    for (const j of jobs) {
+    for (const [n, j] of jobs.entries()) {
+      const speed = n >= 2 ? 3 : 1; // a long run of reveals: the first two at their pace, the rest faster (a click skips any of them)
       showStation(j.st);
       const r = $("ws").getBoundingClientRect(); if (r.top > innerHeight * 0.5 || r.bottom < innerHeight * 0.3) $("ws").scrollIntoView({ behavior: "smooth", block: "start" });
       if (j.st === "refine") {
@@ -616,12 +639,12 @@
         try { const c = await workshop.commits(j.id); fid = Number(c.furnace); const mf = myFurnaces.find((x) => x.id === fid); ft = mf ? mf.tier : Number(await furnaces.tier(fid)); } catch {}
         if ([...$("refFurnace").options].some((o) => +o.value === fid)) $("refFurnace").value = fid;
         await WSX.set("refine", { furnace: ft, furnaceId: fid });
-        await WSX.play("refine", "melt", { furnace: ft, outSrc: img(ing(j.t, j.tier + 1)), tier: j.tier, success: j.success, name: names.types[j.t], seed: j.id + 1 });
+        await WSX.play("refine", "melt", { furnace: ft, outSrc: img(ing(j.t, j.tier + 1)), tier: j.tier, success: j.success, name: names.types[j.t], seed: j.id + 1 }, { speed });
       } else if (j.st === "reroll") {
-        await WSX.play("reroll", "deal", { tier: j.tier, outs: j.outs.map((id) => ({ src: img(id), tier: (id - 1) % 8 })), seed: j.id + 1 });
+        await WSX.play("reroll", "deal", { tier: j.tier, outs: j.outs.map((id) => ({ src: img(id), tier: (id - 1) % 8 })), seed: j.id + 1 }, { speed });
       } else {
         const isKey = j.outTier === 6 && j.key !== 255;
-        await WSX.play("item", "manifest", { tier: j.tier, outTier: isKey ? j.tier : j.outTier, key: isKey, itemSrc: isKey ? keyImg(KEY_ID + j.key) : img(item(j.kind, j.outTier)), kindName: names.kinds[j.kind], name: isKey ? names.keys[j.key].key : "", seed: j.id + 1 });
+        await WSX.play("item", "manifest", { tier: j.tier, outTier: isKey ? j.tier : j.outTier, key: isKey, itemSrc: isKey ? keyImg(KEY_ID + j.key) : img(item(j.kind, j.outTier)), kindName: names.kinds[j.kind], name: isKey ? names.keys[j.key].key : "", seed: j.id + 1 }, { speed: isKey ? 1 : speed });
         if (isKey) announceKey(j.key, "craft", $("sc-item"), true);
       }
     }
@@ -644,7 +667,7 @@
       html = html.replace(/<span class="plus">\+<\/span>$/, "") + ARROW + chipImg(`img/furnace-${tier}.png`, `${FURNACE[tier]} furnace`, `tier ${tier} · ${T[tier]}`, "", tier) + `<div class="odds">refines up to <b style="color:${TC[tier]}">${T[tier]}</b> ingredients<br>any types within a category<br>cooldown ${WS.cooldown} s per firing</div>`;
       $("rc-furnace").innerHTML = html;
       const fh = $("st-furnace").querySelector("h3"); fh.textContent = `Furnace · ${FURNACE[tier]} (${T[tier]})`; fh.style.color = TC[tier];
-      $("rq-furnace").innerHTML = RC.F.map((n, c) => n ? req(`${CAT[c]} ${T[tier]}`, haveCat(c, tier), n) : "").join("") + `<span>you own ${myFurnaces.length} furnace${myFurnaces.length === 1 ? "" : "s"}${myFurnaces.length ? ": " + myFurnaces.map((f) => `${FURNACE[f.tier]} (${T[f.tier]})`).join(", ") : ""}</span>`;
+      $("rq-furnace").innerHTML = RC.F.map((n, c) => n ? req(`${CAT[c]} ${T[tier]}`, haveCat(c, tier), n) : "").join("") + `<span>you own ${myFurnaces.length} furnace${myFurnaces.length === 1 ? "" : "s"}${myFurnaces.length ? ": " + myFurnaces.slice(0, 6).map((f) => `${FURNACE[f.tier]} (${T[f.tier]})`).join(", ") + (myFurnaces.length > 6 ? ` and ${myFurnaces.length - 6} more` : "") : ""}</span>`;
       $("doFurnace").disabled = !inv || !ok; }
     // refining
     { const tier = +$("refTier").value || 1, t = +$("refType").value || 0, fid = +$("refFurnace").value;
@@ -751,14 +774,13 @@
       const total = Number(await soulsC.total());
       $("soulCount").textContent = `${total} sealed`; $("soulCount").dataset.n = total;
       mySoulIds = [];
-      for (let i = 1; i <= total; i += 8) { const rs = await Promise.all(Array.from({ length: Math.min(8, total - i + 1) }, (_, j) => soulsC.ownerOf(i + j).catch(() => null))); rs.forEach((o, j) => { if (o && o.toLowerCase() === me.toLowerCase()) mySoulIds.push(i + j); }); }
+      mySoulIds = await mine721(soulsC, "souls", me, total);
       myKeys = []; for (let i = 0; i < 21; i++) if (inv && inv.get(KEY_ID + i)) myKeys.push(i);
       let open = false, openAt = 100, claimable = 0n;
       if (streamC) { try { [open, openAt] = await Promise.all([streamC.isOpen(), streamC.openAt().then(Number)]); } catch {} }
-      const cards = [];
-      for (const id of mySoulIds) {
-        let d = null, w = 0n, c = 0n;
-        try { [d, w] = await Promise.all([soulsC.data(id), soulsC.weight(id)]); if (streamC) c = await streamC.claimable(0, id); } catch {}
+      const cards = [], rows = await inChunks(mySoulIds, (id) => Promise.all([soulsC.data(id), soulsC.weight(id), streamC ? streamC.claimable(0, id) : 0n]).catch(() => [null, 0n, 0n]), 8);
+      for (const [k, id] of mySoulIds.entries()) {
+        const [d, w, c] = rows[k];
         claimable += c;
         const rank = d ? Number(d.rank) : 0;
         cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.png" alt=""><div class="t">${RANKS[rank]} #${id}</div><div class="s">weight ${(Number(w) / 1e6).toFixed(2)}${c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
@@ -814,6 +836,7 @@
     await refreshSouls(); refreshBurner();
   };
   for (const id of ["potTier", "potA", "potB", "furTier", "refFurnace", "refType", "refTier", "rrTier", "rrCat", "itKind", "itTier"]) $(id).addEventListener("change", renderStations);
+  const settledCrafts = {};
   async function refreshWorkshop() {
     try {
       const [inputs, cooldown, paused] = await Promise.all([workshop.refineInputs(), workshop.furnaceCooldown(), workshop.paused()]);
@@ -823,8 +846,13 @@
       $("wsStatus").className = "tag" + (paused ? " warn" : " on");
       renderStations();
       const n = Number(await workshop.commitCount());
-      let open = []; const det = [];
-      for (let i = Math.max(0, n - 200); i < n; i++) { const c = await workshop.commits(i); if (!c.settled && c.user.toLowerCase() === me.toLowerCase()) { open.push(i); det.push({ id: i, op: Number(c.op), a: Number(c.a), b: Number(c.b), furnace: Number(c.furnace), rm: Number(c.revealMinute) }); } }
+      let open = []; const det = [], who = me.toLowerCase(), done = settledCrafts[who] || (settledCrafts[who] = new Set());
+      let ids;
+      try { ids = [...new Set((await eventsOf(`commits:${who}`, workshop, workshop.filters.Committed(null, me))).map((l) => Number(l.args.id)))]; }
+      catch { ids = Array.from({ length: Math.min(n, 200) }, (_, i) => n - 1 - i); } // no events from this RPC: the latest 200
+      const cs = await inChunks(ids.filter((i) => !done.has(i)), (i) => workshop.commits(i).then((c) => [i, c]).catch(() => null));
+      for (const r of cs) { if (!r) continue; const [i, c] = r; if (c.user.toLowerCase() !== who) continue; if (c.settled) { done.add(i); continue; } open.push(i); det.push({ id: i, op: Number(c.op), a: Number(c.a), b: Number(c.b), furnace: Number(c.furnace), rm: Number(c.revealMinute) }); }
+      open.sort((a, b) => a - b); det.sort((a, b) => a.id - b.id);
       wsOpen = det; renderPending();
       $("commits").textContent = `crafts to reveal: ${open.length}`;
       $("commits").className = "pill" + (open.length ? " on" : "");

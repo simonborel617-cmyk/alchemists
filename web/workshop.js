@@ -214,9 +214,9 @@ window.AlchWS = (() => {
       S.t += DT; stepFire(S); memo.heat = S.heat;
     },
     draw(S, ctx, p, memo) {
-      drawRoom(S, ctx); drawParts(S, ctx, S.fireAt);
-      drawMeltResult(S, ctx, memo.result, S.t);
       const now = p.now ? p.now() : Date.now(), left = p.coolUntil ? p.coolUntil - now : 0, sealed = p.sealed || (memo.sealed && { ready: false });
+      drawRoom(S, ctx); drawParts(S, ctx, S.fireAt);
+      if (!sealed) drawMeltResult(S, ctx, memo.result, S.t); // a new melt sealed: the result of the last one is gone from the room
       const name = p.furnace ? `${FURNACE[p.furnace].toUpperCase()} FURNACE${p.furnaceId ? " #" + p.furnaceId : ""}` : "NO FURNACE YET";
       tag(S, ctx, S.ghost ? "no furnace yet · build one at the Furnace station" : sealed ? `${name} · a melt is sealed · ${sealed.ready ? "ready to reveal" : "reveals after the next minute"}` : left > 0 ? `${name} · cooling ${fmtLeft(left)}` : `${name} · ready`, sealed && sealed.ready ? GOLD : left > 0 ? [150, 190, 230] : SOFT);
     },
@@ -276,7 +276,7 @@ window.AlchWS = (() => {
           if (a2 > 0) plate(ctx, E.RX, E.H * 0.3, [["THE MELT IS SEALED", pix(fsz(E, 12)), GOLD], ["reveal it after the next minute", mono(fsz(E, 14)), INK]], a2, E.fireAt(0.6));
           ctx.globalAlpha = 1;
         },
-        end(S, E, memo) { S.heat = E.heat; memo.sealed = true; for (const k of ["embers", "smoke", "flames"]) S[k] = E[k]; },
+        end(S, E, memo) { S.heat = E.heat; memo.sealed = true; memo.result = null; for (const k of ["embers", "smoke", "flames"]) S[k] = E[k]; },
       },
       // the reveal: the heat builds the same way whatever comes next, then the door bursts or the fire chokes
       melt: {
@@ -386,7 +386,7 @@ window.AlchWS = (() => {
     // the player's furnaces, small, standing in a row
     const list = S.owned.slice(-5), s2 = Math.max(1, Math.floor(s / 2)), w2 = Math.floor(Math.min(64 * s2, (S.W * 0.37) / Math.max(1, list.length) - 6)), x0 = Math.round(S.W * 0.6);
     list.forEach((f, i) => { const spr = S.ownedSpr[f.tier]; if (!spr) return; const x = x0 + i * (w2 + 6); ctx.drawImage(spr, x, S.floor + (3 - FURN[f.tier].maxY - 1) * (w2 / 64), w2, w2); text(ctx, `#${f.id}`, x + w2 / 2, S.floor + 6 * s2, mono(fsz(S, 11)), SOFT, 0.8, false); });
-    if (list.length) text(ctx, "YOUR FURNACES", x0 + (list.length * (w2 + 6)) / 2, S.floor - w2 - fsz(S, 11) - 4, pix(fsz(S, 9)), SOFT, 0.7, false, 1);
+    if (list.length) text(ctx, S.owned.length > list.length ? `YOUR FURNACES · ${S.owned.length}` : "YOUR FURNACES", x0 + (list.length * (w2 + 6)) / 2, S.floor - w2 - fsz(S, 11) - 4, pix(fsz(S, 9)), SOFT, 0.7, false, 1);
   }
   const Build = {
     async load(p) { const spr = { furnace: await keyed(`img/furnace-${clamp(p.tier | 0, 1, 4)}.png`), owned: {} }; for (const f of p.owned || []) if (!spr.owned[f.tier]) spr.owned[f.tier] = await keyed(`img/furnace-${f.tier}.png`); return spr; },
@@ -466,11 +466,11 @@ window.AlchWS = (() => {
     const { rand, s } = S, [pl, pr, pb] = H.pot, mid = (pl + pr) / 2, n = heat * H.rate;
     for (let i = 0, k = Math.floor(n) + (rand() < n % 1 ? 1 : 0); i < k; i++) {
       const x = H.cx + (rand() * 2 - 1) * H.w * 0.46, back = rand() < 0.6, under = x > pl && x < pr;
-      H.flames.push({ x, y: H.y - (back ? 2 : 0) * s - rand() * 2 * s, vx: under ? Math.sign(x - mid || 1) * (15 + rand() * 30) * s : (rand() - 0.5) * 8 * s, vy: -(28 + rand() * 40 + heat * 40) * s, life: (0.3 + rand() * 0.45) * (0.6 + 0.6 * heat), age: 0, z: rand() < 0.35 ? 2 : 1, sw: rand() * TAU, back });
+      H.flames.push({ x, y: H.y - (back ? 2 : 0) * s - rand() * 2 * s, vx: under ? Math.sign(x - mid || 1) * (8 + rand() * 16) * s : (rand() - 0.5) * 5 * s, vy: -(13 + rand() * 18 + heat * 16) * s, life: (0.6 + rand() * 0.7) * (0.7 + 0.5 * heat), age: 0, z: rand() < 0.35 ? 2 : 1, sw: rand() * TAU, back });
     }
-    if (rand() < 0.08 + heat * 0.35) H.embers.push({ x: H.cx + (rand() - 0.5) * H.w * 0.8, y: H.y - 2 * s, vx: (rand() - 0.5) * 16 * s, vy: -(30 + rand() * 60) * s, life: 1.2 + rand() * 1.4, age: 0, sw: rand() * TAU });
-    for (const f of H.flames) { f.age += DT; if (f.y < pb + 2 * s && f.x > pl - s && f.x < pr + s) f.vx += Math.sign(f.x - mid || 1) * 90 * s * DT; f.x += (f.vx + Math.sin(S.t * 10 + f.sw) * 12 * s) * DT; f.y += f.vy * DT; f.vx *= Math.pow(0.5, DT); }
-    for (const e of H.embers) { e.age += DT; e.x += (e.vx + Math.sin(S.t * 3 + e.sw) * 10 * s) * DT; e.y += e.vy * DT; e.vy *= Math.pow(0.75, DT); }
+    if (rand() < 0.04 + heat * 0.16) H.embers.push({ x: H.cx + (rand() - 0.5) * H.w * 0.8, y: H.y - 2 * s, vx: (rand() - 0.5) * 10 * s, vy: -(16 + rand() * 30) * s, life: 1.8 + rand() * 1.8, age: 0, sw: rand() * TAU });
+    for (const f of H.flames) { f.age += DT; if (f.y < pb + 2 * s && f.x > pl - s && f.x < pr + s) f.vx += Math.sign(f.x - mid || 1) * 45 * s * DT; f.x += (f.vx + Math.sin(S.t * 3.2 + f.sw) * 6 * s) * DT; f.y += f.vy * DT; f.vx *= Math.pow(0.5, DT); }
+    for (const e of H.embers) { e.age += DT; e.x += (e.vx + Math.sin(S.t * 1.6 + e.sw) * 6 * s) * DT; e.y += e.vy * DT; e.vy *= Math.pow(0.8, DT); }
     H.flames = H.flames.filter((f) => f.age < f.life); H.embers = H.embers.filter((e) => e.age < e.life);
   }
   function drawStone(ctx, st, heat, s) {
@@ -494,7 +494,7 @@ window.AlchWS = (() => {
   }
   // behind the pot: the light on the wall and the floor, the back stones, the tongues rising behind it
   function drawHearthBack(S, ctx, H, heat) {
-    const { s, t } = S, fl = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 3.3);
+    const { s, t } = S, fl = 0.88 + 0.12 * Math.sin(t * 2.4) * Math.sin(t * 1.1);
     ctx.globalCompositeOperation = "lighter";
     glow(ctx, H.cx, H.y - 10 * s, S.W * 0.42, [255, 120, 40], (0.08 + 0.2 * heat) * fl);
     glow(ctx, H.cx, H.y, H.w * 1.1, [255, 140, 50], (0.12 + 0.25 * heat) * fl);
@@ -506,7 +506,7 @@ window.AlchWS = (() => {
   function drawHearthFront(S, ctx, H, heat) {
     const { s, t } = S;
     for (const c of H.coals) {
-      const b = (0.5 + 0.5 * Math.sin(t * 1.7 + c.ph)) * c.k * (0.3 + 0.7 * heat), x = Math.round(c.x), y = Math.round(c.y - c.z);
+      const b = (0.5 + 0.5 * Math.sin(t * 0.8 + c.ph)) * c.k * (0.3 + 0.7 * heat), x = Math.round(c.x), y = Math.round(c.y - c.z);
       ctx.fillStyle = "#1e0e0a"; ctx.fillRect(x, y, c.z, c.z);
       ctx.fillStyle = rgba(mix([120, 28, 12], [255, 170, 70], b), 1); ctx.fillRect(x + Math.floor(c.z / (2 * s)) * s, y + (c.z > s ? s : 0), s, s);
     }
@@ -514,7 +514,7 @@ window.AlchWS = (() => {
     for (const st of H.stones) if (!st.back) drawStone(ctx, st, heat, s);
     drawFlames(S, ctx, H, heat, false);
     ctx.globalCompositeOperation = "lighter";
-    for (const e of H.embers) { ctx.globalAlpha = (1 - e.age / e.life) * (0.6 + 0.4 * Math.sin(t * 13 + e.sw)); ctx.fillStyle = rgba(flameAt(0.35 + 0.3 * (e.age / e.life)), 1); ctx.fillRect(px(S, e.x), px(S, e.y), s, s); }
+    for (const e of H.embers) { ctx.globalAlpha = (1 - e.age / e.life) * (0.6 + 0.4 * Math.sin(t * 4 + e.sw)); ctx.fillStyle = rgba(flameAt(0.35 + 0.3 * (e.age / e.life)), 1); ctx.fillRect(px(S, e.x), px(S, e.y), s, s); }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
   }
   // the pot lit from below by its fire: its silhouette in the fire's colour, fading upwards from row `to` to row `from`
@@ -526,7 +526,7 @@ window.AlchWS = (() => {
     g.globalCompositeOperation = "destination-in"; const gr = g.createLinearGradient(0, from, 0, to); gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,0,1)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
     rims.set(key, c); return c;
   }
-  function drawRim(S, ctx, spr, x, y, size, heat, from, to) { const r = rimLit(spr, from, to); if (!r) return; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = (0.25 + 0.4 * heat) * (0.85 + 0.15 * Math.sin(S.t * 7) * Math.sin(S.t * 3.3)); ctx.drawImage(r, x, y, size, size); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+  function drawRim(S, ctx, spr, x, y, size, heat, from, to) { const r = rimLit(spr, from, to); if (!r) return; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = (0.25 + 0.4 * heat) * (0.88 + 0.12 * Math.sin(S.t * 2.4) * Math.sin(S.t * 1.1)); ctx.drawImage(r, x, y, size, size); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
 
   // ================================================================ the cauldron (brewing a potion)
   // A little brewing cauldron over a low flame, and a shelf with the potions of the chosen tier. Two herbs go in, the
@@ -542,7 +542,7 @@ window.AlchWS = (() => {
     Object.assign(S, { s, floor, sx0: cx - 32 * s, sy0: floor + 2 * s - 61 * s, cauldron: spr.cauldron, potion: spr.potion, tier: clamp(p.tier | 0, 1, 5), count: p.potions || 0 });
     S.liq = [S.sx0 + 29 * s, S.sy0 + 20.5 * s, 13 * s, 3.5 * s]; S.fire = [S.sx0 + 31 * s, S.sy0 + 56 * s, 12 * s];
     S.shelf = [Math.round(W * 0.56), Math.round(W * 0.96), Math.round(H * 0.6)]; S.PS = Math.round(Math.min(H * 0.2, (S.shelf[1] - S.shelf[0]) / 6));
-    S.hth = hearth(S, S.sx0 + 31 * s, floor, 20 * s, [S.sx0 + 14 * s, S.sx0 + 46 * s, S.sy0 + 49 * s], { rate: 4, coals: 18 }); S.fireHeat = 0.4;
+    S.hth = hearth(S, S.sx0 + 31 * s, floor, 20 * s, [S.sx0 + 14 * s, S.sx0 + 46 * s, S.sy0 + 49 * s], { rate: 2.4, coals: 18 }); S.fireHeat = 0.4;
     S.brew = [46, 170, 120]; S.bg = backdrop(S, APOTH);
     return S;
   }
@@ -634,7 +634,7 @@ window.AlchWS = (() => {
     S.blobs = Array.from({ length: 7 }, () => ({ a: rand() * TAU, r: 0.2 + rand() * 0.6, w: (rand() - 0.5) * 0.6, z: 0.3 + rand() * 0.4 }));
     S.flakes = Array.from({ length: 6 }, () => ({ a: rand() * TAU, r: 0.3 + rand() * 0.55, w: (rand() - 0.5) * 0.35, n: 1 + Math.floor(rand() * 3) }));
     S.bubbles = [];
-    S.hth = hearth(S, S.sx0 + 32 * s, floor, 46 * s, [S.sx0 + 19 * s, S.sx0 + 45 * s, S.sy0 + 56 * s], { stones: 12, rate: 7 });
+    S.hth = hearth(S, S.sx0 + 32 * s, floor, 46 * s, [S.sx0 + 19 * s, S.sx0 + 45 * s, S.sy0 + 56 * s], { stones: 12, rate: 4 });
     S.crustMap = crustOf(S);
     S.bg = backdrop(S, PIT);
     return S;
@@ -742,12 +742,12 @@ window.AlchWS = (() => {
     });
   }
   const Crucible = {
-    async load() { return { crucible: await keyed("img/crucible.png", { close: 2 }) }; },
+    async load() { return { crucible: await plainSprite("img/crucible-cut.png") }; },
     init(W, H, p, spr, memo) { const S = pit(W, H, p, spr, 23); S.crust = !!(p.sealed || memo.sealed); return S; },
     idle(S) { S.t += DT; stepPit(S, 0.35); },
     draw(S, ctx, p, memo) {
-      drawPit(S, ctx, 0.35, S.crust ? 1 : 0); drawParts(S, ctx); drawRow(S, ctx, memo.row);
       const sealed = p.sealed || (memo.sealed && { ready: false });
+      drawPit(S, ctx, 0.35, S.crust ? 1 : 0); drawParts(S, ctx); if (!sealed) drawRow(S, ctx, memo.row);
       tag(S, ctx, sealed ? `THE CRUCIBLE · a melt is sealed · ${sealed.ready ? "ready to reveal" : "reveals after the next minute"}` : "THE CRUCIBLE · ten go in, fewer come out", sealed && sealed.ready ? GOLD : SOFT);
     },
     events: {
@@ -896,7 +896,7 @@ window.AlchWS = (() => {
     draw(S, ctx, p, memo) {
       drawChamber(S, ctx, S.sealed ? 0.45 + 0.15 * Math.sin(S.t * 2) : 0, tierColor(S.tier));
       drawParts(S, ctx);
-      const r = memo.result; if (r) { const y = S.C[1] + Math.sin(S.t * 2) * S.s; ctx.globalCompositeOperation = "lighter"; glow(ctx, S.C[0], y, S.R * 0.9, r.c, 0.35); if (r.tier >= 4) rays(ctx, S.C[0], y, 12, S.R * 0.95, 0.09, 0.3 * S.t, WHITE, mix(r.c, WHITE, 0.4), 0.22); ctx.globalCompositeOperation = "source-over"; drawSpr(ctx, r.spr, S.C[0], y, S.R * 0.95); }
+      const r = p.sealed || memo.sealed ? null : memo.result; if (r) { const y = S.C[1] + Math.sin(S.t * 2) * S.s; ctx.globalCompositeOperation = "lighter"; glow(ctx, S.C[0], y, S.R * 0.9, r.c, 0.35); if (r.tier >= 4) rays(ctx, S.C[0], y, 12, S.R * 0.95, 0.09, 0.3 * S.t, WHITE, mix(r.c, WHITE, 0.4), 0.22); ctx.globalCompositeOperation = "source-over"; drawSpr(ctx, r.spr, S.C[0], y, S.R * 0.95); }
       const sealed = p.sealed || (memo.sealed && { ready: false });
       tag(S, ctx, sealed ? `THE RITUAL TABLE · a rite is sealed · ${sealed.ready ? "ready to reveal" : "reveals after the next minute"}` : `THE RITUAL TABLE · ${p.kindName || ""}`, sealed && sealed.ready ? GOLD : SOFT);
     },
@@ -970,6 +970,7 @@ window.AlchWS = (() => {
     constructor(host, kind) {
       this.host = host; this.kind = kind; this.scene = SCENES[kind]; this.props = {}; this.memo = {}; this.spr = {}; this.S = null; this.E = null; this.q = Promise.resolve(); this.running = false; this.W = 0; this.seen = false; this.gen = 0;
       this.cv = document.createElement("canvas"); host.appendChild(this.cv); this.ctx = this.cv.getContext("2d");
+      this.cv.addEventListener("click", () => { if (this.E) this.E.skip = true; }); // a click skips what is playing
       if (window.ResizeObserver) new ResizeObserver(() => this.fit()).observe(host);
       if (window.IntersectionObserver) new IntersectionObserver((es) => { this.seen = es[es.length - 1].isIntersecting; this.wake(); }).observe(host); else this.seen = true;
       document.addEventListener("visibilitychange", () => this.wake());
@@ -989,17 +990,17 @@ window.AlchWS = (() => {
       requestAnimationFrame(loop);
     }
     tick() {
-      if (this.E) { const E = this.E; E.ev.step(E); if (E.done) { if (E.ev.end && this.S) E.ev.end(this.S, E, this.memo); this.E = null; E.resolve(); } }
+      if (this.E) { const E = this.E; let n = E.skip ? 4000 : E.speed || 1; while (n-- > 0 && !E.done) E.ev.step(E); this.cv.style.cursor = E.done ? "" : "pointer"; if (E.done) { if (E.ev.end && this.S) E.ev.end(this.S, E, this.memo); this.E = null; E.resolve(); } }
       else if (this.S) this.scene.idle(this.S, this.props, this.memo);
     }
     draw() { if (this.E) this.E.ev.draw(this.E, this.ctx); else if (this.S) this.scene.draw(this.S, this.ctx, this.props, this.memo); }
     // play an event of this scene; resolves when it has run (a hidden scene waits until it is shown)
-    play(name, o) {
+    play(name, o, opts = {}) {
       const ev = this.scene.events[name]; if (!ev) return Promise.resolve();
       const job = this.q.then(async () => {
         const extra = await ev.load(o).catch(() => ({}));
         await new Promise((ok) => { const go = () => (this.S ? ok() : setTimeout(go, 100)); go(); });
-        const E = ev.build(this.S, o, { ...this.spr, ...extra }); E.ev = ev;
+        const E = ev.build(this.S, o, { ...this.spr, ...extra }); E.ev = ev; E.speed = Math.max(1, Math.round(opts.speed || 1));
         if (reduce) { while (!E.done) ev.step(E); if (ev.end) ev.end(this.S, E, this.memo); this.draw(); return; }
         await new Promise((resolve) => { E.resolve = resolve; this.E = E; this.wake(); });
       }).catch(() => {});
@@ -1018,7 +1019,7 @@ window.AlchWS = (() => {
       if (key === st.key) { Object.assign(st.props, props); return Promise.resolve(); }
       st.key = key; if ("sealed" in props) st.memo.sealed = false; return st.set(props);
     },
-    play(kind, name, o) { const st = stages[kind]; return st ? st.play(name, o) : Promise.resolve(); },
+    play(kind, name, o, opts) { const st = stages[kind]; return st ? st.play(name, o, opts) : Promise.resolve(); },
   };
   // ?vfxdev=1: render any moment of an event of a scene, from a fresh idle scene, for captures
   if (new URLSearchParams(location.search).get("vfxdev")) {
