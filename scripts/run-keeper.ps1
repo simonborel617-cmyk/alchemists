@@ -2,13 +2,14 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\run-keeper.ps1 [-Reveal none|all|0xaddr,0xaddr]
 param([string]$Reveal = "none", [string]$Net = "robinhoodTestnet")
 $root = Split-Path -Parent $PSScriptRoot
+. "$PSScriptRoot\lib\stop-owned.ps1"
 Set-Location $root
 $file = "$root\.testnet-pids.json"
 $minerPid = 0
 if (Test-Path $file) {
   $info = Get-Content $file -Raw | ConvertFrom-Json
   $minerPid = [int]$info.miner
-  if ($info.keeper -gt 0) { try { Stop-Process -Id $info.keeper -Force -ErrorAction Stop; Write-Output "stopped old keeper $($info.keeper)" } catch {} }
+  if ($info.keeper -gt 0) { Write-Output ("old keeper: " + (Stop-Owned $info.keeper "node" $info.startedAt)) }
 }
 $env:NET = $Net
 $env:KEEPER_REVEAL = $Reveal
