@@ -604,8 +604,15 @@
   function altarInit() {
     if ($("altarRing").children.length) return;
     $("altarRing").innerHTML = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => `<div class="ped ${k < 5 ? "req" : ""} empty" data-k="${k}" style="left:${PED_POS[k][0]}%;top:${PED_POS[k][1]}%"><div class="slot"></div><b>${names.kinds[k]}</b><small>${k < 5 ? "required" : "enhancer"}</small></div>`).join("");
-    $("altarRing").onclick = (e) => { const p = e.target.closest(".ped"); if (!p) return; soulPick.open = soulPick.open === +p.dataset.k ? -1 : +p.dataset.k; renderSoul(); };
+    $("altarRing").onclick = (e) => { const p = e.target.closest(".ped"); if (!p) return; soulPick.sealed = null; soulPick.open = soulPick.open === +p.dataset.k ? -1 : +p.dataset.k; renderSoul(); };
     $("altarPick").onclick = (e) => { const o = e.target.closest("button.opt"); if (!o) return; const k = soulPick.open; if (k === 8) soulPick.keyIdx = +o.dataset.v; else { soulPick.tiers[k] = +o.dataset.v; const kk = soulPick.keyIdx !== 255 ? names.keys[soulPick.keyIdx].kind : -1; if (kk === k && soulPick.tiers[k]) soulPick.keyIdx = 255; } soulPick.open = -1; renderSoul(); };
+  }
+  function soulStats() {
+    const keySlot = soulPick.keyIdx !== 255 ? names.keys[soulPick.keyIdx].kind : -1;
+    let sum = 0; for (let k = 0; k < 8; k++) sum += k === keySlot ? 5 : soulPick.tiers[k] || 1;
+    const avg = sum / 8, rank = keySlot >= 0 ? 6 : Math.floor(avg), rarity = keySlot >= 0 ? 16 : Math.pow(2, avg - 1);
+    const n = Number($("soulCount").dataset.n || 0), nextId = n + 1, early = nextId >= 100 ? 1 : 2 - (nextId - 1) / 99;
+    return { avg, rank, rarity, early, nextId };
   }
   function renderSoul() {
     if (!soulsC || !inv) return;
@@ -626,11 +633,13 @@
     const avg = sum / 8, rank = keySlot >= 0 ? 6 : Math.floor(avg);
     const rarity = keySlot >= 0 ? 16 : Math.pow(2, avg - 1);
     const n = Number($("soulCount").dataset.n || 0), nextId = n + 1, early = nextId >= 100 ? 1 : 2 - (nextId - 1) / 99;
-    const core = $("altarCore"); core.className = `altar-core t${rank}`;
-    $("altarSoul").src = `metadata/souls/${rank}.png`; $("soulImg").src = `metadata/souls/${rank}.png`;
-    $("altarRank").textContent = `${RANKS[rank]}${keySlot >= 0 ? " · " + names.keys[soulPick.keyIdx].alchemist : ""}`;
-    $("altarNum").textContent = `soul #${nextId} if sealed now`;
-    $("altarStats").innerHTML = `<div><b>average tier</b><span>${avg.toFixed(2)}</span></div><div><b>rarity</b><span>×${rarity.toFixed(2)}</span></div><div><b>early, #${nextId}</b><span>×${early.toFixed(2)}</span></div><div><b>stream weight</b><span class="g">${(rarity * early).toFixed(2)}</span></div>`;
+    const sd = soulPick.sealed && !soulPick.tiers.some(Boolean) && soulPick.keyIdx === 255 ? soulPick.sealed : null; // the soul just sealed stays on the altar until the next pick
+    const core = $("altarCore"); core.className = `altar-core t${sd ? sd.rank : rank}`;
+    $("altarSoul").src = `metadata/souls/${sd ? sd.rank : rank}.png`; $("soulImg").src = `metadata/souls/${rank}.png`;
+    $("altarRank").textContent = sd ? RANKS[sd.rank] : `${RANKS[rank]}${keySlot >= 0 ? " · " + names.keys[soulPick.keyIdx].alchemist : ""}`;
+    $("altarNum").textContent = sd ? `soul #${sd.id} sealed` : `soul #${nextId} if sealed now`;
+    const st = sd || { avg, rarity, early, nextId };
+    $("altarStats").innerHTML = `<div><b>average tier</b><span>${st.avg.toFixed(2)}</span></div><div><b>rarity</b><span>×${st.rarity.toFixed(2)}</span></div><div><b>early, #${sd ? sd.id : nextId}</b><span>×${st.early.toFixed(2)}</span></div><div><b>stream weight</b><span class="g">${(st.rarity * st.early).toFixed(2)}</span></div>`;
     // the picker for the open pedestal (or the key)
     const pk = $("altarPick");
     if (soulPick.open < 0) pk.style.display = "none";
@@ -650,6 +659,7 @@
     $("soulHint").textContent = ok ? "the eight items and the key burn · sealing is free" : "fill the five required pedestals: grimoire, candle, chalice, seal, scepter";
     $("doSoul").disabled = !ok;
   }
+  if (window.AlchRite && AlchRite.dev) AlchRite.dev.fill = (tiers, keyIdx = 255) => { altarInit(); const keySlot = keyIdx !== 255 ? names.keys[keyIdx].kind : -1; for (let k = 0; k < 8; k++) { const ped = $("altarRing").children[k], t = tiers[k], isKey = k === keySlot; ped.className = `ped ${k < 5 ? "req" : ""} ${isKey ? "key on" : t ? "on" : "empty"} t${isKey ? 6 : t}`; ped.querySelector(".slot").innerHTML = isKey ? `<img class="px" src="${keyImg(KEY_ID + keyIdx)}" alt="">` : t ? `<img class="px" src="metadata/${item(k, t)}.png" alt="">` : ""; ped.querySelector("small").textContent = isKey ? names.keys[keyIdx].key : t ? TIERS[t] : k < 5 ? "required" : "empty · Common"; } soulPick.tiers = tiers.slice(); soulPick.keyIdx = keyIdx; return altarSnapshot(); };
   async function refreshSouls() {
     if (!soulsC || soulsBusy) return;
     soulsBusy = true;
@@ -680,27 +690,40 @@
     } catch (e) { log("souls: " + (e.shortMessage || e.message), "warn"); }
     finally { soulsBusy = false; }
   }
+  // where everything stands on the altar right now, measured before the transaction: the rite replays it from here
+  function altarSnapshot() {
+    const a = $("altar").getBoundingClientRect(), si = $("altarSoul").getBoundingClientRect();
+    const items = [...$("altarRing").children].map((ped, k) => { const img = ped.querySelector(".slot img"); if (!img) return null; const r = img.getBoundingClientRect(); return { src: img.getAttribute("src"), x: r.left + r.width / 2 - a.left, y: r.top + r.height / 2 - a.top, size: r.width, tier: ped.classList.contains("key") ? 6 : soulPick.tiers[k] }; });
+    return { items, soul: { x: si.left + si.width / 2 - a.left, y: si.top + si.height / 2 - a.top, size: si.width } };
+  }
+  function sealingRite(snap, id, rank) {
+    if (!window.AlchRite || matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve();
+    const cs = getComputedStyle(document.documentElement), colors = {}; for (let i = 1; i <= 6; i++) colors[i] = cs.getPropertyValue(`--c${i}`).trim();
+    return AlchRite.play({ altar: $("altar"), items: snap.items, soul: snap.soul, rank, soulSrc: `metadata/souls/${rank}.png`, colors, id, rankName: RANKS[rank], seed: id, onBurst: () => renderSoul() }).catch((e) => log("rite: " + e.message, "warn"));
+  }
   $("doSoul").onclick = async () => {
     if (!soulsC || !inv) return;
-    const p = soulPlan();
-    const rc = await tx("seal a soul", () => C("Souls", signer).seal(p.ids, p.keyIdx, { gasLimit: GAS.ws }));
-    if (rc) { let ev = null; for (const l of rc.logs) { try { ev = soulsC.interface.parseLog(l); } catch {} if (ev && ev.name === "Sealed") break; } if (ev) { const id = Number(ev.args.id); const rank = Number(ev.args.rank); log(`soul #${id} sealed: ${RANKS[rank]}`); await sealingRite(rank); soulPick.tiers = [0, 0, 0, 0, 0, 0, 0, 0]; soulPick.keyIdx = 255; } }
-    await refreshInventory(); // refreshes the souls too
+    const p = soulPlan(), snap = altarSnapshot(), stats = soulStats();
+    $("doSoul").disabled = true;
+    let rc = null;
+    try {
+      log("seal a soul: sending…");
+      const t = await C("Souls", signer).seal(p.ids, p.keyIdx, { gasLimit: GAS.ws });
+      log(`seal a soul: tx ${t.hash}`);
+      rc = await t.wait();
+      log(`seal a soul: ${rc.status === 1 ? "done" : "REVERTED"} (gas ${rc.gasUsed})`);
+    } catch (e) { log(`seal a soul: ${e.reason || e.shortMessage || e.message}`, "warn"); }
+    let ev = null;
+    if (rc) for (const l of rc.logs) { try { ev = soulsC.interface.parseLog(l); } catch {} if (ev && ev.name === "Sealed") break; else ev = null; }
+    if (ev) {
+      const id = Number(ev.args.id), rank = Number(ev.args.rank);
+      log(`soul #${id} sealed: ${RANKS[rank]}`);
+      // the rite starts the moment the receipt is in; the refresh runs underneath it
+      soulPick.tiers = [0, 0, 0, 0, 0, 0, 0, 0]; soulPick.keyIdx = 255; soulPick.open = -1; soulPick.sealed = { id, rank, ...stats };
+      await Promise.all([sealingRite(snap, id, rank), refreshAll()]);
+    } else await refreshAll();
+    renderSoul();
   };
-  // the rite: every pedestal's item flies into the centre, the ring flares, the soul of the new rank rises with sparks
-  function sealingRite(rank) {
-    return new Promise((done) => {
-      const altar = $("altar"), core = $("altarCore");
-      if (!altar.getBoundingClientRect) return done();
-      const c = core.getBoundingClientRect();
-      for (const ped of $("altarRing").children) { const img = ped.querySelector(".slot img"); if (!img) continue; const r = img.getBoundingClientRect(); img.style.setProperty("--dx", `${Math.round(c.left + c.width / 2 - r.left - r.width / 2)}px`); img.style.setProperty("--dy", `${Math.round(c.top + c.height / 2 - r.top - r.height / 2)}px`); }
-      core.className = `altar-core t${rank}`; $("altarSoul").src = `metadata/souls/${rank}.png`; $("altarRank").textContent = RANKS[rank];
-      altar.classList.add("rite");
-      const a = altar.getBoundingClientRect();
-      setTimeout(() => { for (let i = 0; i < 26; i++) { const s = document.createElement("i"); s.className = "rite-spark"; s.style.left = `${a.width / 2}px`; s.style.top = `${a.height / 2}px`; const ang = (i / 26) * Math.PI * 2, d = 90 + Math.random() * 120; s.style.setProperty("--sx", `${Math.round(Math.cos(ang) * d)}px`); s.style.setProperty("--sy", `${Math.round(Math.sin(ang) * d)}px`); s.style.setProperty("--tc", `var(--c${rank})`); altar.appendChild(s); setTimeout(() => s.remove(), 1300); } }, 1000);
-      setTimeout(() => { altar.classList.remove("rite"); for (const img of altar.querySelectorAll(".slot img")) { img.style.animation = "none"; } done(); }, 2600);
-    });
-  }
   $("doClaim").onclick = async () => {
     if (!streamC || !mySoulIds.length) return;
     await tx(`claim for ${mySoulIds.length} soul${mySoulIds.length > 1 ? "s" : ""}`, () => C("Stream", signer).claimMany(0, mySoulIds, { gasLimit: 200_000n + 120_000n * BigInt(mySoulIds.length) }));
