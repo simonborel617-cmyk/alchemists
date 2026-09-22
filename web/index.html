@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=23">
 </head>
 <body data-app="8">
 <header>
@@ -175,7 +175,8 @@
   </section>
 
   <section class="panel" id="ws" style="margin-bottom:26px">
-    <h2>Workshop <span class="tag" id="wsStatus">…</span><span class="tag" id="wsAddr"></span></h2>
+    <h2>Workshop <span class="tag" id="wsStatus">…</span><span class="sp"></span><label class="f wswho">work as<select id="wsWho"><option value="miner">session wallet · signs itself</option><option value="main" disabled>my wallet · confirm in MetaMask</option></select></label><span class="tag" id="wsAddr"></span></h2>
+    <p class="small" id="wsWhoNote" style="margin:0 0 12px">The workshop uses the items of the wallet chosen here and that wallet signs every craft. Connect your wallet to work as it; move loot between the two with the button in the inventory.</p>
     <div class="ws">
       <nav class="ws-nav" id="wsNav">
         <button data-st="potion" class="on"><img class="px" src="img/potion.png" alt=""><span>Potion</span></button>
@@ -296,6 +297,6 @@
 <script src="fx.js?v=13"></script>
 <script src="rpc.js?v=4"></script>
 <script src="stage.js?v=11"></script>
-<script src="app.js?v=27"></script>
+<script src="app.js?v=28"></script>
 </body>
 </html>

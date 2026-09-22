@@ -298,3 +298,7 @@ footer b { font:9px var(--pix); color:var(--ink2); display:block; margin-bottom:
 .stream-count small { font:11px var(--mono); color:var(--muted); margin-left:6px; }
 .stream-gate .bar { margin:8px 0 6px; }
 @media (max-width:700px) { .ped { width:64px; margin:-32px 0 0 -32px; } .ped .slot { width:52px; height:52px; } .ped .slot img { width:44px; height:44px; } .altar-core { width:120px; } .altar-core img { width:72px; height:72px; } .stream-gate { text-align:left; } }
+
+/* the workshop signer switch in the section header */
+h2 .wswho { flex-direction:row; align-items:center; gap:8px; text-transform:none; font:11px var(--mono); color:var(--muted); width:auto; }
+h2 .wswho select { font:12px var(--sans); }

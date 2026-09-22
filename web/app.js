@@ -62,11 +62,13 @@
     mode = m;
     lastPending = -1;
     if (mode === "main" && main) { me = main.address; signer = main.signer; } else { mode = "miner"; me = burner.address; signer = burner; }
-    $("invWho").value = mode;
+    $("invWho").value = mode; $("wsWho").value = mode;
     $("invWhoAddr").textContent = short(me);
+    $("wsWhoNote").textContent = mode === "main" ? `Working as your wallet ${short(me)}: every craft asks for a confirmation in MetaMask, and the items shown are its.` : `Working as the session wallet ${short(me)}: it signs every craft itself, no pop-ups. Switch to your wallet above to craft with the items it holds.`;
     refreshAll();
   }
   $("invWho").onchange = () => setMode($("invWho").value);
+  $("wsWho").onchange = () => setMode($("wsWho").value);
   $("burnerAddr").textContent = burner.address;
   $("burnerAddr").href = `${dep.explorer}/address/${burner.address}`;
   $("burnerAddr").target = "_blank"; $("burnerAddr").rel = "noopener";
@@ -726,6 +728,7 @@
       $("who").textContent = main.address;
       for (const id of ["connect", "connect2", "connect3"]) { const b = $(id); b.textContent = id === "connect" ? `Connected · ${short(main.address)}` : "Connected"; b.className = "btn done"; b.disabled = true; }
       $("invWho").querySelector('option[value="main"]').disabled = false;
+      $("wsWho").querySelector('option[value="main"]').disabled = false;
       log(`wallet ${main.address}`);
       syncSignerUi();
       setMode("main");
