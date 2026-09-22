@@ -343,22 +343,27 @@
         if (rc.status !== 1) { stage("submitfail", { m, msg: "reverted" }); mlog(`minute ${m}: submit reverted ${tx.hash}`); warn(`The submit for minute ${m} reverted, see the log.`); return; }
         this.stats.submits++; this.stats.spent += price; warn(""); stage("submitted", { m, revealMinute: m + 2 });
         const found = [];
-        for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") { this.stats.minted++; found.push(`${TIERS[Number(ev.args.tier)]} ${names.types[Number(ev.args.typeId)]}${ev.args.upgraded ? " (upgraded!)" : ""}`); this.addResult(Number(ev.args.id), "submit"); } if (ev.name === "KeyMined") { this.stats.keys++; found.push("MYTHIC KEY " + names.keys[Number(ev.args.keyIndex)].key); this.addResult(3000 + Number(ev.args.keyIndex), "submit"); } }
+        for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") { this.stats.minted++; found.push(`${TIERS[Number(ev.args.tier)]} ${names.types[Number(ev.args.typeId)]}${ev.args.upgraded ? " (upgraded!)" : ""}`); this.addResult(Number(ev.args.id), "submit", { upgraded: ev.args.upgraded }); } if (ev.name === "KeyMined") { this.stats.keys++; found.push("MYTHIC KEY " + names.keys[Number(ev.args.keyIndex)].key); this.addResult(3000 + Number(ev.args.keyIndex), "submit"); } }
         mlog(`minute ${m}: submitted (gas ${rc.gasUsed})${found.length ? " · revealed " + found.join(", ") : " · reveal comes with the next submit"}`);
         refreshInventory(); refreshBurner();
         if (L.maxSubmits && this.stats.submits >= L.maxSubmits) this.stop(`${L.maxSubmits} submits done`);
       } catch (e) { const msg = e.reason || e.shortMessage || e.message; stage("submitfail", { m, msg }); mlog(`minute ${m}: ${msg}`); warn(/reject|denied/i.test(msg) ? "You rejected the submit in the wallet; the find was dropped." : `Submit failed: ${msg}`); }
       finally { this.busy = false; }
     },
-    addResult(id, via) {
+    addResult(id, via, extra = {}) {
       if (!id) return; // a seal has no loot card; the souls list refreshes on its own
       const el = $("results");
       const tier = id >= 3000 ? 6 : id >= 2000 ? (id - 2000) % 8 : id >= 1000 ? id - 1000 : (id - 1) % 8;
-      el.insertAdjacentHTML("afterbegin", `<div class="card t${tier}" style="width:84px"><img class="px" src="${img(id)}" alt=""><div class="s">${TIERS[tier]}</div></div>`);
+      // the card waits, hidden, while the stage reveals the find (stage.js lifts the hold when the find reaches the shelf)
+      const held = !!window.AlchReveal && tier <= 5 && !!document.getElementById("stage");
+      el.insertAdjacentHTML("afterbegin", `<div class="card t${tier}${held ? " held" : ""}" style="width:84px"><img class="px" src="${img(id)}" alt=""><div class="s">${TIERS[tier]}</div></div>`);
       while (el.children.length > 12) el.lastElementChild.remove();
-      const label = id >= 3000 ? names.keys[id - 3000].key : id >= 2000 ? `${TIERS[tier]} ${names.kinds[Math.floor((id - 2000) / 8)]}` : id >= 1000 ? `${TIERS[tier]} Potion` : `${TIERS[tier]} ${names.types[Math.floor((id - 1) / 8)]}`;
-      document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id, tier, label, via, el: el.firstElementChild } }));
-      if (tier === 6) document.dispatchEvent(new CustomEvent("alch:key", { detail: { id } }));
+      const card = el.firstElementChild;
+      if (held) setTimeout(() => card.classList.remove("held"), 20000); // never lost behind a reveal that did not play
+      const name = id >= 3000 ? names.keys[id - 3000].key : id >= 2000 ? names.kinds[Math.floor((id - 2000) / 8)] : id >= 1000 ? "Potion" : names.types[Math.floor((id - 1) / 8)];
+      const label = id >= 3000 ? name : `${TIERS[tier]} ${name}`;
+      document.dispatchEvent(new CustomEvent("alch:loot", { detail: { id, tier, label, tierName: TIERS[tier], name, upgraded: !!extra.upgraded, via, el: card } }));
+      if (tier === 6) announceKey(id - KEY_ID, via, $("stage"));
     },
     tickUi() {
       const now = performance.now();
@@ -456,6 +461,13 @@
     inv = new Map(); ids.forEach((id, i) => { if (bal[i] > 0n) inv.set(id, Number(bal[i])); });
     // the keys: 21 ownerOf reads in chunks of 8 (an unclaimed key reverts, which means "not mine")
     for (let i = 0; i < 21; i += 8) { const rs = await Promise.all(Array.from({ length: Math.min(8, 21 - i) }, (_, j) => keysC.ownerOf(i + j).catch(() => null))); rs.forEach((o, j) => { if (o && o.toLowerCase() === me.toLowerCase()) inv.set(KEY_ID + i + j, 1); }); }
+    // keys this wallet holds that this browser has not seen it hold before; the first look at a wallet stays quiet
+    try {
+      const held = []; for (let i = 0; i < 21; i++) if (inv.get(KEY_ID + i)) held.push(i);
+      const lk = `alch.keys.${me.toLowerCase()}`, prev = localStorage.getItem(lk);
+      if (prev !== null) { const known = JSON.parse(prev); const fresh = held.filter((i) => !known.includes(i)); if (fresh.length) setTimeout(() => fresh.forEach((i) => announceKey(i, "arrived")), 600); }
+      localStorage.setItem(lk, JSON.stringify(held));
+    } catch {}
     cards = [];
     let ingCount = 0;
     for (let t = 0; t < 40; t++) for (let tier = 5; tier >= 1; tier--) { const n = inv.get(ing(t, tier)); if (n) { ingCount += n; cards.push({ cat: String(Math.floor(t / 8)), tier, n, img: `metadata/${ing(t, tier)}.png`, name: names.types[t], sub: TIERS[tier], title: `${names.categories[Math.floor(t / 8)]} · ${names.types[t]} · ${TIERS[tier]}` }); } }
@@ -785,10 +797,19 @@
       return rc;
     } catch (e) { log(`${label}: ${e.reason || e.shortMessage || e.message}`, "warn"); return null; }
   }
-  function minedIds(rc) {
+  function minedFinds(rc) {
     const out = [];
-    for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") out.push(Number(ev.args.id)); if (ev.name === "KeyMined") out.push(3000 + Number(ev.args.keyIndex)); }
+    for (const l of rc.logs) { let ev = null; try { ev = mine.interface.parseLog(l); } catch {} if (!ev) continue; if (ev.name === "Mined") out.push({ id: Number(ev.args.id), upgraded: ev.args.upgraded }); if (ev.name === "KeyMined") out.push({ id: 3000 + Number(ev.args.keyIndex) }); }
     return out;
+  }
+  // A mythic key is announced once: by the reveal that found it, by the craft that rolled it, or, a moment later, by a
+  // refresh that notices a key this wallet did not hold the last time this browser looked (found elsewhere, sent here).
+  const keysShown = new Set();
+  function announceKey(idx, via, origin) {
+    if (keysShown.has(idx) || !names.keys[idx]) return;
+    keysShown.add(idx);
+    const k = names.keys[idx];
+    document.dispatchEvent(new CustomEvent("alch:key", { detail: { id: KEY_ID + idx, idx, key: k.key, alchemist: k.alchemist, kind: names.kinds[k.kind], src: keyImg(KEY_ID + idx), via, origin: origin || null } }));
   }
   function minedFrom(rc) {
     const out = [];
@@ -810,10 +831,14 @@
     if (!rc) { revealStatus("The reveal did not go through, see the log.", "warn"); return; }
     if (rc.status !== 1) { revealStatus("The reveal transaction reverted.", "warn"); return; }
     const got = minedFrom(rc);
-    for (const id of minedIds(rc)) miner.addResult(id, "reveal");
+    for (const f of minedFinds(rc)) miner.addResult(f.id, "reveal", f);
     revealStatus(got.length ? `Revealed: ${got.join(", ")}. It is in the inventory below.` : "Nothing was ready yet: the find needs the next minute's challenge before it can be revealed. Wait for the timer and try again.", got.length ? "on" : "warn");
   };
-  $("revealWs").onclick = () => { const ids = JSON.parse($("revealWs").dataset.ids || "[]"); tx(`reveal crafts ${ids.join(",")}`, () => C("Workshop", signer).revealMany(ids, { gasLimit: GAS.revealMany })); };
+  $("revealWs").onclick = async () => {
+    const ids = JSON.parse($("revealWs").dataset.ids || "[]");
+    const rc = await tx(`reveal crafts ${ids.join(",")}`, () => C("Workshop", signer).revealMany(ids, { gasLimit: GAS.revealMany }));
+    if (rc) for (const l of rc.logs) { let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (ev && ev.name === "Crafted" && Number(ev.args.keyIndex) !== 255) announceKey(Number(ev.args.keyIndex), "craft", $("revealWs")); }
+  };
   $("doPotion").onclick = () => { const tier = +$("potTier").value; tx(`potion ${TIERS[tier]}`, () => C("Workshop", signer).craftPotion(tier, ing(+$("potA").value, tier), ing(+$("potB").value, tier), { gasLimit: GAS.ws })); };
   $("doFurnace").onclick = () => { const tier = +$("furTier").value; if (!inv) return; const p = pick(RC.F, tier); if (!p) { $("furHint").textContent = "not enough ingredients of this tier for the recipe"; return; } $("furHint").textContent = ""; tx(`furnace tier ${tier}`, () => C("Workshop", signer).craftFurnace(tier, p.ids, p.amts, { gasLimit: GAS.ws })); };
   $("doRefine").onclick = () => { const f = +$("refFurnace").value, t = +$("refType").value, tier = +$("refTier").value; if (!f) { $("refHint").textContent = "a furnace is required"; return; } $("refHint").textContent = ""; tx(`refine ${names.types[t]} ${TIERS[tier]} → ${TIERS[tier + 1]}`, () => C("Workshop", signer).refine(f, t, tier, { gasLimit: GAS.ws })); };

@@ -313,3 +313,14 @@ body.connected .nowallet { display:none; }
 .altar canvas.rite { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:3; transition:opacity .7s steps(7); }
 .altar.rite .ped .slot img, .altar.rite .ped .slot::after, .altar.rite .altar-core { visibility:hidden; }
 .altar.rite .ped { pointer-events:none; }
+
+/* reveals: reveal.js draws a find coming out of its vial over the mining stage, and a mythic key over the whole page */
+.stage canvas.reveal-fx { position:absolute; inset:0; image-rendering:auto; pointer-events:none; z-index:1; }
+.stage .hud { z-index:2; }
+.card.held { visibility:hidden; }
+.keyrite { position:fixed; inset:0; z-index:95; cursor:pointer; outline:none; -webkit-backdrop-filter:blur(0) saturate(1); backdrop-filter:blur(0) saturate(1); transition:backdrop-filter .8s, -webkit-backdrop-filter .8s, opacity .7s; }
+.keyrite.on { -webkit-backdrop-filter:blur(4px) saturate(.45); backdrop-filter:blur(4px) saturate(.45); }
+.keyrite.out { opacity:0; }
+.keyrite canvas { display:block; width:100%; height:100%; }
+/* the mining panel stacks on narrow screens (this has to come after the .bm-top rule above, or that rule wins) */
+@media (max-width:900px) { .bm-top { grid-template-columns:1fr; } }

@@ -58,8 +58,8 @@
   }
 
   // --- sparkles on new loot cards
-  document.addEventListener("alch:loot", (e) => {
-    const card = e.detail && e.detail.el;
+  // (a card held back while its reveal plays on the stage sparkles when it lands, on alch:shelf)
+  const sparkle = (card) => {
     if (!card || reduce) return;
     card.classList.add("new");
     for (let i = 0; i < 10; i++) {
@@ -72,12 +72,20 @@
       card.appendChild(s);
       setTimeout(() => s.remove(), 900);
     }
-  });
+  };
+  document.addEventListener("alch:loot", (e) => { const card = e.detail && e.detail.el; if (card && !card.classList.contains("held")) sparkle(card); });
+  document.addEventListener("alch:shelf", (e) => sparkle(e.detail && e.detail.el));
 
-  // --- a mythic key: flash the page and the title
-  document.addEventListener("alch:key", () => {
+  // --- a mythic key: its ceremony over the whole page (reveal.js); the tab title calls the player back to a hidden tab
+  let baseTitle = null;
+  document.addEventListener("alch:key", (e) => {
+    const d = e.detail || {};
+    if (baseTitle === null) baseTitle = document.title;
+    document.title = "✦ MYTHIC KEY ✦";
+    const restore = () => setTimeout(() => { if (baseTitle !== null) { document.title = baseTitle; baseTitle = null; } }, 6000);
+    if (document.hidden) { const f = () => { if (!document.hidden) { document.removeEventListener("visibilitychange", f); restore(); } }; document.addEventListener("visibilitychange", f); } else restore();
+    if (window.AlchReveal && d.src) { window.AlchReveal.key(d); return; }
     if (!reduce) { const f = document.createElement("div"); f.className = "flash"; document.body.appendChild(f); setTimeout(() => f.remove(), 1400); }
-    const t = document.title; document.title = "✦ MYTHIC KEY ✦"; setTimeout(() => { document.title = t; }, 6000);
   });
 
   // --- mining state on the panel

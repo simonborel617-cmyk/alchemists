@@ -252,11 +252,20 @@
       }
     }
   });
+  // a revealed find: the vial that held it leaves the rack and reveal.js opens it in the middle of the room; the card in
+  // the finds strip under the stage stays hidden until the find has gone to the shelf, so nothing spoils the reveal
   document.addEventListener("alch:loot", (e) => {
     const d = e.detail || {};
-    dropVial((x) => x.status === "ready", true) || dropVial((x) => x.status === "sealed", true);
-    showReveal(d);
+    let idx = S.vials.findIndex((x) => x.status === "ready"); if (idx < 0) idx = S.vials.findIndex((x) => x.status === "sealed");
+    const pos = idx >= 0 ? vialPos(idx) : cfg.rack[0], was = idx >= 0 ? S.vials[idx].status : "ready";
+    const tier = d.tier || 1, fancy = !!window.AlchReveal && !reduce && tier <= 5 && el.clientWidth >= 120;
+    if (idx >= 0) dropVial((x, j) => j === idx, !fancy);
     say(`${d.via === "submit" ? "this submit revealed an earlier find" : "revealed"}: ${d.label || ""}`, 7000);
+    const unhold = () => { if (d.el && d.el.classList.contains("held")) { d.el.classList.remove("held"); document.dispatchEvent(new CustomEvent("alch:shelf", { detail: d })); } };
+    if (tier >= 6) { unhold(); return; } // a mythic key: its ceremony takes the whole page (reveal.js, on alch:key)
+    if (!fancy) { showReveal(d); unhold(); return; }
+    const words = String(d.label || "").split(" ");
+    window.AlchReveal.find({ stage: el, grid: [W, H], from: pos, to: [cfg.glow.cx, cfg.glow.cy - 4], vialSrc: `img/stage-vial-${was === "sealed" ? "sealed" : "ready"}.png?v=${UI_VER}`, itemSrc: `metadata/${d.id}.png`, tier, tierName: d.tierName || words[0] || "", name: d.name || words.slice(1).join(" "), upgraded: !!d.upgraded, seed: (d.id || 1) * 7 + S.frame, onDone: unhold });
   });
 
   // ---------------------------------------------------------------- scripted round for review (?stagedemo=1)
