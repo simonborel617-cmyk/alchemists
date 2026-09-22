@@ -667,7 +667,7 @@
         try { [d, w] = await Promise.all([soulsC.data(id), soulsC.weight(id)]); if (streamC) c = await streamC.claimable(0, id); } catch {}
         claimable += c;
         const rank = d ? Number(d.rank) : 0;
-        cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.svg" alt=""><div class="t">${RANKS[rank]} #${id}</div><div class="s">weight ${(Number(w) / 1e6).toFixed(2)}${c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
+        cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.png" alt=""><div class="t">${RANKS[rank]} #${id}</div><div class="s">weight ${(Number(w) / 1e6).toFixed(2)}${c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
       }
       $("mySouls").innerHTML = cards.join("") || `<span class="small">no souls in this wallet yet</span>`;
       $("streamCount").innerHTML = `${total}<small>/ ${openAt}</small>`;
@@ -684,9 +684,23 @@
     if (!soulsC || !inv) return;
     const p = soulPlan();
     const rc = await tx("seal a soul", () => C("Souls", signer).seal(p.ids, p.keyIdx, { gasLimit: GAS.ws }));
-    if (rc) { let ev = null; for (const l of rc.logs) { try { ev = soulsC.interface.parseLog(l); } catch {} if (ev && ev.name === "Sealed") break; } if (ev) { const id = Number(ev.args.id); soulPick.tiers = [0, 0, 0, 0, 0, 0, 0, 0]; soulPick.keyIdx = 255; document.dispatchEvent(new CustomEvent("alch:key")); log(`soul #${id} sealed: ${RANKS[Number(ev.args.rank)]}`); } }
+    if (rc) { let ev = null; for (const l of rc.logs) { try { ev = soulsC.interface.parseLog(l); } catch {} if (ev && ev.name === "Sealed") break; } if (ev) { const id = Number(ev.args.id); const rank = Number(ev.args.rank); log(`soul #${id} sealed: ${RANKS[rank]}`); await sealingRite(rank); soulPick.tiers = [0, 0, 0, 0, 0, 0, 0, 0]; soulPick.keyIdx = 255; } }
     await refreshInventory(); // refreshes the souls too
   };
+  // the rite: every pedestal's item flies into the centre, the ring flares, the soul of the new rank rises with sparks
+  function sealingRite(rank) {
+    return new Promise((done) => {
+      const altar = $("altar"), core = $("altarCore");
+      if (!altar.getBoundingClientRect) return done();
+      const c = core.getBoundingClientRect();
+      for (const ped of $("altarRing").children) { const img = ped.querySelector(".slot img"); if (!img) continue; const r = img.getBoundingClientRect(); img.style.setProperty("--dx", `${Math.round(c.left + c.width / 2 - r.left - r.width / 2)}px`); img.style.setProperty("--dy", `${Math.round(c.top + c.height / 2 - r.top - r.height / 2)}px`); }
+      core.className = `altar-core t${rank}`; $("altarSoul").src = `metadata/souls/${rank}.png`; $("altarRank").textContent = RANKS[rank];
+      altar.classList.add("rite");
+      const a = altar.getBoundingClientRect();
+      setTimeout(() => { for (let i = 0; i < 26; i++) { const s = document.createElement("i"); s.className = "rite-spark"; s.style.left = `${a.width / 2}px`; s.style.top = `${a.height / 2}px`; const ang = (i / 26) * Math.PI * 2, d = 90 + Math.random() * 120; s.style.setProperty("--sx", `${Math.round(Math.cos(ang) * d)}px`); s.style.setProperty("--sy", `${Math.round(Math.sin(ang) * d)}px`); s.style.setProperty("--tc", `var(--c${rank})`); altar.appendChild(s); setTimeout(() => s.remove(), 1300); } }, 1000);
+      setTimeout(() => { altar.classList.remove("rite"); for (const img of altar.querySelectorAll(".slot img")) { img.style.animation = "none"; } done(); }, 2600);
+    });
+  }
   $("doClaim").onclick = async () => {
     if (!streamC || !mySoulIds.length) return;
     await tx(`claim for ${mySoulIds.length} soul${mySoulIds.length > 1 ? "s" : ""}`, () => C("Stream", signer).claimMany(0, mySoulIds, { gasLimit: 200_000n + 120_000n * BigInt(mySoulIds.length) }));
@@ -730,6 +744,8 @@
       $("invWho").querySelector('option[value="main"]').disabled = false;
       $("wsWho").querySelector('option[value="main"]').disabled = false;
       log(`wallet ${main.address}`);
+      document.body.classList.add("connected");
+      try { localStorage.setItem("alch.wallet", "1"); } catch {}
       syncSignerUi();
       setMode("main");
     } catch (e) { log("connect: " + (e.shortMessage || e.message), "warn"); }
@@ -760,6 +776,11 @@
   // ------------------------------------------------------------ actions
   $("connect").onclick = connect;
   $("connect2").onclick = connect;
+  $("connect4").onclick = connect;
+  $("connect5").onclick = connect;
+  // a wallet that was connected before comes back silently: eth_accounts never pops anything up
+  if (window.ethereum) { try { if (localStorage.getItem("alch.wallet") === "1") { const accs = await window.ethereum.request({ method: "eth_accounts" }); if (accs && accs.length) await connect(); } } catch {} }
+  if (window.ethereum) window.ethereum.on && window.ethereum.on("accountsChanged", (accs) => { if (!accs || !accs.length) { try { localStorage.removeItem("alch.wallet"); } catch {} location.reload(); } else connect(); });
   $("revealMine").onclick = async () => {
     revealStatus("Revealing… confirm in your wallet if it asks.");
     const rc = await tx("reveal finds", () => C("Mine", signer).reveal(me, { gasLimit: GAS.reveal }));

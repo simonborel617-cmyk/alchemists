@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=24">
 </head>
 <body data-app="8">
 <header>
@@ -168,6 +168,7 @@
   </div>
 
   <section class="panel" id="inv" style="margin-bottom:26px">
+    <div class="nowallet" id="nowalletInv"><b>No wallet connected.</b> You are looking at the session wallet that lives in this browser. Connect your wallet to see what it holds and to craft with it. <button class="btn gold" id="connect4">Connect wallet</button></div>
     <h2>Inventory <label class="f" style="margin-left:6px;flex-direction:row;align-items:center;gap:8px">showing<select id="invWho"><option value="miner">session wallet</option><option value="main" disabled>main wallet</option></select><span class="tag" id="invWhoAddr"></span></label><button class="btn gold" id="withdrawBtn2" style="margin-left:12px;display:none">Move loot to my wallet</button><span class="tag" id="invHint">empty</span></h2>
     <div class="tabs" id="tabs"></div>
     <div class="inv" id="invGrid"></div>
@@ -176,6 +177,7 @@
 
   <section class="panel" id="ws" style="margin-bottom:26px">
     <h2>Workshop <span class="tag" id="wsStatus">…</span><span class="sp"></span><label class="f wswho">work as<select id="wsWho"><option value="miner">session wallet · signs itself</option><option value="main" disabled>my wallet · confirm in MetaMask</option></select></label><span class="tag" id="wsAddr"></span></h2>
+    <div class="nowallet" id="nowalletWs"><b>No wallet connected.</b> The workshop is showing the session wallet, which holds nothing until it mines. Connect your wallet to craft with the items it holds. <button class="btn gold" id="connect5">Connect wallet</button></div>
     <p class="small" id="wsWhoNote" style="margin:0 0 12px">The workshop uses the items of the wallet chosen here and that wallet signs every craft. Connect your wallet to work as it; move loot between the two with the button in the inventory.</p>
     <div class="ws">
       <nav class="ws-nav" id="wsNav">
@@ -294,9 +296,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
 <script src="sha256.js?v=13"></script>
 <script src="gpu.js?v=13"></script>
-<script src="fx.js?v=13"></script>
+<script src="fx.js?v=14"></script>
 <script src="rpc.js?v=4"></script>
 <script src="stage.js?v=11"></script>
-<script src="app.js?v=28"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>
