@@ -34,7 +34,7 @@
   $("netFoot").textContent = `${dep.chainName}, chainId ${dep.chainId}, RPC ${(dep.rpcs || [dep.rpc]).length} public endpoints`;
   $("mineAddr").textContent = dep.contracts.Mine.slice(0, 10) + "…";
   $("wsAddr").textContent = dep.contracts.Workshop.slice(0, 10) + "…";
-  $("contracts").innerHTML = Object.entries(dep.contracts).map(([k, v]) => `<div><code><a href="${dep.explorer}/address/${v}" target="_blank" rel="noopener">${k}</a> ${v.slice(0, 8)}…${v.slice(-4)}</code></div>`).join("");
+  $("contracts").innerHTML = Object.entries(dep.contracts).filter(([, v]) => v).map(([k, v]) => `<div><code><a href="${dep.explorer}/address/${v}" target="_blank" rel="noopener">${k}</a> ${v.slice(0, 8)}…${v.slice(-4)}</code></div>`).join("");
   // every link that leaves this origin opens a new tab: a plain navigation would kill a running miner
   document.addEventListener("click", (e) => { const a = e.target.closest && e.target.closest("a[href]"); if (!a) return; let u; try { u = new URL(a.href, location.href); } catch { return; } if (u.origin !== location.origin) { a.target = "_blank"; a.rel = "noopener"; } });
   const TIERS = ["", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"];
@@ -636,8 +636,10 @@
     $("rq-soul").innerHTML = `<span class="${ok ? "ok" : "bad"}">${ok ? "all five required slots filled" : "fill the five required slots (grimoire, candle, chalice, seal, scepter)"}</span><span>sealing is free · the items and the key burn</span>`;
     $("doSoul").disabled = !ok || (rank >= 1 && rank <= 5 && false);
   }
+  let soulsBusy = false;
   async function refreshSouls() {
-    if (!soulsC) return;
+    if (!soulsC || soulsBusy) return;
+    soulsBusy = true;
     try {
       const total = Number(await soulsC.total());
       $("soulCount").textContent = `${total} sealed`; $("soulCount").dataset.n = total;
@@ -661,13 +663,14 @@
       $("claimHint").textContent = claimable > 0n ? `${fmtEth(claimable, 6)} ETH claimable` : mySoulIds.length ? "nothing to claim yet" : "";
       renderSoul();
     } catch (e) { log("souls: " + (e.shortMessage || e.message), "warn"); }
+    finally { soulsBusy = false; }
   }
   $("doSoul").onclick = async () => {
     if (!soulsC || !inv) return;
     const p = soulPlan();
     const rc = await tx("seal a soul", () => C("Souls", signer).seal(p.ids, p.keyIdx, { gasLimit: GAS.ws }));
     if (rc) { let ev = null; for (const l of rc.logs) { try { ev = soulsC.interface.parseLog(l); } catch {} if (ev && ev.name === "Sealed") break; } if (ev) { const id = Number(ev.args.id); miner.addResult(0, "seal"); log(`soul #${id} sealed: ${RANKS[Number(ev.args.rank)]}`); } }
-    await refreshInventory(); await refreshSouls();
+    await refreshInventory(); // refreshes the souls too
   };
   $("doClaim").onclick = async () => {
     if (!streamC || !mySoulIds.length) return;
