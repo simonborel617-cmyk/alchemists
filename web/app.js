@@ -592,51 +592,62 @@
       $("doItem").disabled = !inv || !ok; }
     renderSoul();
   }
-  // ---- the soul: eight slots, one item each; the select of a slot lists the tiers the wallet holds for that kind
-  let mySoulIds = [], myKeys = [];
-  function soulSlotsInit() {
-    if ($("soulSlots").children.length) return;
-    $("soulSlots").innerHTML = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => `<label class="f">${names.kinds[k]}${k < 5 ? "" : " (enhancer)"}<select id="sl${k}" data-k="${k}"></select></label>`).join("") + `<label class="f">mythic key<select id="slKey"><option value="255">none</option></select></label>`;
-    for (let k = 0; k < 8; k++) $(`sl${k}`).addEventListener("change", renderSoul);
-    $("slKey").addEventListener("change", renderSoul);
-  }
+  // ---- the soul altar: eight pedestals in a ring; a pedestal opens a picker of the items the wallet holds for that kind
+  let mySoulIds = [], myKeys = [], soulsBusy = false;
+  const soulPick = { tiers: [0, 0, 0, 0, 0, 0, 0, 0], keyIdx: 255, open: -1 }; // -1 none, 0..7 a pedestal, 8 the key
+  const PED_POS = [[50, 11], [77, 22], [89, 49], [77, 76], [50, 86], [23, 76], [11, 49], [23, 22]]; // percent of the altar box, clockwise from the top
   function soulPlan() {
-    const ids = [], tiers = [];
-    for (let k = 0; k < 8; k++) { const v = +$(`sl${k}`).value || 0; ids.push(v ? item(k, v) : 0); tiers.push(v); }
-    const keyIdx = +$("slKey").value;
-    return { ids, tiers, keyIdx: Number.isFinite(keyIdx) ? keyIdx : 255 };
+    return { ids: soulPick.tiers.map((t, k) => (t ? item(k, t) : 0)), tiers: soulPick.tiers.slice(), keyIdx: soulPick.keyIdx };
+  }
+  function altarInit() {
+    if ($("altarRing").children.length) return;
+    $("altarRing").innerHTML = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => `<div class="ped ${k < 5 ? "req" : ""} empty" data-k="${k}" style="left:${PED_POS[k][0]}%;top:${PED_POS[k][1]}%"><div class="slot"></div><b>${names.kinds[k]}</b><small>${k < 5 ? "required" : "enhancer"}</small></div>`).join("");
+    $("altarRing").onclick = (e) => { const p = e.target.closest(".ped"); if (!p) return; soulPick.open = soulPick.open === +p.dataset.k ? -1 : +p.dataset.k; renderSoul(); };
+    $("altarPick").onclick = (e) => { const o = e.target.closest("button.opt"); if (!o) return; const k = soulPick.open; if (k === 8) soulPick.keyIdx = +o.dataset.v; else { soulPick.tiers[k] = +o.dataset.v; const kk = soulPick.keyIdx !== 255 ? names.keys[soulPick.keyIdx].kind : -1; if (kk === k && soulPick.tiers[k]) soulPick.keyIdx = 255; } soulPick.open = -1; renderSoul(); };
   }
   function renderSoul() {
     if (!soulsC || !inv) return;
-    soulSlotsInit();
-    // refill each slot's options from the inventory, keeping the current choice when still held
+    altarInit();
+    // drop picks the wallet no longer holds
+    soulPick.tiers = soulPick.tiers.map((t, k) => (t && have(item(k, t)) ? t : 0));
+    if (soulPick.keyIdx !== 255 && !myKeys.includes(soulPick.keyIdx)) soulPick.keyIdx = 255;
+    const keySlot = soulPick.keyIdx !== 255 ? names.keys[soulPick.keyIdx].kind : -1;
+    let sum = 0, ok = true;
     for (let k = 0; k < 8; k++) {
-      const sel = $(`sl${k}`), cur = sel.value;
-      const opts = [`<option value="0">${k < 5 ? "— pick —" : "empty (Common)"}</option>`];
-      for (let t = 1; t <= 5; t++) if (have(item(k, t))) opts.push(`<option value="${t}">${TIERS[t]} (${have(item(k, t))})</option>`);
-      sel.innerHTML = opts.join(""); if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+      const ped = $("altarRing").children[k], t = soulPick.tiers[k], isKey = k === keySlot;
+      const tier = isKey ? 6 : t;
+      ped.className = `ped ${k < 5 ? "req" : ""} ${isKey ? "key on" : t ? "on" : "empty"} t${tier}`;
+      ped.querySelector(".slot").innerHTML = isKey ? `<img class="px" src="${keyImg(KEY_ID + soulPick.keyIdx)}" alt="">` : t ? `<img class="px" src="metadata/${item(k, t)}.png" alt="">` : "";
+      ped.querySelector("small").textContent = isKey ? names.keys[soulPick.keyIdx].key : t ? TIERS[t] : k < 5 ? "required" : "empty · Common";
+      if (isKey) sum += 5; else if (t) sum += t; else { sum += 1; if (k < 5) ok = false; }
     }
-    const ks = $("slKey"); const curK = ks.value; ks.innerHTML = `<option value="255">none</option>` + myKeys.map((i) => `<option value="${i}">${names.keys[i].key} (${names.kinds[names.keys[i].kind]})</option>`).join(""); if ([...ks.options].some((o) => o.value === curK)) ks.value = curK;
-    const p = soulPlan();
-    let sum = 0, ok = true, keySlot = -1;
-    if (p.keyIdx !== 255) keySlot = names.keys[p.keyIdx].kind;
-    const parts = [];
-    for (let k = 0; k < 8; k++) {
-      if (k === keySlot) { sum += 5; parts.push(chip(KEY_ID + p.keyIdx, names.keys[p.keyIdx].key, "key · counts as Legendary", "ok", 6)); continue; }
-      const t = p.tiers[k];
-      if (!t) { if (k < 5) ok = false; sum += 1; parts.push(`<div class="chip ${k < 5 ? "bad" : ""} t0"><b>${names.kinds[k]}</b><small>${k < 5 ? "required" : "empty · Common"}</small></div>`); continue; }
-      sum += t; parts.push(chip(item(k, t), names.kinds[k], TIERS[t], "ok", t));
-    }
-    if (keySlot >= 0 && p.tiers[keySlot]) ok = false; // the key fills that slot, the item there must stay empty
     const avg = sum / 8, rank = keySlot >= 0 ? 6 : Math.floor(avg);
     const rarity = keySlot >= 0 ? 16 : Math.pow(2, avg - 1);
-    const n = Number(soulsC && $("soulCount").dataset.n || 0), nextId = n + 1, early = nextId >= 100 ? 1 : 2 - (nextId - 1) / 99;
-    $("rc-soul").innerHTML = parts.join(PLUS) + ARROW + `<div class="chip t${rank}"><img class="px" src="metadata/souls/${rank}.svg" alt=""><b>${RANKS[rank]} soul</b><small>#${nextId} if sealed now</small></div><div class="odds">average tier <b>${avg.toFixed(2)}</b><br>rarity <b>×${rarity.toFixed(2)}</b> · early <b>×${early.toFixed(2)}</b><br>stream weight <b>${(rarity * early).toFixed(2)}</b></div>`;
-    $("soulImg").src = `metadata/souls/${rank}.svg`;
-    $("rq-soul").innerHTML = `<span class="${ok ? "ok" : "bad"}">${ok ? "all five required slots filled" : "fill the five required slots (grimoire, candle, chalice, seal, scepter)"}</span><span>sealing is free · the items and the key burn</span>`;
-    $("doSoul").disabled = !ok || (rank >= 1 && rank <= 5 && false);
+    const n = Number($("soulCount").dataset.n || 0), nextId = n + 1, early = nextId >= 100 ? 1 : 2 - (nextId - 1) / 99;
+    const core = $("altarCore"); core.className = `altar-core t${rank}`;
+    $("altarSoul").src = `metadata/souls/${rank}.png`; $("soulImg").src = `metadata/souls/${rank}.png`;
+    $("altarRank").textContent = `${RANKS[rank]}${keySlot >= 0 ? " · " + names.keys[soulPick.keyIdx].alchemist : ""}`;
+    $("altarNum").textContent = `soul #${nextId} if sealed now`;
+    $("altarStats").innerHTML = `<div><b>average tier</b><span>${avg.toFixed(2)}</span></div><div><b>rarity</b><span>×${rarity.toFixed(2)}</span></div><div><b>early, #${nextId}</b><span>×${early.toFixed(2)}</span></div><div><b>stream weight</b><span class="g">${(rarity * early).toFixed(2)}</span></div>`;
+    // the picker for the open pedestal (or the key)
+    const pk = $("altarPick");
+    if (soulPick.open < 0) pk.style.display = "none";
+    else {
+      const k = soulPick.open;
+      let html;
+      if (k === 8) html = `<h4>mythic key</h4><div class="opts"><button class="opt clear" data-v="255">none</button>${myKeys.map((i) => `<button class="opt t6" data-v="${i}"><img class="px" src="${keyImg(KEY_ID + i)}" alt="">${names.keys[i].key} · ${names.kinds[names.keys[i].kind]}</button>`).join("")}</div>`;
+      else {
+        const opts = []; for (let t = 1; t <= 5; t++) if (have(item(k, t))) opts.push(`<button class="opt t${t}" data-v="${t}"><img class="px" src="metadata/${item(k, t)}.png" alt="">${TIERS[t]} ${names.kinds[k]} <small>×${have(item(k, t))}</small></button>`);
+        const keyOpt = myKeys.filter((i) => names.keys[i].kind === k).map((i) => `<button class="opt t6" data-v="key${i}"><img class="px" src="${keyImg(KEY_ID + i)}" alt="">${names.keys[i].key} (key)</button>`).join("");
+        html = `<h4>${names.kinds[k]} · ${k < 5 ? "required" : "enhancer, empty counts as Common"}</h4><div class="opts"><button class="opt clear" data-v="0">${k < 5 ? "leave empty" : "empty (Common)"}</button>${opts.join("")}${keyOpt}</div>${opts.length || keyOpt ? "" : `<p class="small">no ${names.kinds[k].toLowerCase()} in this wallet: craft one at the ritual table</p>`}`;
+      }
+      pk.innerHTML = html; pk.style.display = "";
+      // a key offered from a pedestal picker
+      pk.querySelectorAll('button.opt[data-v^="key"]').forEach((bt) => { bt.onclick = (e) => { e.stopPropagation(); soulPick.keyIdx = +bt.dataset.v.slice(3); soulPick.tiers[k] = 0; soulPick.open = -1; renderSoul(); }; });
+    }
+    $("soulHint").textContent = ok ? "the eight items and the key burn · sealing is free" : "fill the five required pedestals: grimoire, candle, chalice, seal, scepter";
+    $("doSoul").disabled = !ok;
   }
-  let soulsBusy = false;
   async function refreshSouls() {
     if (!soulsC || soulsBusy) return;
     soulsBusy = true;
@@ -657,7 +668,9 @@
         cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.svg" alt=""><div class="t">${RANKS[rank]} #${id}</div><div class="s">weight ${(Number(w) / 1e6).toFixed(2)}${c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
       }
       $("mySouls").innerHTML = cards.join("") || `<span class="small">no souls in this wallet yet</span>`;
-      $("streamState").textContent = open ? "open" : `opens at ${openAt} souls · ${total} / ${openAt}`;
+      $("streamCount").innerHTML = `${total}<small>/ ${openAt}</small>`;
+      $("streamBar").querySelector("i").style.width = Math.min(100, (100 * total) / openAt).toFixed(1) + "%";
+      $("streamState").textContent = open ? "the stream is open" : `opens at the ${openAt === 100 ? "hundredth" : openAt + "th"} soul`;
       $("streamState").className = "tag" + (open ? " on" : "");
       $("doClaim").disabled = !open || claimable === 0n;
       $("claimHint").textContent = claimable > 0n ? `${fmtEth(claimable, 6)} ETH claimable` : mySoulIds.length ? "nothing to claim yet" : "";
@@ -669,7 +682,7 @@
     if (!soulsC || !inv) return;
     const p = soulPlan();
     const rc = await tx("seal a soul", () => C("Souls", signer).seal(p.ids, p.keyIdx, { gasLimit: GAS.ws }));
-    if (rc) { let ev = null; for (const l of rc.logs) { try { ev = soulsC.interface.parseLog(l); } catch {} if (ev && ev.name === "Sealed") break; } if (ev) { const id = Number(ev.args.id); miner.addResult(0, "seal"); log(`soul #${id} sealed: ${RANKS[Number(ev.args.rank)]}`); } }
+    if (rc) { let ev = null; for (const l of rc.logs) { try { ev = soulsC.interface.parseLog(l); } catch {} if (ev && ev.name === "Sealed") break; } if (ev) { const id = Number(ev.args.id); soulPick.tiers = [0, 0, 0, 0, 0, 0, 0, 0]; soulPick.keyIdx = 255; document.dispatchEvent(new CustomEvent("alch:key")); log(`soul #${id} sealed: ${RANKS[Number(ev.args.rank)]}`); } }
     await refreshInventory(); // refreshes the souls too
   };
   $("doClaim").onclick = async () => {

@@ -251,9 +251,50 @@ footer b { font:9px var(--pix); color:var(--ink2); display:block; margin-bottom:
 @media (prefers-reduced-motion: reduce) { .stage .reveal { animation:none; } }
 .stage.demo::after { content:"DEMO ROUND · nothing is mined"; position:absolute; right:26px; top:9px; font:8px var(--pix); color:#1a1408; background:var(--gold2); border:2px solid var(--line); padding:5px 6px; pointer-events:none; }
 
-/* the soul station: eight slot selects in a grid, the stream block below */
-#soulSlots { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px 12px; }
-#soulSlots label.f { width:auto; }
-#soulSlots select { width:100%; }
-.chip.t0 { opacity:.75; }
-.chip.t6 { border-color:var(--c6); }
+
+/* the soul altar: eight pedestals in a ring around the soul; a pedestal opens a picker of the items the wallet holds */
+.altar { position:relative; width:min(100%, 640px); aspect-ratio:1/1; margin:0 auto; background:radial-gradient(ellipse at 50% 58%, #22282e 0, #15181c 58%, #101316 100%); border:3px solid var(--line); box-shadow:inset 0 0 0 2px var(--bevel-hi); overflow:hidden; }
+.altar::before { content:""; position:absolute; left:50%; top:50%; width:58%; aspect-ratio:1; transform:translate(-50%,-50%); border:2px solid rgba(217,162,27,.28); border-radius:50%; box-shadow:0 0 0 14px rgba(217,162,27,.06), inset 0 0 0 26px rgba(217,162,27,.04); }
+.altar::after { content:""; position:absolute; left:50%; top:50%; width:34%; aspect-ratio:1; transform:translate(-50%,-50%) rotate(45deg); border:2px solid rgba(217,162,27,.18); }
+.altar-ring { position:absolute; inset:0; }
+.ped { position:absolute; width:78px; margin:-39px 0 0 -39px; text-align:center; cursor:pointer; }
+.ped .slot { width:64px; height:64px; margin:0 auto; border:2px solid var(--bevel-hi); background:var(--bg2); box-shadow:4px 4px 0 var(--line); display:grid; place-items:center; position:relative; transition:transform .12s steps(3); }
+.ped .slot img { width:56px; height:56px; }
+.ped.req .slot { border-color:var(--gold3); }
+.ped.on .slot { border-color:var(--tc,var(--gold2)); box-shadow:4px 4px 0 var(--line), 0 0 12px var(--tc,var(--gold2)); }
+.ped.empty.req .slot::after { content:"?"; font:14px var(--pix); color:var(--gold3); }
+.ped.empty:not(.req) .slot::after { content:"·"; font:18px var(--pix); color:var(--muted); }
+.ped.key .slot { border-color:var(--c6); box-shadow:4px 4px 0 var(--line), 0 0 14px rgba(242,242,242,.5); }
+.ped:hover .slot { transform:translate(-2px,-2px); }
+.ped b { display:block; font:9px var(--pix); color:var(--ink); margin-top:8px; }
+.ped small { display:block; font:10px var(--mono); color:var(--muted); }
+.ped.on small { color:var(--tc,var(--gold2)); }
+.ped.req.empty small { color:#e07a6f; }
+.altar-core { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); text-align:center; width:170px; pointer-events:none; }
+.altar-core img { width:120px; height:120px; display:block; margin:0 auto 6px; filter:drop-shadow(0 0 10px var(--tc,rgba(217,162,27,.45))); animation:soulfloat 3.2s steps(8) infinite; }
+@keyframes soulfloat { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-6px) } }
+.altar-rank { font:12px var(--pix); color:var(--tc,var(--gold2)); text-shadow:2px 2px 0 var(--line); }
+.altar-num { font:10px var(--mono); color:var(--muted); margin-top:4px; }
+.altar-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; width:min(100%, 640px); margin:0 auto; }
+.altar-stats div { background:var(--bg2); border:2px solid var(--bevel-lo); padding:8px 10px; }
+.altar-stats b { display:block; font:9px var(--mono); color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
+.altar-stats span { font:13px var(--pix); color:var(--ink); }
+.altar-stats span.g { color:var(--gold2); }
+.altar-pick { width:min(100%, 640px); margin:0 auto; background:var(--bg); border:2px solid var(--gold3); padding:12px 14px; }
+.altar-pick h4 { margin:0 0 8px; font:10px var(--pix); color:var(--gold2); }
+.altar-pick .opts { display:flex; flex-wrap:wrap; gap:8px; }
+.altar-pick button.opt { font:10px var(--mono); padding:8px 10px; background:var(--bg2); color:var(--ink); border:2px solid var(--tc,var(--bevel-hi)); cursor:pointer; display:flex; align-items:center; gap:8px; }
+.altar-pick button.opt img { width:28px; height:28px; }
+.altar-pick button.opt:hover { border-color:var(--gold2); }
+.altar-pick button.opt.clear { color:var(--muted); border-style:dashed; }
+.altar-act { justify-content:center; width:min(100%, 640px); margin:0 auto; }
+.btn.big { font-size:12px; padding:16px 26px 15px; }
+.stream { width:min(100%, 640px); margin:6px auto 0; border-top:2px solid var(--bevel-lo); padding-top:16px; }
+.stream-head { display:flex; gap:18px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; }
+.stream-head h3 { margin:0 0 6px; }
+.stream-head > div:first-child { flex:1 1 300px; }
+.stream-gate { flex:0 0 190px; text-align:right; }
+.stream-count { font:26px var(--pix); color:var(--potion); text-shadow:3px 3px 0 var(--line); line-height:1; }
+.stream-count small { font:11px var(--mono); color:var(--muted); margin-left:6px; }
+.stream-gate .bar { margin:8px 0 6px; }
+@media (max-width:700px) { .ped { width:64px; margin:-32px 0 0 -32px; } .ped .slot { width:52px; height:52px; } .ped .slot img { width:44px; height:44px; } .altar-core { width:120px; } .altar-core img { width:72px; height:72px; } .stream-gate { text-align:left; } }
