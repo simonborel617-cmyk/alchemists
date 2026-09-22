@@ -446,6 +446,88 @@ window.AlchWS = (() => {
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
   }
 
+  // ================================================================ fire (shared): a bed of coals, flames, embers
+  // The coals breathe, flame tongues rise off the bed and, where a pot stands over it, spread out and lick up its sides;
+  // the tongues behind the pot are drawn before it, the short ones in front after it; embers drift up. The pot is lit
+  // from below in the colour of the fire.
+  const FLAME = [[255, 250, 225], [255, 218, 120], [255, 156, 50], [226, 78, 26], [120, 34, 16]];
+  const flameAt = (q) => { const x = clamp(q) * (FLAME.length - 1), i = Math.min(FLAME.length - 2, Math.floor(x)); return mix(FLAME[i], FLAME[i + 1], x - i); };
+  // cx, y: the middle of the bed on the floor; w: its width; pot: [left, right, bottom y] of what stands in the fire
+  function hearth(S, cx, y, w, pot, o = {}) {
+    const rand = S.rand, s = S.s, H = { cx, y, w, pot, rate: o.rate || 4, coals: [], stones: [], flames: [], embers: [] };
+    const n = o.coals || Math.round((w / s) * 1.2);
+    for (let i = 0; i < n; i++) { const u = rand() * 2 - 1; H.coals.push({ x: cx + u * w * 0.5, y: y - Math.round(rand() * 3 * (1 - u * u)) * s, z: (1 + Math.floor(rand() * 2.6)) * s, ph: rand() * TAU, k: 0.35 + rand() * 0.65 }); }
+    H.coals.sort((a, b) => a.y - b.y);
+    if (o.stones) for (let i = 0; i < o.stones; i++) { const a = (i / o.stones) * TAU + 0.2; H.stones.push({ x: cx + Math.cos(a) * w * 0.6, y: y + Math.sin(a) * 3.5 * s, w: (5 + Math.floor(rand() * 3)) * s, h: (3 + Math.floor(rand() * 2)) * s, back: Math.sin(a) < 0, v: rand() }); }
+    H.stones.sort((a, b) => a.y - b.y);
+    return H;
+  }
+  function stepHearth(S, H, heat) {
+    const { rand, s } = S, [pl, pr, pb] = H.pot, mid = (pl + pr) / 2, n = heat * H.rate;
+    for (let i = 0, k = Math.floor(n) + (rand() < n % 1 ? 1 : 0); i < k; i++) {
+      const x = H.cx + (rand() * 2 - 1) * H.w * 0.46, back = rand() < 0.6, under = x > pl && x < pr;
+      H.flames.push({ x, y: H.y - (back ? 2 : 0) * s - rand() * 2 * s, vx: under ? Math.sign(x - mid || 1) * (15 + rand() * 30) * s : (rand() - 0.5) * 8 * s, vy: -(28 + rand() * 40 + heat * 40) * s, life: (0.3 + rand() * 0.45) * (0.6 + 0.6 * heat), age: 0, z: rand() < 0.35 ? 2 : 1, sw: rand() * TAU, back });
+    }
+    if (rand() < 0.08 + heat * 0.35) H.embers.push({ x: H.cx + (rand() - 0.5) * H.w * 0.8, y: H.y - 2 * s, vx: (rand() - 0.5) * 16 * s, vy: -(30 + rand() * 60) * s, life: 1.2 + rand() * 1.4, age: 0, sw: rand() * TAU });
+    for (const f of H.flames) { f.age += DT; if (f.y < pb + 2 * s && f.x > pl - s && f.x < pr + s) f.vx += Math.sign(f.x - mid || 1) * 90 * s * DT; f.x += (f.vx + Math.sin(S.t * 10 + f.sw) * 12 * s) * DT; f.y += f.vy * DT; f.vx *= Math.pow(0.5, DT); }
+    for (const e of H.embers) { e.age += DT; e.x += (e.vx + Math.sin(S.t * 3 + e.sw) * 10 * s) * DT; e.y += e.vy * DT; e.vy *= Math.pow(0.75, DT); }
+    H.flames = H.flames.filter((f) => f.age < f.life); H.embers = H.embers.filter((e) => e.age < e.life);
+  }
+  function drawStone(ctx, st, heat, s) {
+    const x = Math.round(st.x - st.w / 2), y = Math.round(st.y - st.h);
+    ctx.fillStyle = rgba(mix([44, 40, 36], [64, 58, 52], st.v), 1); ctx.fillRect(x, y, st.w, st.h);
+    ctx.fillStyle = rgba(mix([84, 77, 69], [255, 170, 90], 0.15 + 0.3 * heat), 1); ctx.fillRect(x + s, y, st.w - 2 * s, s);
+    ctx.fillStyle = "#1d1a17"; ctx.fillRect(x, y + st.h - s, st.w, s); ctx.fillRect(x, y + s, s, st.h - 2 * s);
+  }
+  function drawFlames(S, ctx, H, heat, back) {
+    const s = S.s, pb = H.pot[2]; ctx.globalCompositeOperation = "lighter";
+    for (const f of H.flames) {
+      if (f.back !== back) continue;
+      const q = f.age / f.life; let a = Math.pow(1 - q, 0.6);
+      if (!back && f.y < pb + s) a *= clamp((f.y - (pb - 4 * s)) / (5 * s)); // front tongues fade where the pot begins
+      if (a <= 0) continue;
+      const z = (q < 0.5 ? f.z + 1 : f.z) * s, h = q < 0.6 ? z * 2 : z, x = px(S, f.x), y = px(S, f.y) - h + z, c = flameAt(q * 1.05 + (1 - heat) * 0.25);
+      ctx.globalAlpha = a * 0.22; ctx.fillStyle = rgba(flameAt(q + 0.25), 1); ctx.fillRect(x - s, y - s, z + 2 * s, h + 2 * s);
+      ctx.globalAlpha = a; ctx.fillStyle = rgba(c, 1); ctx.fillRect(x, y, z, h);
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  }
+  // behind the pot: the light on the wall and the floor, the back stones, the tongues rising behind it
+  function drawHearthBack(S, ctx, H, heat) {
+    const { s, t } = S, fl = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 3.3);
+    ctx.globalCompositeOperation = "lighter";
+    glow(ctx, H.cx, H.y - 10 * s, S.W * 0.42, [255, 120, 40], (0.08 + 0.2 * heat) * fl);
+    glow(ctx, H.cx, H.y, H.w * 1.1, [255, 140, 50], (0.12 + 0.25 * heat) * fl);
+    ctx.globalCompositeOperation = "source-over";
+    for (const st of H.stones) if (st.back) drawStone(ctx, st, heat, s);
+    drawFlames(S, ctx, H, heat, true);
+  }
+  // in front: the coals, the front stones, the short front tongues, the embers
+  function drawHearthFront(S, ctx, H, heat) {
+    const { s, t } = S;
+    for (const c of H.coals) {
+      const b = (0.5 + 0.5 * Math.sin(t * 1.7 + c.ph)) * c.k * (0.3 + 0.7 * heat), x = Math.round(c.x), y = Math.round(c.y - c.z);
+      ctx.fillStyle = "#1e0e0a"; ctx.fillRect(x, y, c.z, c.z);
+      ctx.fillStyle = rgba(mix([120, 28, 12], [255, 170, 70], b), 1); ctx.fillRect(x + Math.floor(c.z / (2 * s)) * s, y + (c.z > s ? s : 0), s, s);
+    }
+    ctx.globalCompositeOperation = "lighter"; glow(ctx, H.cx, H.y - s, H.w * 0.55, [255, 110, 30], 0.22 + 0.35 * heat); ctx.globalCompositeOperation = "source-over";
+    for (const st of H.stones) if (!st.back) drawStone(ctx, st, heat, s);
+    drawFlames(S, ctx, H, heat, false);
+    ctx.globalCompositeOperation = "lighter";
+    for (const e of H.embers) { ctx.globalAlpha = (1 - e.age / e.life) * (0.6 + 0.4 * Math.sin(t * 13 + e.sw)); ctx.fillStyle = rgba(flameAt(0.35 + 0.3 * (e.age / e.life)), 1); ctx.fillRect(px(S, e.x), px(S, e.y), s, s); }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  }
+  // the pot lit from below by its fire: its silhouette in the fire's colour, fading upwards from row `to` to row `from`
+  const rims = new Map();
+  function rimLit(spr, from, to) {
+    const key = spr; if (!spr) return null; if (rims.has(key)) return rims.get(key);
+    const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d");
+    g.drawImage(spr, 0, 0); g.globalCompositeOperation = "source-in"; g.fillStyle = "rgb(255,130,40)"; g.fillRect(0, 0, 64, 64);
+    g.globalCompositeOperation = "destination-in"; const gr = g.createLinearGradient(0, from, 0, to); gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,0,1)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    rims.set(key, c); return c;
+  }
+  function drawRim(S, ctx, spr, x, y, size, heat, from, to) { const r = rimLit(spr, from, to); if (!r) return; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = (0.25 + 0.4 * heat) * (0.85 + 0.15 * Math.sin(S.t * 7) * Math.sin(S.t * 3.3)); ctx.drawImage(r, x, y, size, size); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+
   // ================================================================ the cauldron (brewing a potion)
   // A little brewing cauldron over a low flame, and a shelf with the potions of the chosen tier. Two herbs go in, the
   // brew turns from green to the blue of a potion, and the potion comes up out of the steam onto the shelf.
@@ -460,23 +542,25 @@ window.AlchWS = (() => {
     Object.assign(S, { s, floor, sx0: cx - 32 * s, sy0: floor + 2 * s - 61 * s, cauldron: spr.cauldron, potion: spr.potion, tier: clamp(p.tier | 0, 1, 5), count: p.potions || 0 });
     S.liq = [S.sx0 + 29 * s, S.sy0 + 20.5 * s, 13 * s, 3.5 * s]; S.fire = [S.sx0 + 31 * s, S.sy0 + 56 * s, 12 * s];
     S.shelf = [Math.round(W * 0.56), Math.round(W * 0.96), Math.round(H * 0.6)]; S.PS = Math.round(Math.min(H * 0.2, (S.shelf[1] - S.shelf[0]) / 6));
+    S.hth = hearth(S, S.sx0 + 31 * s, floor, 20 * s, [S.sx0 + 14 * s, S.sx0 + 46 * s, S.sy0 + 49 * s], { rate: 4, coals: 18 }); S.fireHeat = 0.4;
     S.brew = [46, 170, 120]; S.bg = backdrop(S, APOTH);
     return S;
   }
   const POTION_BLUE = [70, 176, 238];
   function stepBrew(S, heat) {
-    const { rand, s } = S, [lx, ly, rx, ry] = S.liq, [fx, fy, fw] = S.fire;
-    if (rand() < 0.3 + heat * 0.5) S.flames.push({ x: fx + (rand() - 0.5) * fw, y: fy, vx: (rand() - 0.5) * 5 * s, vy: -(6 + rand() * 12) * s, g: 0, life: 0.25 + rand() * 0.25, age: 0 });
+    const { rand, s } = S, [lx, ly, rx, ry] = S.liq;
+    S.fireHeat = 0.3 + 0.7 * heat; stepHearth(S, S.hth, S.fireHeat);
     if (rand() < 0.15 + heat * 0.6) { const a = rand() * TAU, r = Math.sqrt(rand()) * 0.85; S.motes.push({ x: lx + Math.cos(a) * r * rx, y: ly + Math.sin(a) * r * ry, vx: 0, vy: 0, g: 0, life: 0.3 + rand() * 0.3, age: 0, c: mix(S.brew, WHITE, 0.55), bubble: true }); }
     if (rand() < 0.06 + heat * 0.2) S.smoke.push({ x: lx + (rand() - 0.5) * rx, y: ly - 2 * s, vx: (rand() - 0.5) * 5 * s, vy: -(10 + rand() * 12) * s, r: 2 * s, gr: 6 * s, life: 1.6 + rand(), age: 0, a: 0.18, c: mix(S.brew, [200, 210, 205], 0.6) });
     stepParts(S);
   }
   function drawBrew(S, ctx, extra) {
-    const { s, t } = S, [lx, ly, rx, ry] = S.liq, [fx, fy] = S.fire;
+    const { s } = S, [lx, ly, rx, ry] = S.liq;
     frame(S, ctx);
-    ctx.globalCompositeOperation = "lighter"; glow(ctx, fx, fy, S.W * 0.22, [255, 150, 60], 0.18); glow(ctx, lx, ly, rx * 2.2, S.brew, 0.14); ctx.globalCompositeOperation = "source-over";
-    for (const f of S.flames) { const q = f.age / f.life; ctx.globalAlpha = 1 - q * 0.5; ctx.fillStyle = rgba(mix([255, 230, 140], [200, 60, 20], q), 1); ctx.fillRect(px(S, f.x), px(S, f.y), s, s); }
-    ctx.globalAlpha = 1; if (S.cauldron) ctx.drawImage(S.cauldron, S.sx0, S.sy0, 64 * s, 64 * s);
+    ctx.globalCompositeOperation = "lighter"; glow(ctx, lx, ly, rx * 2.2, S.brew, 0.14); ctx.globalCompositeOperation = "source-over";
+    drawHearthBack(S, ctx, S.hth, S.fireHeat);
+    if (S.cauldron) { ctx.drawImage(S.cauldron, S.sx0, S.sy0, 64 * s, 64 * s); drawRim(S, ctx, S.cauldron, S.sx0, S.sy0, 64 * s, S.fireHeat, 32, 52); }
+    drawHearthFront(S, ctx, S.hth, S.fireHeat);
     // the brew itself over the painted one, so its colour can change
     ctx.fillStyle = rgba(S.brew, 1); for (let dy = -ry; dy <= ry; dy += s) { const w = rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))); if (w > 0) ctx.fillRect(px(S, lx - w), px(S, ly + dy), px(S, 2 * w) || s, s); }
     ctx.fillStyle = rgba(mix(S.brew, WHITE, 0.3), 1); ctx.fillRect(px(S, lx - rx * 0.6), px(S, ly - ry), px(S, rx * 1.2), s);
@@ -535,51 +619,116 @@ window.AlchWS = (() => {
   function potionAt(E, t) { const [lx, ly] = E.liq, [x0, x1, y] = E.shelf, sp = (x1 - x0) / 8, p = clamp((t - E.T.rise) / (E.T.land - E.T.rise)), up = [lx, ly - E.H * 0.2]; const [x, yy] = p < 0.35 ? [lx, lerp(ly, up[1], outCubic(p / 0.35))] : arc(up, [x0 + sp * (E.slot + 0.5), y - E.PS * 0.42], E.H * 0.12, smooth((p - 0.35) / 0.65)); return [x, yy, E.PS * lerp(0.6, 1, clamp(p * 2)), p]; }
 
   // ================================================================ the crucible (the melt of ten)
-  // A crucible on a bed of coals, its molten surface slowly turning. Ten ingredients drop in, the melt whirls in the
-  // colours of what went in and crusts over, sealed. At the reveal the crust breaks and the melt throws out what it
-  // became, one piece at a time, each cooling in the air and landing on the ledge: a piece that went up a tier lands
-  // in gold, two tiers is a jackpot, one that fell a tier lands in grey smoke.
+  // A crucible standing in a ring of stones over live coals, flames licking up its sides, its melt slowly turning. Ten
+  // ingredients drop in, the melt whirls in the colours of what went in and a crust of slag closes over it from the rim
+  // inward: plates with molten seams between them and a seal pressed into the middle, breathing heat. At the reveal the
+  // seams burn white, the crust bursts, and the melt throws out what it became, one piece at a time, each cooling in the
+  // air and landing on the ledge: a tier up lands in gold, two tiers is a jackpot, a tier down lands in grey smoke.
   const PIT = { bg: "#0d0b0a", brick: [[26, 22, 20], [34, 28, 25]], bw: 12, bh: 8, floor: "#110f0d", lip: "#221c17",
     wall: (g, S) => { const v = g.createLinearGradient(0, 0, 0, S.floor); v.addColorStop(0, "rgba(0,0,0,0.55)"); v.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = v; g.fillRect(0, 0, S.W, S.floor); } };
   function pit(W, H, p, spr, seed) {
-    const S = base(W, H, seed), s = Math.max(2, Math.floor((H * 0.66) / 64)), floor = Math.round(H * 0.86), cx = Math.round(W * 0.3);
-    Object.assign(S, { s, floor, sx0: cx - 32 * s, sy0: floor - 6 * s - 57 * s, crucible: spr.crucible, tier: clamp(p.tier | 0, 1, 5) });
+    const S = base(W, H, seed), s = Math.max(2, Math.floor((H * 0.76) / 64)), floor = Math.round(H * 0.88), cx = Math.round(W * 0.3), rand = S.rand;
+    Object.assign(S, { s, floor, sx0: cx - 32 * s, sy0: floor - 7 * s - 57 * s, crucible: spr.crucible, tier: clamp(p.tier | 0, 1, 5) });
     S.mol = [S.sx0 + 31.5 * s, S.sy0 + 24 * s, 16 * s, 7 * s];
     S.ledge = [Math.round(W * 0.54), Math.round(W * 0.97), Math.round(H * 0.7)]; S.IS = Math.round(Math.min(H * 0.2, (S.ledge[1] - S.ledge[0]) / 5.6));
-    S.blobs = Array.from({ length: 7 }, () => ({ a: S.rand() * TAU, r: 0.2 + S.rand() * 0.6, w: (S.rand() - 0.5) * 0.6, z: 0.3 + S.rand() * 0.4 }));
-    const rand = S.rand; S.coals = Array.from({ length: 26 }, () => ({ x: S.sx0 + (10 + rand() * 44) * s, y: floor - rand() * 6 * s, z: (2 + Math.floor(rand() * 3)) * s, ph: rand() * TAU }));
-    S.cracks = Array.from({ length: 6 }, () => { const pts = []; let a = rand() * TAU, r = 0.1; for (let i = 0; i < 5; i++) { pts.push([Math.cos(a) * r, Math.sin(a) * r]); a += (rand() - 0.5) * 1.2; r = Math.min(0.95, r + 0.18); } return pts; });
+    S.blobs = Array.from({ length: 7 }, () => ({ a: rand() * TAU, r: 0.2 + rand() * 0.6, w: (rand() - 0.5) * 0.6, z: 0.3 + rand() * 0.4 }));
+    S.flakes = Array.from({ length: 6 }, () => ({ a: rand() * TAU, r: 0.3 + rand() * 0.55, w: (rand() - 0.5) * 0.35, n: 1 + Math.floor(rand() * 3) }));
+    S.bubbles = [];
+    S.hth = hearth(S, S.sx0 + 32 * s, floor, 46 * s, [S.sx0 + 19 * s, S.sx0 + 45 * s, S.sy0 + 56 * s], { stones: 12, rate: 7 });
+    S.crustMap = crustOf(S);
     S.bg = backdrop(S, PIT);
     return S;
+  }
+  // the crust, built once per size: slag plates in a Voronoi pattern, the molten seams between them, and the seal
+  function crustOf(S) {
+    const { s, rand } = S, [, , rx, ry] = S.mol, cw = Math.round((2 * rx) / s), ch = Math.round((2 * ry) / s);
+    const seeds = Array.from({ length: 7 }, () => { const a = rand() * TAU, r = Math.sqrt(rand()) * 0.9; return [Math.cos(a) * r, Math.sin(a) * r, rand()]; });
+    const PAL = [[40, 32, 28], [50, 40, 35], [34, 28, 25], [58, 47, 40]];
+    const mk = () => { const c = document.createElement("canvas"); c.width = cw; c.height = ch; return c; };
+    const plates = mk(), seams = mk(), sigil = mk(), P = new ImageData(cw, ch), Q = new ImageData(cw, ch), G = new ImageData(cw, ch), owner = new Int16Array(cw * ch).fill(-1), cells = [];
+    // each cell belongs to its nearest seed; a cell whose right or lower neighbour belongs to another plate is a seam,
+    // so the seams are crisp lines one cell wide, and the rim of the crust is a seam too
+    const near = new Int16Array(cw * ch).fill(-1), inEl = (i, j) => { const u = ((i + 0.5) / cw) * 2 - 1, v = ((j + 0.5) / ch) * 2 - 1; return u * u + v * v <= 1 ? u * u + v * v : -1; };
+    for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
+      if (inEl(i, j) < 0) continue; const u = ((i + 0.5) / cw) * 2 - 1, v = ((j + 0.5) / ch) * 2 - 1;
+      let d1 = 9, k1 = 0; seeds.forEach(([x, y], k) => { const d = Math.hypot((u - x) * 1.0, (v - y) * 0.45); if (d < d1) { d1 = d; k1 = k; } }); near[j * cw + i] = k1;
+    }
+    for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
+      const q = j * cw + i, k = near[q]; if (k < 0) continue;
+      const r = i + 1 < cw ? near[q + 1] : -1, d = j + 1 < ch ? near[q + cw] : -1, seam = (r >= 0 && r !== k) || (d >= 0 && d !== k) || inEl(i, j) > 0.9;
+      if (seam) { owner[q] = -2; Q.data.set([255, 255, 255, 255], q * 4); P.data.set([22, 16, 13, 255], q * 4); }
+      else { owner[q] = k; const b = PAL[k % PAL.length], n = (rand() - 0.5) * 12 + (seeds[k][2] - 0.5) * 10; P.data.set([b[0] + n, b[1] + n, b[2] + n, 255].map((x) => clamp(x, 0, 255) | 0), q * 4); cells.push([i, j]); }
+    }
+    for (let j = 1; j < ch; j++) for (let i = 0; i < cw; i++) { const q = j * cw + i; if (owner[q] >= 0 && owner[q - cw] === -2) for (let c = 0; c < 3; c++) P.data[q * 4 + c] = Math.min(255, P.data[q * 4 + c] + 20); } // raised plates catch the light on top
+    const put = (u, v) => { const i = Math.round(((u + 1) / 2) * cw - 0.5), j = Math.round(((v + 1) / 2) * ch - 0.5); if (i < 0 || j < 0 || i >= cw || j >= ch) return; const q = (j * cw + i) * 4; G.data.set([255, 255, 255, 255], q); P.data.set([30, 22, 18, 255], q); };
+    for (let a = 0; a < TAU; a += 0.04) put(Math.cos(a) * 0.38, Math.sin(a) * 0.54); // the seal: a ring, a triangle, a bar
+    const tri = [[0, -0.42], [0.32, 0.28], [-0.32, 0.28], [0, -0.42]]; for (let k = 0; k < 3; k++) for (let f = 0; f <= 1; f += 0.03) put(lerp(tri[k][0], tri[k + 1][0], f), lerp(tri[k][1], tri[k + 1][1], f));
+    for (let f = -0.2; f <= 0.2; f += 0.03) put(f, 0.02);
+    plates.getContext("2d").putImageData(P, 0, 0); seams.getContext("2d").putImageData(Q, 0, 0); sigil.getContext("2d").putImageData(G, 0, 0);
+    return { cw, ch, plates, seams, sigil, P: P.data, cells };
   }
   function stepPit(S, heat) {
     const { rand, s } = S, [mx, my, rx, ry] = S.mol;
     for (const b of S.blobs) b.a += b.w * DT * (1 + heat * 3);
-    if (!S.crust && rand() < 0.05 + heat * 0.2) S.sparks.push({ x: mx + (rand() - 0.5) * rx * 1.4, y: my, vx: (rand() - 0.5) * 20 * s, vy: -(30 + rand() * 50) * s, g: 150 * s, life: 0.5 + rand() * 0.4, age: 0, c: [255, 200, 90] });
-    if (S.crust && rand() < 0.04) S.smoke.push({ x: mx + (rand() - 0.5) * rx, y: my - 2 * s, vx: (rand() - 0.5) * 5 * s, vy: -(8 + rand() * 8) * s, r: 2 * s, gr: 5 * s, life: 1.6, age: 0, a: 0.25, c: [90, 86, 82] });
+    for (const f of S.flakes) f.a += f.w * DT * (1 + heat);
+    if (!S.crust) {
+      if (rand() < 0.04 + heat * 0.08) { const a = rand() * TAU, r = Math.sqrt(rand()) * 0.8; S.bubbles.push({ x: mx + Math.cos(a) * r * rx, y: my + Math.sin(a) * r * ry, age: 0, life: 0.45 + rand() * 0.3 }); }
+      if (rand() < 0.05 + heat * 0.2) S.sparks.push({ x: mx + (rand() - 0.5) * rx * 1.4, y: my, vx: (rand() - 0.5) * 20 * s, vy: -(30 + rand() * 50) * s, g: 150 * s, life: 0.5 + rand() * 0.4, age: 0, c: [255, 200, 90] });
+    } else if (rand() < 0.035) { // a seam breathes out: a spit of sparks and a thread of smoke
+      const a = rand() * TAU, r = 0.3 + rand() * 0.6, x = mx + Math.cos(a) * r * rx, y = my + Math.sin(a) * r * ry;
+      for (let i = 0; i < 6; i++) S.sparks.push({ x, y, vx: (rand() - 0.5) * 30 * s, vy: -(30 + rand() * 60) * s, g: 170 * s, life: 0.4 + rand() * 0.4, age: 0, c: rand() < 0.5 ? [255, 210, 120] : [255, 140, 50] });
+      S.smoke.push({ x, y: y - s, vx: (rand() - 0.5) * 5 * s, vy: -(10 + rand() * 10) * s, r: 2 * s, gr: 5 * s, life: 1.8, age: 0, a: 0.3, c: [90, 84, 80] });
+    }
+    for (const b of S.bubbles) b.age += DT; S.bubbles = S.bubbles.filter((b) => b.age < b.life);
+    stepHearth(S, S.hth, 0.35 + 0.65 * heat);
     stepParts(S);
   }
-  function drawPit(S, ctx, heat, crustA, whirl) {
+  function drawMolten(S, ctx, heat, whirl) {
     const { s, t } = S, [mx, my, rx, ry] = S.mol;
-    frame(S, ctx);
-    ctx.globalCompositeOperation = "lighter"; glow(ctx, mx, my, S.W * 0.4, [255, 120, 30], (0.1 + 0.18 * heat) * (1 - 0.6 * crustA)); glow(ctx, mx, S.floor, S.W * 0.25, [255, 90, 20], 0.18); ctx.globalCompositeOperation = "source-over";
-    for (const c of S.coals) { ctx.fillStyle = rgba(mix([60, 18, 10], [255, 120, 30], 0.35 + 0.35 * Math.sin(t * 2 + c.ph)), 1); ctx.fillRect(px(S, c.x), px(S, c.y - c.z), c.z, c.z); }
-    if (S.crucible) ctx.drawImage(S.crucible, S.sx0, S.sy0, 64 * s, 64 * s);
-    // the molten surface: an ellipse of fire with bright veins turning in it, or a crust with glowing cracks
-    const clipEl = () => { ctx.beginPath(); ctx.ellipse(mx, my, rx, ry, 0, 0, TAU); ctx.clip(); };
-    ctx.save(); clipEl();
-    const mcol = mix([230, 90, 20], [255, 170, 60], heat); ctx.fillStyle = rgba(mcol, 1); ctx.fillRect(mx - rx, my - ry, rx * 2, ry * 2);
-    ctx.globalCompositeOperation = "lighter"; for (const b of S.blobs) glow(ctx, mx + Math.cos(b.a) * b.r * rx, my + Math.sin(b.a) * b.r * ry, rx * b.z, [255, 230, 150], 0.35 + 0.2 * heat);
+    ctx.save(); ctx.beginPath(); ctx.ellipse(mx, my, rx, ry, 0, 0, TAU); ctx.clip();
+    const g = ctx.createRadialGradient(mx, my - ry * 0.25, 0, mx, my, rx); g.addColorStop(0, rgba(mix([255, 214, 120], [255, 246, 205], heat), 1)); g.addColorStop(0.55, "rgb(255,142,42)"); g.addColorStop(1, "rgb(186,52,16)");
+    ctx.fillStyle = g; ctx.fillRect(mx - rx, my - ry, rx * 2, ry * 2);
+    ctx.globalCompositeOperation = "lighter";
+    for (const b of S.blobs) glow(ctx, mx + Math.cos(b.a) * b.r * rx, my + Math.sin(b.a) * b.r * ry, rx * b.z, [255, 230, 150], 0.22 + 0.2 * heat);
+    ctx.strokeStyle = "rgb(255,238,185)"; ctx.lineWidth = s; // bright veins flowing across the surface
+    for (let k = 0; k < 3; k++) { ctx.globalAlpha = 0.16 + 0.12 * heat; ctx.beginPath(); for (let i = 0; i <= 24; i++) { const f = i / 24, x = mx - rx + f * rx * 2, y = my + Math.sin(f * 6 + t * (0.8 + k * 0.3) + k * 2) * ry * 0.3 + (k - 1) * ry * 0.42; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
+    ctx.globalAlpha = 1;
     if (whirl) whirl(ctx);
-    ctx.globalCompositeOperation = "source-over";
-    if (crustA > 0) {
-      ctx.globalAlpha = crustA; ctx.fillStyle = "#2a211d"; ctx.fillRect(mx - rx, my - ry, rx * 2, ry * 2);
-      ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = rgba([255, 140, 40], 1); ctx.lineWidth = s; ctx.globalAlpha = crustA * (0.55 + 0.35 * Math.sin(t * 3)) * (S.crackHot || 1);
-      for (const c of S.cracks) { ctx.beginPath(); c.forEach(([x, y], i) => (i ? ctx.lineTo(mx + x * rx, my + y * ry) : ctx.moveTo(mx + x * rx, my + y * ry))); ctx.stroke(); }
-      ctx.globalCompositeOperation = "source-over";
-    }
-    ctx.restore(); ctx.globalAlpha = 1;
-    // the ledge
+    for (const b of S.bubbles) { const q = b.age / b.life; ctx.globalAlpha = 1 - q; ctx.strokeStyle = "rgb(255,236,180)"; ctx.lineWidth = s; ctx.beginPath(); ctx.ellipse(b.x, b.y, (1 + q * 3) * s, (0.5 + q * 1.2) * s, 0, 0, TAU); ctx.stroke(); }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    for (const f of S.flakes) { const x = px(S, mx + Math.cos(f.a) * f.r * rx), y = px(S, my + Math.sin(f.a) * f.r * ry); ctx.fillStyle = "#4a2213"; ctx.fillRect(x, y, f.n * s, s); ctx.fillStyle = "#7a3a1a"; ctx.fillRect(x, y - s, Math.max(1, f.n - 1) * s, s); }
+    ctx.restore();
+    ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = "rgb(255,196,110)"; ctx.lineWidth = s; ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.ellipse(mx, my, rx - s / 2, ry - s / 2, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  }
+  // the crust: formed 0..1 closes it from the rim inward; hot 1 is its sealed breathing, higher burns the seams white
+  function drawCrust(S, ctx, formed, hot) {
+    if (formed <= 0) return;
+    const { s, t } = S, [mx, my, rx, ry] = S.mol, C = S.crustMap, x0 = mx - rx, y0 = my - ry, w = rx * 2, h = ry * 2, blur = `blur(${Math.max(2, Math.round(s * 0.9))}px)`;
+    ctx.save(); ctx.beginPath(); ctx.ellipse(mx, my, rx, ry, 0, 0, TAU); if (formed < 1) { ctx.moveTo(mx + rx * (1 - formed), my); ctx.ellipse(mx, my, rx * (1 - formed), ry * (1 - formed), 0, 0, TAU, true); } ctx.clip("evenodd");
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(C.plates, x0, y0, w, h);
+    ctx.globalCompositeOperation = "lighter";
+    const pulse = 0.76 + 0.17 * Math.sin(t * 2.1) + 0.07 * Math.sin(t * 5.3);
+    ctx.globalAlpha = clamp(0.35 * pulse * hot); ctx.filter = blur; ctx.drawImage(sil(S, C.seams, [255, 110, 30], 1), x0, y0, w, h); ctx.filter = "none";
+    ctx.globalAlpha = clamp(1.05 * pulse * hot); ctx.drawImage(sil(S, C.seams, [255, 164, 58], 1), x0, y0, w, h);
+    if (hot > 1) { ctx.globalAlpha = clamp((hot - 1) / 2); ctx.drawImage(sil(S, C.seams, [255, 242, 196], 1), x0, y0, w, h); }
+    const sp = 0.5 + 0.5 * Math.sin(t * 1.3), sh = Math.min(hot, 2.2);
+    ctx.globalAlpha = clamp((0.4 + 0.45 * sp) * sh); ctx.filter = blur; ctx.drawImage(sil(S, C.sigil, GOLD, 1), x0, y0, w, h); ctx.filter = "none";
+    ctx.globalAlpha = clamp((0.55 + 0.4 * sp) * sh); ctx.drawImage(sil(S, C.sigil, [255, 236, 170], 1), x0, y0, w, h);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.restore();
+    ctx.globalCompositeOperation = "lighter"; ctx.lineWidth = s;
+    if (formed < 1) { const k = 1 - formed; ctx.strokeStyle = "rgb(255,226,150)"; ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.ellipse(mx, my, rx * k, ry * k, 0, 0, TAU); ctx.stroke(); }
+    ctx.strokeStyle = "rgb(255,150,50)"; ctx.globalAlpha = 0.45 * pulse; ctx.beginPath(); ctx.ellipse(mx, my, rx - s / 2, ry - s / 2, 0, 0, TAU); ctx.stroke();
+    glow(ctx, mx, my, rx * 1.2, [255, 110, 30], 0.05 * pulse * hot);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  }
+  function drawPit(S, ctx, heat, crustA, whirl) {
+    const s = S.s, fire = 0.35 + 0.65 * heat;
+    frame(S, ctx);
+    drawHearthBack(S, ctx, S.hth, fire);
+    if (S.crucible) { ctx.drawImage(S.crucible, S.sx0, S.sy0, 64 * s, 64 * s); drawRim(S, ctx, S.crucible, S.sx0, S.sy0, 64 * s, fire, 34, 57); }
+    if (crustA < 1) drawMolten(S, ctx, heat, whirl);
+    drawCrust(S, ctx, crustA, S.crackHot || 1);
+    drawHearthFront(S, ctx, S.hth, fire);
     const [x0, x1, y] = S.ledge; ctx.fillStyle = "#2c2622"; ctx.fillRect(x0, y, x1 - x0, 3 * s); ctx.fillStyle = "#3d352f"; ctx.fillRect(x0, y, x1 - x0, s); ctx.fillStyle = "#181412"; ctx.fillRect(x0, y + 3 * s, x1 - x0, s);
   }
   function slotAt(S, i, n) { const [x0, x1, y] = S.ledge, sp = (x1 - x0) / Math.max(n, 3); return [x0 + sp * (i + 0.5) + (Math.max(n, 3) - n) * sp * 0.5, y - S.IS * 0.45]; }
@@ -593,8 +742,8 @@ window.AlchWS = (() => {
     });
   }
   const Crucible = {
-    async load() { return { crucible: await keyed("img/crucible.png") }; },
-    init(W, H, p, spr, memo) { const S = pit(W, H, p, spr, 23); S.crust = !!(p.sealed || memo.sealed); S.p = p; return S; },
+    async load() { return { crucible: await keyed("img/crucible.png", { close: 2 }) }; },
+    init(W, H, p, spr, memo) { const S = pit(W, H, p, spr, 23); S.crust = !!(p.sealed || memo.sealed); return S; },
     idle(S) { S.t += DT; stepPit(S, 0.35); },
     draw(S, ctx, p, memo) {
       drawPit(S, ctx, 0.35, S.crust ? 1 : 0); drawParts(S, ctx); drawRow(S, ctx, memo.row);
@@ -605,22 +754,23 @@ window.AlchWS = (() => {
       pour: {
         async load(o) { return { items: await Promise.all((o.srcs || []).map((x) => keyed(x))) }; },
         build(S, o, spr) {
-          const E = pit(S.W, S.H, { tier: o.tier }, { crucible: S.crucible }, o.seed || 29), [mx, my, rx] = E.mol, rand = E.rand;
+          const E = pit(S.W, S.H, { tier: o.tier }, { crucible: S.crucible }, o.seed || 29), [mx, , rx] = E.mol, rand = E.rand;
           E.items = (spr.items || []).map((m, i) => ({ spr: m, x: mx + (rand() - 0.5) * rx * 1.2, dep: 0.1 + i * 0.12, cat: o.cats ? o.cats[i] : 0 }));
           E.cats = [...new Set(E.items.map((x) => x.cat))]; E.HS = Math.round(Math.min(E.H * 0.13, 52));
-          E.T = { fall: 0.45 }; E.T.whirl0 = 0.1 + (E.items.length - 1) * 0.12 + E.T.fall + 0.1; E.T.crust = E.T.whirl0 + 1.0; E.T.label = E.T.crust + 0.3; E.T.end = E.T.label + 2.2; E.tier = clamp(o.tier | 0, 1, 5); E.c = tierColor(E.tier);
+          E.T = { fall: 0.45 }; E.T.whirl0 = 0.1 + (E.items.length - 1) * 0.12 + E.T.fall + 0.1; E.T.crust = E.T.whirl0 + 1.0; E.T.label = E.T.crust + 0.6; E.T.end = E.T.label + 2.2; E.tier = clamp(o.tier | 0, 1, 5);
           return E;
         },
         step(E) {
           const { T, rand, s } = E, t = (E.t += DT), [mx, my, rx] = E.mol;
           for (const it of E.items) { const p = (t - it.dep) / T.fall; if (p >= 1 && !it.in) { it.in = true; E.rings.push({ x: it.x, y: my, r0: 2 * s, r1: rx * 0.7, life: 0.35, age: 0, c: [255, 210, 120] }); for (let i = 0; i < 12; i++) { const a = -Math.PI / 2 + (rand() - 0.5) * 1.8, v = (40 + rand() * 90) * s; E.sparks.push({ x: it.x, y: my, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 260 * s, life: 0.45 + rand() * 0.3, age: 0, c: [255, 170 + Math.floor(rand() * 60), 60], z: rand() < 0.3 ? 2 : 1 }); } E.flashC = { t, c: tierColor(E.tier) }; } }
           if (t >= T.crust && !E.crusted) { E.crusted = true; for (let i = 0; i < 16; i++) E.smoke.push({ x: mx + (rand() - 0.5) * rx * 1.4, y: my - 2 * s, vx: (rand() - 0.5) * 20 * s, vy: -(14 + rand() * 18) * s, r: 3 * s, gr: 8 * s, life: 1.5 + rand(), age: 0, a: 0.4, c: [70, 66, 62] }); }
+          E.crust = t >= T.crust + 0.8;
           stepPit(E, t > T.whirl0 && t < T.crust ? 1 : 0.5);
           if (t >= T.end) E.done = true;
         },
         draw(E, ctx) {
           const { T, t, s } = E, [mx, my, rx, ry] = E.mol, wq = clamp((t - T.whirl0) / (T.crust - T.whirl0));
-          drawPit(E, ctx, t > T.whirl0 ? 0.9 : 0.5, smooth(clamp((t - T.crust) / 0.4)), (c) => {
+          drawPit(E, ctx, t > T.whirl0 && t < T.crust + 0.4 ? 0.9 : 0.5, smooth(clamp((t - T.crust) / 0.8)), (c) => {
             if (wq <= 0) return; c.lineWidth = 1.5 * s;
             E.cats.forEach((cat, k) => { c.strokeStyle = rgba(mix(CATC[cat], WHITE, 0.3), 1); c.globalAlpha = 0.7 * Math.sin(Math.PI * wq); c.beginPath(); for (let i = 0; i <= 24; i++) { const f = i / 24, a = f * 6 + t * (4 + 10 * wq) + (k / E.cats.length) * TAU, r = (1 - f) * 0.95; c.lineTo(mx + Math.cos(a) * r * rx, my + Math.sin(a) * r * ry); } c.stroke(); });
             c.globalAlpha = 1;
@@ -639,14 +789,21 @@ window.AlchWS = (() => {
         async load(o) { return { outs: await Promise.all((o.outs || []).map((x) => keyed(x.src))) }; },
         build(S, o, spr) {
           const E = pit(S.W, S.H, { tier: o.tier }, { crucible: S.crucible }, o.seed || 31); E.crust = true; E.tier = clamp(o.tier | 0, 1, 5);
-          let at = 0.95; E.outs = (o.outs || []).map((x, i) => { const d = x.tier - E.tier, r = { spr: spr.outs[i], tier: x.tier, d, c: tierColor(x.tier), launch: at, hold: d >= 2 ? 0.8 : 0 }; at += 0.55 + r.hold; return r; });
-          E.T = { crack: 0.55 }; E.T.label = at + 0.3; E.T.end = E.T.label + 2.6; E.FL = 0.7;
+          let at = 1.15; E.outs = (o.outs || []).map((x, i) => { const d = x.tier - E.tier, r = { spr: spr.outs[i], tier: x.tier, d, c: tierColor(x.tier), launch: at, hold: d >= 2 ? 0.8 : 0 }; at += 0.55 + r.hold; return r; });
+          E.T = { crack: 0.8 }; E.T.label = at + 0.3; E.T.end = E.T.label + 2.6; E.FL = 0.7;
           return E;
         },
         step(E) {
-          const { T, rand, s } = E, t = (E.t += DT), [mx, my, rx] = E.mol;
-          E.crackHot = 1 + 2 * clamp(t / T.crack); if (t < T.crack) E.shake = Math.max(E.shake, 0.6 * s * clamp(t / T.crack));
-          if (t >= T.crack && !E.broke) { E.broke = true; E.crust = false; E.shake = 2 * s; E.rings.push({ x: mx, y: my, r0: 4 * s, r1: rx * 2, life: 0.5, age: 0, c: [255, 200, 110] }); for (let i = 0; i < 30; i++) { const a = -Math.PI / 2 + (rand() - 0.5) * 2.4, v = (50 + rand() * 120) * s; E.shards.push({ x: mx + (rand() - 0.5) * rx * 1.4, y: my, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.9 + rand() * 0.5, age: 0, c: rand() < 0.6 ? [42, 34, 30] : [255, 150, 50], z: rand() < 0.4 ? 2 : 1 }); } }
+          const { T, rand, s } = E, t = (E.t += DT), [mx, my, rx, ry] = E.mol, C = E.crustMap;
+          E.crackHot = 1 + 2.4 * smooth(clamp(t / T.crack)); if (t < T.crack) E.shake = Math.max(E.shake, 0.7 * s * clamp(t / T.crack));
+          if (t < T.crack && rand() < 0.5) { const a = rand() * TAU, r = rand() * 0.9; E.sparks.push({ x: mx + Math.cos(a) * r * rx, y: my + Math.sin(a) * r * ry, vx: (rand() - 0.5) * 30 * s, vy: -(30 + rand() * 70) * s, g: 170 * s, life: 0.4 + rand() * 0.3, age: 0, c: [255, 220, 140] }); }
+          if (t >= T.crack && !E.broke) {
+            E.broke = true; E.crust = false; E.crackHot = 1; E.shake = 2.4 * s; E.rings.push({ x: mx, y: my, r0: 4 * s, r1: rx * 2.2, life: 0.55, age: 0, c: [255, 210, 120] });
+            for (let i = 0; i < 70; i++) { // the plates of the crust fly apart
+              const [ci, cj] = C.cells[Math.floor(rand() * C.cells.length)], q = (cj * C.cw + ci) * 4, x = mx - rx + (ci + 0.5) * ((2 * rx) / C.cw), y = my - ry + (cj + 0.5) * ((2 * ry) / C.ch), a = Math.atan2(y - my, x - mx), v = (50 + rand() * 130) * s;
+              E.shards.push({ x, y, vx: Math.cos(a) * v * 0.7, vy: -Math.abs(Math.sin(a)) * v * 0.4 - (60 + rand() * 90) * s, life: 0.9 + rand() * 0.6, age: 0, c: rand() < 0.2 ? [255, 170, 60] : [C.P[q], C.P[q + 1], C.P[q + 2]], z: rand() < 0.4 ? 2 : 1 });
+            }
+          }
           E.outs.forEach((o, i) => {
             const p = blobP(E, o, t);
             if (p > 0 && p < 1 && rand() < 0.8) { const [x, y] = blobAt(E, o, i, p); E.trail.push({ x, y, vx: 0, vy: 0, g: 0, life: 0.3, age: 0, c: p < 0.55 ? [255, 190, 90] : mix(o.c, WHITE, 0.4) }); }
@@ -655,17 +812,17 @@ window.AlchWS = (() => {
               o.landed = true; const [x, y] = slotAt(E, i, E.outs.length);
               if (o.d >= 2) { E.shake = 3 * s; E.rings.push({ x, y, r0: 4 * s, r1: E.W * 0.3, life: 0.8, age: 0, c: WHITE }, { x, y, r0: 4 * s, r1: E.W * 0.22, life: 0.7, age: -0.1, c: GOLD }); E.jackpot = { t, x, y }; for (let k = 0; k < 90; k++) { const a = rand() * TAU, v = (60 + rand() * 260) * s * 0.5; E.sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40 * s, g: 160 * s, life: 0.8 + rand() * 1.0, age: 0, c: rand() < 0.4 ? WHITE : GOLD, z: rand() < 0.3 ? 2 : 1, bounce: true }); } }
               else if (o.d === 1) { E.rings.push({ x, y, r0: 3 * s, r1: E.IS * 1.2, life: 0.5, age: 0, c: GOLD }); for (let k = 0; k < 24; k++) { const a = rand() * TAU, v = (40 + rand() * 90) * s; E.sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 90 * s, life: 0.5 + rand() * 0.4, age: 0, c: rand() < 0.5 ? WHITE : GOLD }); } }
-              else if (o.d < 0) { for (let k = 0; k < 10; k++) E.smoke.push({ x: x + (rand() - 0.5) * E.IS * 0.6, y: y, vx: (rand() - 0.5) * 16 * s, vy: -(10 + rand() * 16) * s, r: 3 * s, gr: 8 * s, life: 1.2 + rand() * 0.6, age: 0, a: 0.5, c: [70, 70, 74] }); }
+              else if (o.d < 0) { for (let k = 0; k < 10; k++) E.smoke.push({ x: x + (rand() - 0.5) * E.IS * 0.6, y, vx: (rand() - 0.5) * 16 * s, vy: -(10 + rand() * 16) * s, r: 3 * s, gr: 8 * s, life: 1.2 + rand() * 0.6, age: 0, a: 0.5, c: [70, 70, 74] }); }
               else for (let k = 0; k < 8; k++) E.sparks.push({ x, y: y + E.IS * 0.3, vx: (rand() - 0.5) * 60 * s, vy: -rand() * 40 * s, g: 120 * s, life: 0.35 + rand() * 0.3, age: 0, c: WHITE });
             }
           });
-          stepPit(E, 0.7);
+          stepPit(E, t < T.crack ? 0.8 : 0.7);
           if (t >= T.end) E.done = true;
         },
         draw(E, ctx) {
           const { T, t, s } = E;
           drawPit(E, ctx, 0.7, E.crust ? 1 : 0);
-          if (E.broke && t - T.crack < 0.4) { const [mx, my, rx] = E.mol, q = (t - T.crack) / 0.4; ctx.globalCompositeOperation = "lighter"; glow(ctx, mx, my, rx * 3, [255, 220, 150], 0.8 * (1 - q) * (1 - q)); ctx.globalCompositeOperation = "source-over"; }
+          if (E.broke && t - T.crack < 0.45) { const [mx, my, rx] = E.mol, q = (t - T.crack) / 0.45; ctx.globalCompositeOperation = "lighter"; glow(ctx, mx, my, rx * 3, [255, 220, 150], 0.85 * (1 - q) * (1 - q)); ctx.globalCompositeOperation = "source-over"; }
           if (E.jackpot && t - E.jackpot.t < 1.3) { const q = (t - E.jackpot.t) / 1.3; ctx.globalCompositeOperation = "lighter"; rays(ctx, E.jackpot.x, E.jackpot.y, 16, E.W * 0.4, 0.05, 0.5 * q, WHITE, GOLD, 0.55 * Math.sin(Math.PI * q)); glow(ctx, E.jackpot.x, E.jackpot.y, E.W * 0.25, GOLD, 0.6 * (1 - q)); ctx.globalCompositeOperation = "source-over"; }
           drawParts(E, ctx);
           E.outs.forEach((o, i) => {

@@ -20,8 +20,12 @@ window.AlchRite = (() => {
   // Item art comes as 512px renders of 64px pixel art on the site's background colour. Sample the block centres back
   // to 64px and cut the background away from the edges inward, so an item can fly free of its square.
   const spriteCache = new Map();
-  function keyedSprite(src) {
-    if (spriteCache.has(src)) return spriteCache.get(src);
+  // opts.close: seal gaps up to about twice that many cells wide in the outline before cutting the background away,
+  // for art whose dark body is painted in the background colour itself (the crucible); items keep it off, or the gaps
+  // between an item and its sparkles would fill with background
+  function keyedSprite(src, opts) {
+    const close = (opts && opts.close) | 0, ck = close ? `${src}#close${close}` : src;
+    if (spriteCache.has(ck)) return spriteCache.get(ck);
     const p = new Promise((res) => {
       const im = new Image();
       im.onload = () => {
@@ -33,6 +37,11 @@ window.AlchRite = (() => {
         const id = g.getImageData(0, 0, n, n), d = id.data, bgc = [d[0], d[1], d[2]];
         const near = (i) => Math.abs(d[i] - bgc[0]) + Math.abs(d[i + 1] - bgc[1]) + Math.abs(d[i + 2] - bgc[2]) < 24;
         const seen = new Uint8Array(n * n), stack = [];
+        if (close) { // mark the closed silhouette as seen, so the fill cannot pass through the sealed gaps
+          const fg = new Uint8Array(n * n); for (let q = 0; q < n * n; q++) fg[q] = near(q * 4) ? 0 : 1;
+          const morph = (m, grow) => { const o = new Uint8Array(n * n); for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { let v = grow ? 0 : 1; for (let dy = -close; dy <= close && v === (grow ? 0 : 1); dy++) for (let dx = -close; dx <= close; dx++) { if (Math.abs(dx) + Math.abs(dy) > close) continue; const yy = y + dy, xx = x + dx, inside = yy >= 0 && xx >= 0 && yy < n && xx < n, b = inside ? m[yy * n + xx] : 0; if (grow ? b : !b) { v = grow ? 1 : 0; break; } } o[y * n + x] = v; } return o; };
+          const shut = morph(morph(fg, true), false); for (let q = 0; q < n * n; q++) if (shut[q] && !fg[q]) seen[q] = 1;
+        }
         for (let i = 0; i < n; i++) stack.push(i, i * n, (n - 1) * n + i, i * n + n - 1);
         while (stack.length) { const q = stack.pop(); if (seen[q] || !near(q * 4)) continue; seen[q] = 1; d[q * 4 + 3] = 0; const x = q % n, y = (q - x) / n; if (x > 0) stack.push(q - 1); if (x < n - 1) stack.push(q + 1); if (y > 0) stack.push(q - n); if (y < n - 1) stack.push(q + n); }
         g.putImageData(id, 0, 0);
@@ -41,7 +50,7 @@ window.AlchRite = (() => {
       im.onerror = () => res(null);
       im.src = src;
     });
-    spriteCache.set(src, p);
+    spriteCache.set(ck, p);
     return p;
   }
 

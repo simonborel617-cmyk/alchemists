@@ -24,7 +24,7 @@ window.AlchReveal = (() => {
   // stage vials already carry transparency and are used as they are.
   const plain = new Map();
   const plainSprite = (src) => { if (!plain.has(src)) plain.set(src, new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; })); return plain.get(src); };
-  const keyed = (src) => (window.AlchRite && window.AlchRite.keyedSprite ? window.AlchRite.keyedSprite(src) : plainSprite(src));
+  const keyed = (src, opts) => (window.AlchRite && window.AlchRite.keyedSprite ? window.AlchRite.keyedSprite(src, opts) : plainSprite(src));
   // a sprite filled with one colour (a figure of light, the dark back of a turning key), cached per colour and alpha
   function sil(S, sprite, c, a) {
     a = Math.round(clamp(a) * 20) / 20;
