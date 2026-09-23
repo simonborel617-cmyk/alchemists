@@ -54,7 +54,28 @@
     setOffset(); pinned = i; mark(i);
     t.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     history.replaceState(null, "", "#" + a.dataset.s);
+    settle(t);
   });
+  // panels above can still grow while the page loads (data, images), so a smooth scroll may stop short or overshoot;
+  // once it is over, a target that is not where it should be is put there at once (twice at most)
+  let settling = 0;
+  function settle(t, tries = 2) {
+    const id = ++settling;
+    const check = () => {
+      if (id !== settling) return;
+      const want = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--navoff")) || 0, top = t.getBoundingClientRect().top;
+      const room = document.documentElement.scrollHeight - innerHeight - scrollY; // at the bottom a short section cannot reach the top
+      if (Math.abs(top - want) > 8 && !(top > want && room < 4)) { t.scrollIntoView({ block: "start" }); if (tries > 1) setTimeout(() => settle(t, tries - 1), 400); }
+    };
+    let done = false;
+    const once = () => { if (done) return; done = true; removeEventListener("scrollend", once); setTimeout(check, 60); };
+    if ("onscrollend" in window) addEventListener("scrollend", once);
+    setTimeout(once, reduce ? 50 : 1400);
+  }
+  // a scroll of the reader's own cancels any pending correction
+  addEventListener("wheel", () => { settling++; }, { passive: true });
+  addEventListener("touchstart", () => { settling++; }, { passive: true });
+  addEventListener("keydown", (e) => { if (/^(Arrow|Page|Home|End| )/.test(e.key)) settling++; });
 
   // ---- live marks, read from the page
   const $ = (id) => document.getElementById(id);
