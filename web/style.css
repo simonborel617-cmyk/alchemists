@@ -416,11 +416,12 @@ body.connected .nowallet { display:none; }
 /* live marks: a square light (the miner running, a craft ready) and a count (finds waiting for their reveal) */
 .secnav .dot { position:absolute; top:6px; left:37px; width:8px; height:8px; background:var(--verd); border:2px solid var(--bg2); box-shadow:0 0 6px var(--verd); display:none; }
 .secnav .dot.gold { background:var(--gold); box-shadow:0 0 6px var(--gold); }
-.secnav .dot.show { display:block; animation:snpulse 1.4s steps(2, end) infinite; }
+.secnav .dot.show { display:block; }
+.secnav .dot.show.pulse { animation:snpulse 1.4s steps(2, end) infinite; }
 .secnav .num { position:absolute; top:3px; left:32px; min-width:16px; padding:2px 3px 1px; font:9px/1.2 var(--mono); text-align:center; color:var(--bg); background:var(--gold2); border:2px solid var(--bg2); display:none; }
 .secnav .num.show { display:block; }
 @keyframes snpulse { 50% { opacity:.35; } }
-@media (prefers-reduced-motion: reduce) { .secnav .dot.show { animation:none; } .secnav a img { transition:none; } }
+@media (prefers-reduced-motion: reduce) { .secnav .dot.show.pulse { animation:none; } .secnav a img { transition:none; } }
 @media (max-width:1100px) { .secnav a { padding:7px 10px 6px; gap:7px; } }
 /* phones: the header scrolls away and the bar sits at the bottom, within reach of the thumb */
 @media (max-width:700px) {
@@ -436,4 +437,27 @@ body.connected .nowallet { display:none; }
   .secnav .dot { top:5px; left:calc(50% + 7px); }
   .secnav .num { top:2px; left:calc(50% + 4px); }
   body { padding-bottom:64px; }
+}
+
+/* workshop tabs with a craft waiting: "sealed" while the next minute decides, a lit "reveal" once only the player's
+   reveal is missing. A tag on the corner of the tab (the column is narrow), the count on the icon on phones. */
+.ws-nav button { position:relative; }
+.ws-nav button .rv { display:none; position:absolute; top:-8px; right:-6px; font:8px/1 var(--pix); text-transform:uppercase; padding:4px 5px 3px; white-space:nowrap; pointer-events:none; }
+.ws-nav button .rv em, .ws-nav button .rv i { font-style:normal; }
+.ws-nav button.sealed .rv { display:block; color:var(--gold3); background:var(--bg); border:2px solid var(--gold3); }
+.ws-nav button.due .rv { display:block; color:var(--bg); background:var(--gold2); border:2px solid var(--bg); box-shadow:0 0 0 2px var(--gold2), 0 0 12px rgba(242,196,85,.7); animation:rvblink 1.2s steps(2, end) infinite; }
+.ws-nav button.due { border-color:var(--gold2); box-shadow:0 0 14px rgba(242,196,85,.28); }
+.ws-nav button.due.on { box-shadow:inset 4px 0 0 var(--gold), 0 0 14px rgba(242,196,85,.28); }
+.ws-nav button.due img { border-color:var(--gold3); box-shadow:0 0 10px rgba(242,196,85,.45); }
+@keyframes rvblink { 50% { box-shadow:0 0 0 2px var(--gold3), 0 0 4px rgba(242,196,85,.3); background:var(--gold3); } }
+@media (prefers-reduced-motion: reduce) { .ws-nav button.due .rv { animation:none; } }
+@media (max-width:820px) {
+  .ws-nav button .rv { top:2px; right:2px; padding:3px 4px 2px; }
+  .ws-nav button .rv em, .ws-nav button .rv i { display:none; }
+  .ws-nav button .rv::before { content:attr(data-n); }
+}
+/* phones: the six workshop tabs share the width, so none (and no reveal mark) hides past the edge */
+@media (max-width:820px) {
+  .ws-nav button { flex:1 1 0; min-width:0; justify-content:center; padding:6px 3px; }
+  .ws-nav button img { width:36px; height:36px; }
 }

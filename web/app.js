@@ -737,14 +737,29 @@
     const k = +$("itKind").value || 0, it = +$("itTier").value || 1; WSX.set("item", { tier: it, kindName: names.kinds[k], itemSrc: img(item(k, it)), sealed: sealedFor(3) });
   }
   // sealed crafts of a station: how many, whether they can be revealed yet, and a button that reveals them right here
+  // ?wsdev=1: alchPendDev([{ id, op, rm }]) shows made-up crafts waiting for their reveal (for checking the marks)
+  if (new URLSearchParams(location.search).get("wsdev")) window.alchPendDev = (list) => { wsOpen = list; renderPending(); };
   function renderPending() {
-    const m = minuteNow();
+    const m = minuteNow(); let due = 0, sealed = 0;
     for (const [st, op, what] of [["refine", 1, "melt"], ["reroll", 2, "melt"], ["item", 3, "rite"]]) {
       const el = $(`pd-${st}`), list = wsOpen.filter((c) => c.op === op), ready = list.filter((c) => m >= c.rm);
       el.style.display = list.length ? "" : "none";
       el.innerHTML = list.length ? `<span>${list.length} sealed ${what}${list.length > 1 ? "s" : ""} · ${ready.length ? `${ready.length} ready to reveal` : "reveals after the next minute"}</span><button class="btn gold" data-op="${op}" ${ready.length ? "" : "disabled"}>Reveal here</button>` : "";
       el.onclick = (e) => { const b = e.target.closest("button"); if (b && !b.disabled) revealCrafts(wsOpen.filter((c) => c.op === op && minuteNow() >= c.rm).map((c) => c.id)); };
+      // the station's tab says it too, so a reveal waiting on another tab is not missed: sealed (the next minute
+      // decides) or ready (only the player's reveal is missing)
+      const tab = document.querySelector(`#wsNav button[data-st="${st}"]`);
+      if (tab) {
+        let b = tab.querySelector(".rv"); if (!b) { b = document.createElement("b"); b.className = "rv"; tab.appendChild(b); }
+        tab.classList.toggle("due", ready.length > 0); tab.classList.toggle("sealed", list.length > 0 && !ready.length);
+        const n = ready.length || list.length, name = (tab.querySelector("span") || tab).textContent.trim().toLowerCase();
+        b.innerHTML = n ? `<em>${ready.length ? "reveal" : "sealed"}</em><i>${n > 1 ? " " + n : ""}</i>` : "";
+        b.dataset.n = n || "";
+        tab.title = ready.length ? `${ready.length} ready to reveal: open ${name} and press Reveal` : list.length ? `${list.length} sealed, the next minute decides, then reveal it in ${name}` : "";
+      }
+      due += ready.length; sealed += list.length;
     }
+    $("wsNav").dataset.due = due; $("wsNav").dataset.sealed = sealed;
     pushScenes();
   }
   // a furnace cooling after a firing: the refine button waits and counts down
