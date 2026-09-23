@@ -90,6 +90,14 @@ skeleton: 256x144 grid, 16:9, SNES palette, strong outline, no text, no characte
 11. "Every rule on one page, read live from the chain." [link: /rules]
 12. "Set a price ceiling, a budget, a number of rounds. The miner stops itself at any of them." [screenshot: the limits panel]
 
+## Launch post (mainnet day, after the site switched and the first tick landed)
+
+"The mine is open. / Robinhood Chain mainnet. A new challenge every minute, real proof of work: in your browser on a
+CPU or a GPU, or on a rig. Forty types, five tiers, twenty-one keys, one Cauldron. / The first challenge is already on
+chain. / alchemist-mine.com" (under 280 characters) [scene to render: the mine's gate at dawn, the furnace lit for the
+first time, an empty rack of vials waiting] Post it only once `verify-launch.js` passed and one submit from the site
+landed. Pin it above the article.
+
 ## Reply templates
 
 - "When mainnet?" → "When the audit closes. The testnet is open now: alchemist-mine.com"
