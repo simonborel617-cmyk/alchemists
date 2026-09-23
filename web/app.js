@@ -670,7 +670,7 @@
         await WSX.set("refine", { furnace: ft, furnaceId: fid });
         await WSX.play("refine", "melt", { furnace: ft, outSrc: img(ing(j.t, j.tier + 1)), tier: j.tier, success: j.success, name: names.types[j.t], seed: j.id + 1 }, { speed });
       } else if (j.st === "reroll") {
-        await WSX.play("reroll", "deal", { tier: j.tier, outs: j.outs.map((id) => ({ src: img(id), tier: (id - 1) % 8 })), seed: j.id + 1 }, { speed });
+        await WSX.play("reroll", "deal", { tier: j.tier, outs: j.outs.map((id) => ({ src: img(id), tier: (id - 1) % 8, name: names.types[Math.floor((id - 1) / 8)] })), seed: j.id + 1 }, { speed: j.outs.some((id) => (id - 1) % 8 - j.tier >= 2) ? 1 : speed });
       } else {
         const isKey = j.outTier === 6 && j.key !== 255;
         await WSX.play("item", "manifest", { tier: j.tier, outTier: isKey ? j.tier : j.outTier, key: isKey, itemSrc: isKey ? keyImg(KEY_ID + j.key) : img(item(j.kind, j.outTier)), kindName: names.kinds[j.kind], name: isKey ? names.keys[j.key].key : "", seed: j.id + 1 }, { speed: isKey ? 1 : speed });

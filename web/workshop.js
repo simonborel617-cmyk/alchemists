@@ -486,7 +486,7 @@ window.AlchWS = (() => {
       const q = f.age / f.life; let a = Math.pow(1 - q, 0.6);
       if (!back && f.y < pb + s) a *= clamp((f.y - (pb - 4 * s)) / (5 * s)); // front tongues fade where the pot begins
       if (a <= 0) continue;
-      const z = (q < 0.5 ? f.z + 1 : f.z) * s, h = q < 0.6 ? z * 2 : z, x = px(S, f.x), y = px(S, f.y) - h + z, c = flameAt(q * 1.05 + (1 - heat) * 0.25);
+      const z = (q < 0.5 ? f.z + 1 : f.z) * s, h = q < 0.6 ? z * 2 : z, x = px(S, f.x), y = px(S, f.y) - h + z, c = flameAt(0.1 + q * 0.95 + (1 - heat) * 0.25); // never pure white blocks
       ctx.globalAlpha = a * 0.22; ctx.fillStyle = rgba(flameAt(q + 0.25), 1); ctx.fillRect(x - s, y - s, z + 2 * s, h + 2 * s);
       ctx.globalAlpha = a; ctx.fillStyle = rgba(c, 1); ctx.fillRect(x, y, z, h);
     }
@@ -736,7 +736,7 @@ window.AlchWS = (() => {
     if (!row) return;
     row.forEach((r, i) => {
       const [x, y] = slotAt(S, i, row.length);
-      ctx.globalCompositeOperation = "lighter"; glow(ctx, x, y + S.IS * 0.35, S.IS * 0.6, r.c, 0.25 * a); ctx.globalCompositeOperation = "source-over";
+      ctx.globalCompositeOperation = "lighter"; glow(ctx, x, y + S.IS * 0.35, S.IS * (r.j ? 0.9 : 0.6), r.j ? GOLD : r.c, (r.j ? 0.4 : 0.25) * a); ctx.globalCompositeOperation = "source-over"; // the jackpot keeps its gold
       drawSpr(ctx, r.spr, x, y, S.IS, a);
       if (r.d) text(ctx, r.d > 0 ? `+${r.d}` : `${r.d}`, x, y - S.IS * 0.62 - fsz(S, 12), pix(fsz(S, 12)), r.d > 0 ? GOLD : ASH, a, true);
     });
@@ -785,63 +785,165 @@ window.AlchWS = (() => {
         },
         end(S, E, memo) { S.crust = true; memo.sealed = true; memo.row = null; for (const k of ["smoke", "sparks"]) S[k] = E[k]; },
       },
+      // The reveal of a melt. The crust burns white and bursts, then the melt throws out what it became, one piece at a
+      // time. Two tiers up is the jackpot (half a percent): the melt flares gold, the room goes dark, the piece rises and
+      // hangs with a quickening heartbeat while the light of the room is drawn into it and a ring of runes lights round
+      // it, then it bursts into the item in a fountain of gold and comes down to the ledge under a pillar of light.
       deal: {
         async load(o) { return { outs: await Promise.all((o.outs || []).map((x) => keyed(x.src))) }; },
         build(S, o, spr) {
-          const E = pit(S.W, S.H, { tier: o.tier }, { crucible: S.crucible }, o.seed || 31); E.crust = true; E.tier = clamp(o.tier | 0, 1, 5);
-          let at = 1.15; E.outs = (o.outs || []).map((x, i) => { const d = x.tier - E.tier, r = { spr: spr.outs[i], tier: x.tier, d, c: tierColor(x.tier), launch: at, hold: d >= 2 ? 0.8 : 0 }; at += 0.55 + r.hold; return r; });
-          E.T = { crack: 0.8 }; E.T.label = at + 0.3; E.T.end = E.T.label + 2.6; E.FL = 0.7;
+          const E = pit(S.W, S.H, { tier: o.tier }, { crucible: S.crucible }, o.seed || 31); E.crust = true; E.tier = clamp(o.tier | 0, 1, 5); E.FL = 0.7;
+          const a = E.FL * 0.45; let at = 1.15;
+          E.outs = (o.outs || []).map((x, i) => {
+            const d = x.tier - E.tier, jack = d >= 2, r = { spr: spr.outs[i], tier: x.tier, d, c: tierColor(x.tier), name: x.name || "", jack, omen: jack ? 0.9 : 0, hold: jack ? 1.7 : 0, down: jack ? 0.9 : E.FL - a };
+            r.launch = at + r.omen; r.burst = r.launch + a + r.hold; r.land = r.burst + r.down;
+            at = jack ? r.land + 0.5 : at + 0.55;
+            return r;
+          });
+          E.jack = E.outs.find((r) => r.jack) || null;
+          E.beats = E.jack ? [0.25, 0.7, 1.05, 1.3, 1.48, 1.6].map((b) => E.jack.launch + a + b) : []; E.beat = 0; E.flashes = [];
+          E.runes = Array.from({ length: 36 }, () => [0, 1, 1, 2, 3][Math.floor(E.rand() * 5)]);
+          const lastLand = Math.max(1.2, ...E.outs.map((r) => r.land));
+          E.T = { crack: 0.8 }; E.T.label = Math.max(at, lastLand) + 0.3; E.T.end = E.T.label + (E.jack ? 3.4 : 2.6);
           return E;
         },
         step(E) {
-          const { T, rand, s } = E, t = (E.t += DT), [mx, my, rx, ry] = E.mol, C = E.crustMap;
+          const { T, rand, s } = E, t = (E.t += DT), [mx, my, rx, ry] = E.mol, C = E.crustMap, J = E.jack, a = E.FL * 0.45;
           E.crackHot = 1 + 2.4 * smooth(clamp(t / T.crack)); if (t < T.crack) E.shake = Math.max(E.shake, 0.7 * s * clamp(t / T.crack));
-          if (t < T.crack && rand() < 0.5) { const a = rand() * TAU, r = rand() * 0.9; E.sparks.push({ x: mx + Math.cos(a) * r * rx, y: my + Math.sin(a) * r * ry, vx: (rand() - 0.5) * 30 * s, vy: -(30 + rand() * 70) * s, g: 170 * s, life: 0.4 + rand() * 0.3, age: 0, c: [255, 220, 140] }); }
+          if (t < T.crack && rand() < 0.5) { const an = rand() * TAU, r = rand() * 0.9; E.sparks.push({ x: mx + Math.cos(an) * r * rx, y: my + Math.sin(an) * r * ry, vx: (rand() - 0.5) * 30 * s, vy: -(30 + rand() * 70) * s, g: 170 * s, life: 0.4 + rand() * 0.3, age: 0, c: [255, 220, 140] }); }
           if (t >= T.crack && !E.broke) {
             E.broke = true; E.crust = false; E.crackHot = 1; E.shake = 2.4 * s; E.rings.push({ x: mx, y: my, r0: 4 * s, r1: rx * 2.2, life: 0.55, age: 0, c: [255, 210, 120] });
             for (let i = 0; i < 70; i++) { // the plates of the crust fly apart
-              const [ci, cj] = C.cells[Math.floor(rand() * C.cells.length)], q = (cj * C.cw + ci) * 4, x = mx - rx + (ci + 0.5) * ((2 * rx) / C.cw), y = my - ry + (cj + 0.5) * ((2 * ry) / C.ch), a = Math.atan2(y - my, x - mx), v = (50 + rand() * 130) * s;
-              E.shards.push({ x, y, vx: Math.cos(a) * v * 0.7, vy: -Math.abs(Math.sin(a)) * v * 0.4 - (60 + rand() * 90) * s, life: 0.9 + rand() * 0.6, age: 0, c: rand() < 0.2 ? [255, 170, 60] : [C.P[q], C.P[q + 1], C.P[q + 2]], z: rand() < 0.4 ? 2 : 1 });
+              const [ci, cj] = C.cells[Math.floor(rand() * C.cells.length)], q = (cj * C.cw + ci) * 4, x = mx - rx + (ci + 0.5) * ((2 * rx) / C.cw), y = my - ry + (cj + 0.5) * ((2 * ry) / C.ch), an = Math.atan2(y - my, x - mx), v = (50 + rand() * 130) * s;
+              E.shards.push({ x, y, vx: Math.cos(an) * v * 0.7, vy: -Math.abs(Math.sin(an)) * v * 0.4 - (60 + rand() * 90) * s, life: 0.9 + rand() * 0.6, age: 0, c: rand() < 0.2 ? [255, 170, 60] : [C.P[q], C.P[q + 1], C.P[q + 2]], z: rand() < 0.4 ? 2 : 1 });
             }
+          }
+          if (J) {
+            const hs = J.launch + a, i = E.outs.indexOf(J), [jx, jy] = blobAt(E, J, i, 0.45);
+            if (t > J.launch - J.omen && t < J.launch) { // the omen: the melt flares gold and the crucible shakes
+              const q = (t - (J.launch - J.omen)) / J.omen; E.shake = Math.max(E.shake, 1.3 * s * q);
+              if (rand() < 0.7) { const an = rand() * TAU, r = rand() * 0.85; E.sparks.push({ x: mx + Math.cos(an) * r * rx, y: my + Math.sin(an) * r * ry, vx: (rand() - 0.5) * 30 * s, vy: -(40 + rand() * 80) * s, g: 150 * s, life: 0.5 + rand() * 0.4, age: 0, c: rand() < 0.5 ? GOLD : WHITE }); }
+            }
+            if (t > hs && t < J.burst) { // the hold: the light of the room is drawn into it, its heart beats faster
+              const q = (t - hs) / J.hold;
+              for (let k = 0, n = 1 + Math.floor(q * 3); k < n; k++) { const an = rand() * TAU, r = E.W * (0.22 + rand() * 0.3), x0 = jx + Math.cos(an) * r, y0 = jy + Math.sin(an) * r * 0.7; E.motes.push({ x: x0, y: y0, vx: (jx - x0) / 0.55, vy: (jy - y0) / 0.55, g: 0, life: 0.55, age: 0, c: rand() < 0.5 ? WHITE : GOLD }); }
+              while (E.beat < E.beats.length && t >= E.beats[E.beat]) { E.beat++; E.lastBeat = t; E.rings.push({ x: jx, y: jy, r0: E.IS * 0.3, r1: E.IS * (1.1 + E.beat * 0.16), life: 0.45, age: 0, c: GOLD }); E.shake = Math.max(E.shake, (0.4 + 0.22 * E.beat) * s); }
+            }
+            if (t >= J.burst && !J.burstDone) { // the burst: a flash, three waves, a fountain of gold that rains on the floor
+              J.burstDone = true; E.jackFx = { t, x: jx, y: jy }; E.shake = 4.5 * s;
+              E.rings.push({ x: jx, y: jy, r0: 6 * s, r1: E.W * 0.55, life: 0.9, age: 0, c: WHITE }, { x: jx, y: jy, r0: 6 * s, r1: E.W * 0.62, life: 1.1, age: -0.08, c: GOLD }, { x: jx, y: jy, r0: 6 * s, r1: E.W * 0.4, life: 0.8, age: -0.16, c: [255, 230, 150] });
+              for (let k = 0; k < 170; k++) { const an = rand() * TAU, v = (80 + Math.pow(rand(), 0.6) * 320) * s * 0.5; E.sparks.push({ x: jx, y: jy, vx: Math.cos(an) * v, vy: Math.sin(an) * v - 60 * s, g: 220 * s, life: 1.2 + rand() * 1.4, age: 0, c: rand() < 0.35 ? WHITE : rand() < 0.75 ? GOLD : mix(J.c, WHITE, 0.3), z: rand() < 0.35 ? 2 : 1, bounce: true }); }
+            }
+            if (t > J.burst && t < J.land && rand() < 0.95) { const p = blobP(E, J, t), [x, y] = blobAt(E, J, i, p); E.trail.push({ x: x + (rand() - 0.5) * E.IS * 0.5, y: y + (rand() - 0.5) * E.IS * 0.5, vx: 0, vy: 20 * s, g: 0, life: 0.5, age: 0, c: rand() < 0.5 ? WHITE : GOLD }); }
           }
           E.outs.forEach((o, i) => {
             const p = blobP(E, o, t);
-            if (p > 0 && p < 1 && rand() < 0.8) { const [x, y] = blobAt(E, o, i, p); E.trail.push({ x, y, vx: 0, vy: 0, g: 0, life: 0.3, age: 0, c: p < 0.55 ? [255, 190, 90] : mix(o.c, WHITE, 0.4) }); }
-            if (o.hold && t > o.launch + E.FL * 0.45 && t < o.launch + E.FL * 0.45 + o.hold && rand() < 0.9) { const [x, y] = blobAt(E, o, i, 0.45), a = rand() * TAU, r = (20 + rand() * 30) * s; E.motes.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r, vx: -Math.cos(a) * r * 2.2, vy: -Math.sin(a) * r * 2.2, g: 0, life: 0.4, age: 0, c: GOLD }); }
+            if (!o.jack && p > 0 && p < 1 && rand() < 0.8) { const [x, y] = blobAt(E, o, i, p); E.trail.push({ x, y, vx: 0, vy: 0, g: 0, life: 0.3, age: 0, c: p < 0.55 ? [255, 190, 90] : o.d > 0 && rand() < 0.5 ? GOLD : mix(o.c, WHITE, 0.4) }); }
             if (p >= 1 && !o.landed) {
               o.landed = true; const [x, y] = slotAt(E, i, E.outs.length);
-              if (o.d >= 2) { E.shake = 3 * s; E.rings.push({ x, y, r0: 4 * s, r1: E.W * 0.3, life: 0.8, age: 0, c: WHITE }, { x, y, r0: 4 * s, r1: E.W * 0.22, life: 0.7, age: -0.1, c: GOLD }); E.jackpot = { t, x, y }; for (let k = 0; k < 90; k++) { const a = rand() * TAU, v = (60 + rand() * 260) * s * 0.5; E.sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40 * s, g: 160 * s, life: 0.8 + rand() * 1.0, age: 0, c: rand() < 0.4 ? WHITE : GOLD, z: rand() < 0.3 ? 2 : 1, bounce: true }); } }
-              else if (o.d === 1) { E.rings.push({ x, y, r0: 3 * s, r1: E.IS * 1.2, life: 0.5, age: 0, c: GOLD }); for (let k = 0; k < 24; k++) { const a = rand() * TAU, v = (40 + rand() * 90) * s; E.sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 90 * s, life: 0.5 + rand() * 0.4, age: 0, c: rand() < 0.5 ? WHITE : GOLD }); } }
+              if (o.jack) { E.pillar = { t, x, y }; E.shake = 2 * s; E.rings.push({ x, y, r0: 3 * s, r1: E.IS * 1.8, life: 0.6, age: 0, c: GOLD }); for (let k = 0; k < 40; k++) { const an = -Math.PI / 2 + (rand() - 0.5) * 2.6, v = (40 + rand() * 120) * s; E.sparks.push({ x, y: y + E.IS * 0.3, vx: Math.cos(an) * v, vy: Math.sin(an) * v, g: 200 * s, life: 0.8 + rand() * 0.8, age: 0, c: rand() < 0.5 ? WHITE : GOLD, bounce: true }); } }
+              else if (o.d === 1) { E.flashes.push({ t, x, y, c: o.c }); E.rings.push({ x, y, r0: 3 * s, r1: E.IS * 1.3, life: 0.5, age: 0, c: GOLD }); for (let k = 0; k < 30; k++) { const an = rand() * TAU, v = (40 + rand() * 100) * s; E.sparks.push({ x, y, vx: Math.cos(an) * v, vy: Math.sin(an) * v, g: 90 * s, life: 0.5 + rand() * 0.5, age: 0, c: rand() < 0.4 ? WHITE : rand() < 0.7 ? GOLD : mix(o.c, WHITE, 0.3) }); } }
               else if (o.d < 0) { for (let k = 0; k < 10; k++) E.smoke.push({ x: x + (rand() - 0.5) * E.IS * 0.6, y, vx: (rand() - 0.5) * 16 * s, vy: -(10 + rand() * 16) * s, r: 3 * s, gr: 8 * s, life: 1.2 + rand() * 0.6, age: 0, a: 0.5, c: [70, 70, 74] }); }
               else for (let k = 0; k < 8; k++) E.sparks.push({ x, y: y + E.IS * 0.3, vx: (rand() - 0.5) * 60 * s, vy: -rand() * 40 * s, g: 120 * s, life: 0.35 + rand() * 0.3, age: 0, c: WHITE });
             }
           });
-          stepPit(E, t < T.crack ? 0.8 : 0.7);
+          stepPit(E, dealHeat(E, t));
           if (t >= T.end) E.done = true;
         },
         draw(E, ctx) {
-          const { T, t, s } = E;
-          drawPit(E, ctx, 0.7, E.crust ? 1 : 0);
-          if (E.broke && t - T.crack < 0.45) { const [mx, my, rx] = E.mol, q = (t - T.crack) / 0.45; ctx.globalCompositeOperation = "lighter"; glow(ctx, mx, my, rx * 3, [255, 220, 150], 0.85 * (1 - q) * (1 - q)); ctx.globalCompositeOperation = "source-over"; }
-          if (E.jackpot && t - E.jackpot.t < 1.3) { const q = (t - E.jackpot.t) / 1.3; ctx.globalCompositeOperation = "lighter"; rays(ctx, E.jackpot.x, E.jackpot.y, 16, E.W * 0.4, 0.05, 0.5 * q, WHITE, GOLD, 0.55 * Math.sin(Math.PI * q)); glow(ctx, E.jackpot.x, E.jackpot.y, E.W * 0.25, GOLD, 0.6 * (1 - q)); ctx.globalCompositeOperation = "source-over"; }
+          const { T, t, s } = E, J = E.jack, a = E.FL * 0.45, [mx, my, rx] = E.mol;
+          drawPit(E, ctx, dealHeat(E, t), E.crust ? 1 : 0);
+          ctx.globalCompositeOperation = "lighter";
+          if (E.broke && t - T.crack < 0.45) { const q = (t - T.crack) / 0.45; glow(ctx, mx, my, rx * 3, [255, 220, 150], 0.85 * (1 - q) * (1 - q)); }
+          if (J && t > J.launch - J.omen && t < J.launch + 0.35) { const q = clamp((t - (J.launch - J.omen)) / J.omen), f = t < J.launch ? q : 1 - (t - J.launch) / 0.35; glow(ctx, mx, my, rx * (1.4 + q), GOLD, 0.7 * f * (0.75 + 0.25 * Math.sin(t * 18))); }
+          ctx.globalCompositeOperation = "source-over";
+          // the room goes dark around the jackpot and comes back as it lands
+          let dim = 0;
+          if (J) { dim = 0.32 * clamp((t - (J.launch - J.omen)) / J.omen) + 0.3 * clamp((t - (J.launch + a)) / J.hold); if (t > J.burst) dim *= 1 - smooth((t - J.burst) / (J.down + 0.5)); }
+          if (dim > 0.01) { ctx.fillStyle = `rgba(4,6,9,${dim.toFixed(3)})`; ctx.fillRect(-10, -10, E.W + 20, E.H + 20); }
           drawParts(E, ctx);
+          if (J) drawJackpot(E, ctx, J, t);
+          ctx.globalCompositeOperation = "lighter";
+          for (const f of E.flashes) { const q = (t - f.t) / 0.6; if (q >= 1) continue; glow(ctx, f.x, f.y, E.IS * 1.3, f.c, 0.7 * (1 - q)); rays(ctx, f.x, f.y, 10, E.IS * (1 + 0.8 * outCubic(q)), 0.07, q, WHITE, mix(f.c, WHITE, 0.4), 0.45 * Math.sin(Math.PI * q)); }
+          ctx.globalCompositeOperation = "source-over";
           E.outs.forEach((o, i) => {
             const p = blobP(E, o, t); if (p <= 0) return;
-            if (p >= 1) { const [x, y] = slotAt(E, i, E.outs.length), since = t - (o.launch + E.FL + o.hold), dim = o.d < 0 ? 0.35 * (1 - clamp(since / 0.8)) : 0; ctx.globalCompositeOperation = "lighter"; glow(ctx, x, y + E.IS * 0.35, E.IS * 0.6, o.c, 0.25); ctx.globalCompositeOperation = "source-over"; drawSpr(ctx, o.spr, x, y - Math.max(0, Math.sin(clamp(since / 0.25) * Math.PI)) * 4 * s, E.IS); if (dim) drawSpr(ctx, sil(E, o.spr, [30, 30, 32], dim), x, y, E.IS); if (o.d) text(ctx, o.d > 0 ? `+${o.d}` : `${o.d}`, x, y - E.IS * 0.62 - fsz(E, 12) - clamp(since / 0.5) * 6 * s, pix(fsz(E, o.d >= 2 ? 16 : 12)), o.d > 0 ? GOLD : ASH, clamp(since / 0.2), true); return; }
+            if (p >= 1) { // on the ledge
+              const [x, y] = slotAt(E, i, E.outs.length), since = t - o.land, dim2 = o.d < 0 ? 0.35 * (1 - clamp(since / 0.8)) : 0;
+              ctx.globalCompositeOperation = "lighter"; glow(ctx, x, y + E.IS * 0.35, E.IS * (o.jack ? 0.9 : 0.6), o.jack ? GOLD : o.c, o.jack ? 0.4 : 0.25); ctx.globalCompositeOperation = "source-over";
+              drawSpr(ctx, o.spr, x, y - Math.max(0, Math.sin(clamp(since / 0.25) * Math.PI)) * 4 * s, E.IS); if (dim2) drawSpr(ctx, sil(E, o.spr, [30, 30, 32], dim2), x, y, E.IS);
+              if (o.d) text(ctx, o.d > 0 ? `+${o.d}` : `${o.d}`, x, y - E.IS * 0.62 - fsz(E, o.jack ? 16 : 12) - clamp(since / 0.5) * 6 * s, pix(fsz(E, o.jack ? 16 : 12)), o.d > 0 ? GOLD : ASH, o.jack ? 1 : clamp(since / 0.2), true);
+              return;
+            }
+            if (o.jack) { drawJackPiece(E, ctx, o, i, p, t); return; }
             const [x, y] = blobAt(E, o, i, p), cool = clamp((p - 0.5) / 0.4), z = E.IS * lerp(0.55, 1, cool);
-            ctx.globalCompositeOperation = "lighter"; glow(ctx, x, y, z * (o.hold && p > 0.4 && p < 0.5 ? 1.6 : 0.9), cool < 1 ? mix([255, 190, 90], o.c, cool) : o.c, 0.6 * (1 - cool * 0.5)); ctx.globalCompositeOperation = "source-over";
+            ctx.globalCompositeOperation = "lighter"; glow(ctx, x, y, z * 0.9, cool < 1 ? mix([255, 190, 90], o.c, cool) : o.c, 0.6 * (1 - cool * 0.5)); ctx.globalCompositeOperation = "source-over";
             if (cool <= 0) { ctx.fillStyle = "rgb(255,230,170)"; const r = z * 0.3; ctx.fillRect(px(E, x - r), px(E, y - r), px(E, 2 * r), px(E, 2 * r)); }
             else { drawSpr(ctx, o.spr, x, y, z, cool); whiteIn(E, ctx, o.spr, x, y, z, cool * 1.4, [255, 220, 160]); }
           });
-          const a = clamp((t - T.label) / 0.4);
-          if (a > 0) { const up = E.outs.filter((o) => o.d > 0).length, down = E.outs.filter((o) => o.d < 0).length; plate(ctx, E.W * 0.75, E.H * 0.1, [[`${E.outs.length} FROM TEN`, pix(fsz(E, 12)), GOLD], [up || down ? [up ? `${up} up` : "", down ? `${down} down` : ""].filter(Boolean).join(" · ") : `all ${TIERS[E.tier]}`, mono(fsz(E, 14)), INK]], a, [255, 140, 40]); }
+          const al = clamp((t - T.label) / 0.4);
+          if (al > 0) {
+            const up = E.outs.filter((o) => o.d > 0).length, down = E.outs.filter((o) => o.d < 0).length, sum = up || down ? [up ? `${up} up` : "", down ? `${down} down` : ""].filter(Boolean).join(" · ") : `all ${TIERS[E.tier]}`;
+            if (J) plate(ctx, E.W * 0.75, E.H * 0.06, [["JACKPOT", pix(fsz(E, 18)), GOLD], tiersLine(E, TIERS[E.tier].toUpperCase(), TIERS[J.tier].toUpperCase(), tierColor(E.tier), J.c), [J.name, mono(fsz(E, 15)), INK], [`${E.outs.length} from ten · ${sum}`, mono(fsz(E, 12)), SOFT]], al, GOLD);
+            else plate(ctx, E.W * 0.75, E.H * 0.1, [[`${E.outs.length} FROM TEN`, pix(fsz(E, 12)), GOLD], [sum, mono(fsz(E, 14)), INK]], al, [255, 140, 40]);
+          }
         },
-        end(S, E, memo) { S.crust = false; memo.sealed = false; memo.row = E.outs.map((o) => ({ spr: o.spr, c: o.c, d: o.d })); for (const k of ["smoke", "sparks"]) S[k] = E[k]; },
+        end(S, E, memo) { S.crust = false; memo.sealed = false; memo.row = E.outs.map((o) => ({ spr: o.spr, c: o.c, d: o.d, j: o.jack })); for (const k of ["smoke", "sparks"]) S[k] = E[k]; },
       },
     },
   };
-  // a blob leaves the melt at its launch, hangs at the top of its arc if it is a jackpot, and lands on its slot
-  function blobP(E, o, t) { const u = t - o.launch; if (u <= 0) return 0; const a = E.FL * 0.45; if (u < a) return (u / a) * 0.45; if (u < a + o.hold) return 0.45; return Math.min(1, 0.45 + ((u - a - o.hold) / (E.FL - a)) * 0.55); }
+  function dealHeat(E, t) {
+    const J = E.jack; if (t < E.T.crack) return 0.8; if (!J) return 0.7;
+    const hs = J.launch + E.FL * 0.45;
+    if (t < J.launch - J.omen) return 0.7; if (t < hs) return 1; // the omen: the fire flares
+    if (t < J.burst) return lerp(1, 0.08, smooth((t - hs) / 0.6)); // the hold: the fire sinks, its light drawn into the piece
+    return lerp(1, 0.7, smooth((t - J.burst) / 1.5)); // the burst: it roars back
+  }
+  // the jackpot's light: rays growing and a ring of runes lighting round the piece while it hangs, the flash and the
+  // rays of the burst, then a pillar of light over its place on the ledge
+  function drawJackpot(E, ctx, J, t) {
+    const s = E.s, hs = J.launch + E.FL * 0.45, i = E.outs.indexOf(J), [x, y] = blobAt(E, J, i, 0.45);
+    ctx.globalCompositeOperation = "lighter";
+    if (t > hs && t < J.burst + 0.1) {
+      const q = clamp((t - hs) / J.hold), beat = E.lastBeat ? Math.exp(-(t - E.lastBeat) * 7) : 0, R = E.IS * 1.25;
+      rays(ctx, x, y, 14, E.W * (0.08 + 0.26 * q), 0.05, 0.25 * (t - hs), WHITE, GOLD, (0.15 + 0.35 * q) * (0.8 + 0.4 * beat));
+      glow(ctx, x, y, E.IS * (1 + 0.8 * q + 0.4 * beat), GOLD, 0.35 + 0.35 * q + 0.2 * beat);
+      arcRing(ctx, x, y, R, s, GOLD, 0.3 * q);
+      for (let k = 0; k < E.runes.length; k++) {
+        const m = E.runes[k]; if (!m) continue; const lit = clamp((q * 1.2 - k / E.runes.length) * 5); if (lit <= 0) continue;
+        const an = -Math.PI / 2 + (k / E.runes.length) * TAU + (t - hs) * 0.8;
+        ctx.globalAlpha = lit * (0.6 + 0.4 * Math.sin(t * 6 + k)); ctx.fillStyle = rgba(lit < 1 ? WHITE : GOLD, 1); ctx.fillRect(px(E, x + Math.cos(an) * R), px(E, y + Math.sin(an) * R), (m === 2 ? 2 : 1) * s, (m === 3 ? 2 : 1) * s);
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (E.jackFx) {
+      const sb = t - E.jackFx.t;
+      if (sb < 0.4) { const q = sb / 0.4; ctx.globalAlpha = 0.14 * (1 - q) * (1 - q); ctx.fillStyle = "rgb(255,236,190)"; ctx.fillRect(-10, -10, E.W + 20, E.H + 20); ctx.globalAlpha = 1; glow(ctx, E.jackFx.x, E.jackFx.y, E.W * (0.12 + 0.3 * outCubic(q)), WHITE, 0.85 * (1 - q)); glow(ctx, E.jackFx.x, E.jackFx.y, E.W * 0.3, GOLD, 0.5 * (1 - q)); }
+      if (sb < 1.8) rays(ctx, E.jackFx.x, E.jackFx.y, 18, E.W * 0.55 * (0.5 + 0.5 * outCubic(sb / 0.4)), 0.045, 0.3 * sb, WHITE, GOLD, 0.6 * Math.sin(Math.PI * clamp(sb / 1.8)));
+    }
+    if (E.pillar) {
+      const q = (t - E.pillar.t) / 1.9;
+      if (q < 1) { const env = q < 0.1 ? q / 0.1 : 1 - smooth((q - 0.1) / 0.9), w = E.IS * 0.6 * (0.6 + 0.4 * env), g = ctx.createLinearGradient(E.pillar.x - w, 0, E.pillar.x + w, 0); g.addColorStop(0, rgba(GOLD, 0)); g.addColorStop(0.5, rgba([255, 240, 190], 0.7 * env)); g.addColorStop(1, rgba(GOLD, 0)); ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(E.pillar.x - w, 0, w * 2, E.pillar.y + E.IS * 0.5); }
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+  // the jackpot piece itself: a molten orb rising, beating at the top of its arc, bursting into the item, coming down
+  function drawJackPiece(E, ctx, o, i, p, t) {
+    const s = E.s, hs = o.launch + E.FL * 0.45, [x, y] = blobAt(E, o, i, p);
+    if (t < o.burst) {
+      const q = clamp((t - hs) / o.hold), beat = E.lastBeat && t > hs ? Math.exp(-(t - E.lastBeat) * 7) : 0, z = E.IS * (0.6 + 0.35 * q + 0.25 * beat);
+      ctx.globalCompositeOperation = "lighter"; glow(ctx, x, y, z * 1.4, GOLD, 0.7); glow(ctx, x, y, z * 0.7, [255, 246, 214], 0.8); ctx.globalCompositeOperation = "source-over";
+      const r = z * 0.3; ctx.fillStyle = "rgb(255,244,205)"; ctx.fillRect(px(E, x - r), px(E, y - r), px(E, 2 * r), px(E, 2 * r)); ctx.fillStyle = "rgb(255,255,245)"; ctx.fillRect(px(E, x - r / 2), px(E, y - r / 2), px(E, r), px(E, r));
+      return;
+    }
+    const d = clamp((t - o.burst) / o.down), z = E.IS * lerp(1.55, 1, smooth(d)), w = clamp((t - o.burst) / 0.35);
+    ctx.globalCompositeOperation = "lighter"; glow(ctx, x, y, z * 1.1, GOLD, 0.55); glow(ctx, x, y, z * 0.55, mix(o.c, WHITE, 0.5), 0.35); ctx.globalCompositeOperation = "source-over";
+    drawSpr(ctx, o.spr, x, y, z); whiteIn(E, ctx, o.spr, x, y, z, w, [255, 246, 214]);
+    const k = clamp((t - o.burst) / 0.35), sc = lerp(2.6, 1, outBack(k)), f = Math.round(fsz(E, 16) * sc);
+    text(ctx, "+2", x, y - z * 0.62 - f, pix(f), GOLD, 1, true);
+  }
+  // a piece leaves the melt at its launch, hangs at the top of its arc if it is the jackpot, and comes down to its slot
+  function blobP(E, o, t) { const u = t - o.launch, a = E.FL * 0.45; if (u <= 0) return 0; if (u < a) return (u / a) * 0.45; if (u < a + o.hold) return 0.45; return Math.min(1, 0.45 + ((u - a - o.hold) / o.down) * 0.55); }
   function blobAt(E, o, i, p) { const [mx, my] = E.mol, [x, y] = slotAt(E, i, E.outs.length); return arc([mx, my], [x, y], E.H * 0.34, p); }
 
   // ================================================================ the ritual table (a ritual item)
