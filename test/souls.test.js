@@ -16,7 +16,7 @@ async function fixture() {
   await d.keys.setMinter(owner.address, true);
   const souls = d.souls; // deployed and wired by deployAll (minter on Materials and Keys)
   await souls.setBaseURI("https://host/souls/");
-  const stream = await ethers.deployContract("Stream", [await souls.getAddress(), 3]); // the gate at 3 souls for the tests
+  const stream = await ethers.deployContract("Stream", [await souls.getAddress(), 3, treasury.address]); // the gate at 3 souls for the tests; the treasury pours
   return { ...d, souls, stream, owner, alice, bob, carol, treasury };
 }
 
@@ -131,7 +131,7 @@ describe("Stream", function () {
     await treasury.sendTransaction({ to: await stream.getAddress(), value: ethers.parseEther("1") });
     await souls.connect(owner).setSummoner(owner.address);
     await souls.connect(owner).release(alice.address, 1);
-    await expect(stream.claim(0, 1)).to.be.revertedWithCustomError(souls, "ERC721NonexistentToken");
+    await expect(stream.claim(0, 1)).to.be.revertedWith("Stream: no weight");
     expect(await stream.claimable(0, 1)).to.equal(0n);
     await stream.claim(0, 2); await stream.claim(0, 3);
     await expect(stream.connect(owner).drain(0, treasury.address)).to.be.revertedWith("Stream: grace");

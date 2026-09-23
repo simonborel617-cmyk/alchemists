@@ -48,17 +48,17 @@ python orchestrator/gpu-miner.py --help
 ## Run
 
 1. One private key per line in `miners.txt`. Each address needs ETH for gas and for the submit price (0.0002 ETH at the start, rising with mining).
-2. Put `deployments/<network>.json` next to the orchestrator: the contract addresses of the network you mine (`robinhoodTestnet.json` is included; the mainnet file comes with the mainnet release).
+2. Put `deployments/<network>.json` next to the orchestrator: the contract addresses of the network you mine (`robinhood.json`, Robinhood Chain mainnet, is included in the release).
 3. A card over ssh, all addresses from `miners.txt`:
 
 ```bash
-alchemists-miner.exe --net robinhoodTestnet --box "ssh -i C:/path/key -p PORT root@HOST ./hb-miner-linux-x64" --miners-file miners.txt
+alchemists-miner.exe --net robinhood --box "ssh -i C:/path/key -p PORT root@HOST ./hb-miner-linux-x64" --miners-file miners.txt
 ```
 
 A local card under Linux:
 
 ```bash
-python orchestrator/gpu-miner.py --net robinhoodTestnet --box "./hb-miner-linux-x64" --miners-file miners.txt
+python orchestrator/gpu-miner.py --net robinhood --box "./hb-miner-linux-x64" --miners-file miners.txt
 ```
 
 Several cards: repeat `--box` for each one, every address goes to every card. Dry run without transactions: `--dry`.

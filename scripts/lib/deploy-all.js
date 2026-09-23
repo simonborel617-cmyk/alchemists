@@ -69,7 +69,7 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   await souls.waitForDeployment();
   log("Souls", await souls.getAddress());
 
-  const stream = await ethers.deployContract("Stream", [await souls.getAddress(), P.streamOpenAt ?? 100]);
+  const stream = await ethers.deployContract("Stream", [await souls.getAddress(), P.streamOpenAt ?? 100, treasury]); // the treasury Safe pours
   await stream.waitForDeployment();
   log("Stream", `${await stream.getAddress()} (claims open at ${P.streamOpenAt ?? 100} souls)`);
 
@@ -88,6 +88,15 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
     await (await workshop.setReroll(w.rerollOutCategory, w.rerollOutAny, w.rerollUpPct, w.rerollUp2PerMille, w.rerollDown)).wait();
     await (await workshop.setCraft(w.keyChance, w.craftUpgradePct)).wait();
     log("workshop", "tunables applied");
+  }
+
+  // contracts that start paused: the summoning belongs to the main act, so on mainnet it is deployed but inert until the
+  // timelock unpauses it (the deployer is still the owner here and may pause; unpausing is the timelock's alone)
+  const byName = { mine, workshop, alchemists, souls, stream };
+  for (const name of P.pausedAtLaunch || []) {
+    if (!byName[name]) throw new Error(`pausedAtLaunch: unknown contract ${name}`);
+    await (await byName[name].pause()).wait();
+    log("paused", name);
   }
 
   let timelock = null;

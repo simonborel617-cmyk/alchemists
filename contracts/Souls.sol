@@ -37,6 +37,7 @@ contract Souls is ERC721, Guarded {
     mapping(uint256 => Data) public data;
     uint256 public total;
     uint256 public burned;
+    uint256 public totalWeight; // sum of the weights of the live souls, kept on seal and release for the stream
     string public baseURI;
     address public summoner; // the main-act contract allowed to burn a soul into an alchemist
 
@@ -102,6 +103,7 @@ contract Souls is ERC721, Guarded {
         mintedByRank[rank] += 1;
         id = ++total;
         data[id] = Data(rank, uint16(tierSum * 100 / SLOTS), nameId, mine.currentMinute());
+        totalWeight += _weight(id);
         _mint(msg.sender, id);
         emit Sealed(id, msg.sender, rank, data[id].avgTier100, nameId);
     }
@@ -112,6 +114,7 @@ contract Souls is ERC721, Guarded {
         require(ownerOf(id) == from, "Souls: not owner");
         d = data[id];
         burned += 1;
+        totalWeight -= _weight(id);
         _burn(id);
         emit Released(id, msg.sender);
     }
@@ -138,6 +141,10 @@ contract Souls is ERC721, Guarded {
     /// @notice Cauldron weight, 1e6 = 1.0: rarity x early. Zero for a released (burned) soul.
     function weight(uint256 id) external view returns (uint256) {
         if (_ownerOf(id) == address(0)) return 0;
+        return _weight(id);
+    }
+
+    function _weight(uint256 id) internal view returns (uint256) {
         return rarity(id) * early(id) / 1e6;
     }
 

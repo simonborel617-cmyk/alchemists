@@ -19,7 +19,7 @@ const RPCS = {
   localhost: ["http://127.0.0.1:8545"],
 };
 const rpcs = RPCS[net] || RPCS.robinhoodTestnet;
-const explorer = net === "robinhood" ? "https://explorer.chain.robinhood.com" : "https://explorer.testnet.chain.robinhood.com";
+const explorer = net === "robinhood" ? "https://robinhoodchain.blockscout.com" : "https://explorer.testnet.chain.robinhood.com";
 fs.writeFileSync(path.join(root, "web", "deployment.json"), JSON.stringify({ ...dep, rpc: rpcs[0], rpcs, explorer, chainName: net === "robinhood" ? "Robinhood Chain" : "Robinhood Chain Testnet" }, null, 2));
 fs.copyFileSync(path.join(root, "deploy", "keys.json"), path.join(root, "web", "names.json"));
 console.log(`web/abi/*.json, web/deployment.json (${net}, Mine ${dep.contracts.Mine}), web/names.json`);

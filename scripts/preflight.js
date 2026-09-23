@@ -29,6 +29,7 @@ function preflight(P, env) {
   if (!P.keysURI || P.keysURI.includes("example")) problems.push("keysURI still points at the placeholder host");
   if (!P.soulsURI || P.soulsURI.includes("example")) problems.push("soulsURI still points at the placeholder host");
   if (P.streamOpenAt !== 100) problems.push("streamOpenAt must be 100 on mainnet");
+  if (!(P.pausedAtLaunch || []).includes("alchemists")) problems.push("pausedAtLaunch must include \"alchemists\": the summoning is the main act and stays paused until the timelock opens it");
   const w = P.workshop || {};
   if (!w.keyChance || w.keyChance[4] < 100 || w.keyChance[0] < 1000000) problems.push("workshop.keyChance must be mainnet-scale (1e6 .. 100)");
   if (w.furnaceCooldown < 600) problems.push("workshop.furnaceCooldown must be at least 600s");

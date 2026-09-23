@@ -987,7 +987,22 @@
   };
   $("doClaim").onclick = async () => {
     if (!streamC || !mySoulIds.length) return;
-    await tx(`claim for ${mySoulIds.length} soul${mySoulIds.length > 1 ? "s" : ""}`, () => C("Stream", signer).claimMany(0, mySoulIds, { gasLimit: 200_000n + 120_000n * BigInt(mySoulIds.length) }));
+    // a claim costs 14-30k gas per pour a soul has not claimed yet, so the gas is estimated, never fixed, and a rack
+    // too big for one transaction is split in halves until every part fits; a single soul that still does not fit
+    // claims its oldest 300 pours per click (claimUpTo)
+    const st = C("Stream", signer), FIT = 12_000_000n;
+    const est = async (xs) => { try { return await st.claimMany.estimateGas(0, xs); } catch { return null; } };
+    const plan = [], queue = [[...mySoulIds]];
+    while (queue.length) {
+      const xs = queue.shift(), g = await est(xs);
+      if (g !== null && g < FIT) plan.push([xs, g]);
+      else if (xs.length > 1) queue.unshift(xs.slice(0, xs.length >> 1), xs.slice(xs.length >> 1));
+      else plan.push([xs, null]);
+    }
+    for (const [xs, g] of plan) {
+      if (g !== null) await tx(`claim for ${xs.length} soul${xs.length > 1 ? "s" : ""}`, () => st.claimMany(0, xs, { gasLimit: (g * 12n) / 10n + 30_000n }));
+      else await tx(`claim for soul #${xs[0]}, the oldest 300 pours`, async () => { const g1 = await st.claimUpTo.estimateGas(0, xs[0], 300); return st.claimUpTo(0, xs[0], 300, { gasLimit: (g1 * 12n) / 10n + 30_000n }); });
+    }
     await refreshSouls(); refreshBurner();
   };
   for (const id of ["potTier", "potA", "potB", "furTier", "refFurnace", "refType", "refTier", "rrTier", "rrCat", "itKind", "itTier"]) $(id).addEventListener("change", renderStations);

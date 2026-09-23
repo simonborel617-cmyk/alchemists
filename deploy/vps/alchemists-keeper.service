@@ -1,0 +1,21 @@
+# /etc/systemd/system/alchemists-keeper.service
+[Unit]
+Description=Alchemists keeper (fixes each minute's challenge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=alchemists
+WorkingDirectory=/opt/alchemists
+Environment=NET=robinhood
+Environment=KEEPER_REVEAL=none
+Environment=KEEPER_INTERVAL_MS=10000
+# KEEPER_KEY and optional RPC_URLS live in /opt/alchemists/.env (chmod 600), never in this file
+ExecStart=/usr/bin/node scripts/keeper.js
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/alchemists/keeper.log
+StandardError=append:/var/log/alchemists/keeper.log
+
+[Install]
+WantedBy=multi-user.target

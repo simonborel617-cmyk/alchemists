@@ -7,15 +7,30 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true
 const NET = process.env.NET || "robinhoodTestnet";
 const dep = require(path.join(__dirname, "..", "deployments", `${NET}.json`));
 const art = (n) => require(path.join(__dirname, "..", "artifacts", "contracts", `${n}.sol`, `${n}.json`)).abi;
-const rpc =
-  process.env.RPC_URL ||
-  (NET === "robinhood" ? process.env.ROBINHOOD_RPC : NET === "localhost" ? "http://127.0.0.1:8545" : process.env.ROBINHOOD_TESTNET_RPC);
-const provider = new ethers.JsonRpcProvider(rpc, undefined, { staticNetwork: true });
-provider.pollingInterval = 1000; // blocks come every ~140 ms here; the default 4 s poll only delays receipts
-const wallet = new ethers.Wallet(process.env.KEEPER_KEY || process.env.DEPLOYER_KEY, provider);
-const mine = new ethers.Contract(dep.contracts.Mine, art("Mine"), wallet);
-const workshop = new ethers.Contract(dep.contracts.Workshop, art("Workshop"), wallet);
-const alchemists = new ethers.Contract(dep.contracts.Alchemists, art("Alchemists"), wallet);
+// RPC endpoints, tried in order: RPC_URLS (comma-separated) or RPC_URL first, then the network's public ones. After a few
+// failed rounds in a row the keeper moves to the next endpoint, so one node going dark does not stop the mine.
+const PUBLIC_RPCS = {
+  robinhood: ["https://rpc.mainnet.chain.robinhood.com", "https://robinhood-rpc.publicnode.com"],
+  robinhoodTestnet: ["https://rpc.testnet.chain.robinhood.com/rpc", "https://robinhood-sepolia-rpc.publicnode.com"],
+  localhost: ["http://127.0.0.1:8545"],
+};
+const RPCS = [...new Set([
+  ...(process.env.RPC_URLS || "").split(","),
+  process.env.RPC_URL,
+  NET === "robinhood" ? process.env.ROBINHOOD_RPC : NET === "robinhoodTestnet" ? process.env.ROBINHOOD_TESTNET_RPC : null,
+  ...(PUBLIC_RPCS[NET] || []),
+].map((u) => (u || "").trim()).filter(Boolean))];
+let rpcIndex = 0, provider, wallet, mine, workshop, alchemists;
+function connect(i) {
+  rpcIndex = i % RPCS.length;
+  provider = new ethers.JsonRpcProvider(RPCS[rpcIndex], dep.chainId || undefined, { staticNetwork: true });
+  provider.pollingInterval = 1000; // blocks come every ~140 ms here; the default 4 s poll only delays receipts
+  wallet = new ethers.Wallet(process.env.KEEPER_KEY || process.env.DEPLOYER_KEY, provider);
+  mine = new ethers.Contract(dep.contracts.Mine, art("Mine"), wallet);
+  workshop = new ethers.Contract(dep.contracts.Workshop, art("Workshop"), wallet);
+  alchemists = new ethers.Contract(dep.contracts.Alchemists, art("Alchemists"), wallet);
+}
+connect(0);
 const ZERO = "0x" + "0".repeat(64);
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
@@ -120,7 +135,7 @@ async function revealAlchemists() {
 async function loop() {
   await syncClock();
   log(`reveal policy: ${REVEAL === "all" ? "everyone" : REVEAL_SET.size ? [...REVEAL_SET].join(",") : "nobody (players reveal themselves)"}; session ${SESSION_MS / 1000}s; clock offset ${(clockOffsetMs / 1000).toFixed(1)}s`);
-  let n = 0;
+  let n = 0, failures = 0;
   for (;;) {
     try {
       await tickIfNeeded();
@@ -129,15 +144,31 @@ async function loop() {
         await revealMiners();
         if (REVEAL === "all") { await revealWorkshop(); await revealAlchemists(); }
       }
+      failures = 0;
     } catch (e) {
-      log("keeper error:", e.shortMessage || e.message);
+      const msg = e.shortMessage || e.message || String(e);
+      log("keeper error:", msg);
+      // an empty wallet is not the node's fault: switching would not help, the watcher raises the alarm
+      if (!/insufficient funds/i.test(msg) && ++failures >= 3 && RPCS.length > 1) {
+        connect(rpcIndex + 1); failures = 0;
+        log(`rpc: switched to ${RPCS[rpcIndex]}`);
+        await syncClock();
+      }
     }
     if (++n % 20 === 0) await syncClock();
+    // every half hour: the balance and how long it lasts at one tick a minute
+    if (n % 120 === 1) {
+      try {
+        const [bal, fee] = await Promise.all([provider.getBalance(wallet.address), provider.getFeeData()]);
+        const perTick = 90000n * (fee.gasPrice || 1n), days = perTick ? Number(bal / perTick) / 1440 : 0;
+        log(`balance ${ethers.formatEther(bal)} ETH, about ${days.toFixed(1)} days of ticks at ${ethers.formatUnits(fee.gasPrice || 0n, "gwei")} gwei`);
+      } catch {}
+    }
     // wake up right after the next session boundary (plus a little for block inclusion), never later than the poll interval
     const untilNext = SESSION_MS - (chainNow() % SESSION_MS) + 700;
     await new Promise((r) => setTimeout(r, Math.min(untilNext, Number(process.env.KEEPER_INTERVAL_MS || 15000))));
   }
 }
 
-log(`keeper ${wallet.address} on ${NET}`);
+log(`keeper ${wallet.address} on ${NET}, rpc ${RPCS[0]}${RPCS.length > 1 ? ` (+${RPCS.length - 1} fallback)` : ""}`);
 mine.sessionSec().then((s) => { SESSION_MS = Number(s) * 1000; }).catch(() => {}).finally(() => { log(`session ${SESSION_MS / 1000}s`); loop(); });

@@ -12,6 +12,7 @@
   "streamOpenAt": 100,
   "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",
+  "pausedAtLaunch": ["alchemists"],
   "mine": {
     "floorBits": 30,
     "ceilBits": 43,

@@ -95,7 +95,8 @@ contract Keys is ERC721, Ownable {
         _unclaimed[pos] = _unclaimed[_unclaimed.length - 1];
         _unclaimed.pop();
         keyClaimed[idx] = true;
-        _safeMint(to, idx);
+        // a plain mint: a contract miner without an ERC-721 hook must not jam its own reveal queue with a key it rolled
+        _mint(to, idx);
         emit KeyClaimed(idx, to, msg.sender);
     }
 }

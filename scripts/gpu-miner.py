@@ -464,7 +464,7 @@ class Orchestrator:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--net", default=os.environ.get("NET", "robinhoodTestnet"))
+    ap.add_argument("--net", default=os.environ.get("NET", "robinhood"))
     ap.add_argument("--box", action="append", required=True, help="command that launches hb-miner (--addr/--persist are appended); repeat for several cards")
     ap.add_argument("--miners-file", help="file with one private key per line; each key gets its own process per --box")
     ap.add_argument("--dry", action="store_true", help="never send transactions")

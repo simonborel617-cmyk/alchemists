@@ -1,0 +1,20 @@
+# /etc/systemd/system/alchemists-watch.service
+[Unit]
+Description=Alchemists watcher (alerts: no ticks, keeper balance, pause, RPC)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=alchemists
+WorkingDirectory=/opt/alchemists
+Environment=NET=robinhood
+Environment=WATCH_MIN_BALANCE=0.02
+# TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID and/or NTFY_TOPIC in /opt/alchemists/.env
+ExecStart=/usr/bin/node scripts/watch.js
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/alchemists/watch.log
+StandardError=append:/var/log/alchemists/watch.log
+
+[Install]
+WantedBy=multi-user.target
