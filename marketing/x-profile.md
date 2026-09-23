@@ -72,7 +72,13 @@ skeleton: 256x144 grid, 16:9, SNES palette, strong outline, no text, no characte
 3. "Sealed. What is inside is only known at the reveal." [scene: sealed-vial.png, wax-sealed vial in a chalk ring]
 4. "Revealed: Rare Rowan." [screenshot: the reveal card] "Type, tier and the upgrade roll are decided by a challenge
    that did not exist when you mined it."
-5. "Forty types. Metals, minerals, herbs, woods, beast parts. Uniformly random, nobody chooses." [scene: ingredient-shelf.png]
+5. "Forty types. / Lead, sulphur, cinnabar, mandrake, oak, bone, raven feather, scarab, and thirty-two more. Eight each
+   of metals, minerals, herbs, woods and beast parts, in five tiers. / Which one the next reveal brings, nobody chooses.
+   The shelf fills itself, one minute at a time." (277 characters) [scene: ingredient-shelf.png, the eight named ones
+   in its eight compartments, in that order] Alt text: "A lamp-lit alchemist shelf with eight compartments: a lead
+   ingot, sulphur, cinnabar, a mandrake root, an oak log, a bone, a raven feather and a scarab. An open book, a
+   magnifying glass and a quill on the desk below." Ingredients come from the mine's reveal, never "out of the
+   cauldron": the Cauldron is the treasury.
 5b. "Threshold corridor 30 to 43 bits. The bar moves with the network's hashrate, every two minutes, at most two bits
    at a time." [screenshot: the mine panel]
 6. "Ten Uncommon Hemlock into the crucible. Out: five Uncommon, one of them rolled Rare." [screenshot: workshop]
