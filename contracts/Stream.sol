@@ -40,6 +40,7 @@ contract Stream is Guarded, ReentrancyGuard {
     mapping(uint256 => uint256) public claimedOf; // epoch index -> amount claimed so far
     mapping(uint256 => bool) public drained; // epoch index -> its unclaimed rest went back to the treasury; no more claims
     address public pourer; // the treasury Safe
+    bool public closed; // after an emergency rescue: no pours, no claims, no drains; the treasury holds what was left
     uint256 public constant GRACE = 365 days; // unclaimed ETH of an epoch may be drained after this
 
     event Poured(uint256 indexed epoch, uint256 amount, uint256 totalWeight, uint32 collection);
@@ -48,6 +49,12 @@ contract Stream is Guarded, ReentrancyGuard {
     event CurrentSet(uint32 index, uint256 openAt);
     event Drained(uint256 indexed epoch, uint256 amount, address to);
     event PourerSet(address pourer);
+    event Rescued(address to, uint256 amount);
+
+    modifier notClosed() {
+        require(!closed, "Stream: closed");
+        _;
+    }
 
     constructor(IWeighted souls, uint256 openAt_, address pourer_) Ownable(msg.sender) {
         collections.push(souls);
@@ -61,6 +68,20 @@ contract Stream is Guarded, ReentrancyGuard {
     function setPourer(address p) external onlyOwner {
         pourer = p;
         emit PourerSet(p);
+    }
+
+    /// @notice The emergency exit. While the guardian (the Safe) holds the stream paused, the owner (the timelock, so
+    ///         only after its public delay) sends everything the stream holds to `to` and closes it for good. For a bug
+    ///         in the stream itself: the Safe pauses at once, the ETH comes back when the delay has passed. After a fix
+    ///         a new stream can be deployed and pointed at the same collection.
+    function rescue(address to) external onlyOwner nonReentrant notClosed {
+        require(paused, "Stream: pause first");
+        require(to != address(0), "Stream: to");
+        closed = true;
+        uint256 amount = address(this).balance;
+        (bool ok, ) = to.call{value: amount}("");
+        require(ok, "Stream: rescue");
+        emit Rescued(to, amount);
     }
 
     // ---------------------------------------------------------------- admin (the timelock)
@@ -81,7 +102,7 @@ contract Stream is Guarded, ReentrancyGuard {
 
     /// @notice What an epoch's holders never claimed, a year after the pour, goes back to the treasury.
     ///         A drained epoch is closed for good: claims skip it, so nobody is paid twice out of the others' share.
-    function drain(uint256 epoch, address to) external onlyOwner nonReentrant {
+    function drain(uint256 epoch, address to) external onlyOwner nonReentrant notClosed {
         Epoch memory e = epochs[epoch];
         require(block.timestamp >= e.at + GRACE, "Stream: grace");
         require(!drained[epoch], "Stream: drained");
@@ -96,11 +117,11 @@ contract Stream is Guarded, ReentrancyGuard {
     // ---------------------------------------------------------------- pours
     /// @notice The treasury pours ETH; it opens one epoch for the current collection with a snapshot of the sum of
     ///         weights. A pour with nobody to claim it is refused. A plain transfer from the pourer pours as well.
-    function pour() external payable whenNotPaused {
+    function pour() external payable whenNotPaused notClosed {
         _pour();
     }
 
-    receive() external payable whenNotPaused {
+    receive() external payable whenNotPaused notClosed {
         _pour();
     }
 
@@ -128,19 +149,20 @@ contract Stream is Guarded, ReentrancyGuard {
     // ---------------------------------------------------------------- claims
     /// @notice What token `id` of collection `idx` can claim right now over all the epochs it has not claimed yet.
     function claimable(uint32 idx, uint256 id) public view returns (uint256 amount) {
+        if (closed) return 0;
         uint256 w = collections[idx].weight(id);
         if (w == 0) return 0;
         amount = _sum(idx, id, w, claimedUpTo[idx][id], epochs.length);
     }
 
     /// @notice Claim for one token; the ETH goes to the token's current owner. Anyone may trigger it.
-    function claim(uint32 idx, uint256 id) external nonReentrant whenNotPaused returns (uint256 amount) {
+    function claim(uint32 idx, uint256 id) external nonReentrant whenNotPaused notClosed returns (uint256 amount) {
         return _claim(idx, id, epochs.length);
     }
 
     /// @notice Claim at most `maxEpochs` epochs for one token, oldest first; call again to go on. The way out if a
     ///         token ever has more epochs behind it than one transaction can walk.
-    function claimUpTo(uint32 idx, uint256 id, uint256 maxEpochs) external nonReentrant whenNotPaused returns (uint256 amount) {
+    function claimUpTo(uint32 idx, uint256 id, uint256 maxEpochs) external nonReentrant whenNotPaused notClosed returns (uint256 amount) {
         uint256 from = claimedUpTo[idx][id];
         uint256 n = epochs.length;
         return _claim(idx, id, maxEpochs < n - from ? from + maxEpochs : n);
@@ -148,7 +170,7 @@ contract Stream is Guarded, ReentrancyGuard {
 
     /// @notice Claim for many tokens of one collection in one transaction (a holder's whole rack). Released tokens are
     ///         skipped, they do not spoil the batch.
-    function claimMany(uint32 idx, uint256[] calldata ids) external nonReentrant whenNotPaused returns (uint256 amount) {
+    function claimMany(uint32 idx, uint256[] calldata ids) external nonReentrant whenNotPaused notClosed returns (uint256 amount) {
         require(isOpen() || idx != current, "Stream: not open yet");
         IWeighted c = collections[idx];
         uint256 n = epochs.length;

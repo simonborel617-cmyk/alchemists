@@ -32,6 +32,7 @@ describe("Launch: the mainnet profile", function () {
     for (const c of [mine, workshop, alchemists, souls, stream]) expect(await c.guardian()).to.equal(safe.address);
     expect(await mine.treasury()).to.equal(safe.address);
     expect(await stream.pourer()).to.equal(safe.address); // only the Safe (or the timelock) pours into the stream
+    expect(await stream.closed()).to.equal(false); // the emergency exit has not been used
 
     // the timelock: the Safe proposes and executes, 48 hours, no admin left with the deployer
     expect(await timelock.getMinDelay()).to.equal(172800n);

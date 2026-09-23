@@ -20,11 +20,16 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
   https://robinhoodchain.blockscout.com; the stream claim estimates gas and splits big racks.
 - **Miner.** Default network is mainnet, README points at `robinhood.json`, `scripts/release-miner.ps1` builds the
   release folder after the deploy.
+- **Emergency exit.** Submit fees land in the Safe directly; the Stream gained `rescue` (pause, then after the timelock
+  delay its whole balance returns to the Safe and it closes); Mine and Alchemists sweep their whole balance.
+  `scripts/emergency.js` writes the Safe batches (pause, rescue, unpause, status); `RUNBOOK.md` has the procedure.
+- **Simulations.** Both regimes ran on the mainnet constants, scaled: `SIMULATION.md`.
 
 ## Needed from the owner before the deploy
 
-1. **Safe.** A 2-of-3 Safe on Robinhood Chain (chainId 4663), three owner addresses on different devices, never the
-   deployer or the keeper. Either in app.safe.global from an owner's wallet, or `NET=robinhood node
+1. **Safe.** A 2-of-3 Safe on Robinhood Chain (chainId 4663), three NEW owner wallets on different devices, never the
+   deployer or the keeper. Seeds on paper, in different places. Prove it before the deploy: 0.001 ETH in, then out
+   with two signatures. Either in app.safe.global from an owner's wallet, or `NET=robinhood node
    scripts/create-safe.js --owners 0xA,0xB,0xC --threshold 2 --name cauldron` paid by the funded deployer (~0.00002 ETH;
    the deployer holds no power over the Safe). The address goes into `governance.safe` in
    `deploy/params.mainnet.json` and `TREASURY`.

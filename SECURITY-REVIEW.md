@@ -47,4 +47,9 @@ owns all eight contracts and the deployer holds no role (`test/launch.test.js`, 
 Claim cost for planning: about 30k gas per epoch for the first claimer of an epoch, about 13-14k for later ones. One
 claim covers roughly 1,000 daily pours before the 32M cap; the dapp splits racks at 12M.
 
+Emergency exit (added the same day, `test/emergency.test.js`): `Stream.rescue(to)` runs only through the timelock and
+only while the guardian holds the stream paused; it returns the whole balance and closes the stream for good, so a
+closed stream cannot be reopened for claims. `Mine.sweepEscrow` and `Alchemists.sweepEscrow` now take the whole
+balance, which covers ETH forced into them. Submit fees never rest in the game contracts: they go to the Safe at once.
+
 No external audit: the owner decided on 2026-09-24 to launch on these two internal reviews and the guardian pause.

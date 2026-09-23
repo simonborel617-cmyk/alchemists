@@ -272,9 +272,10 @@ contract Mine is Guarded, ReentrancyGuard {
         _revealFor(miner);
     }
 
-    /// @notice Sweep mint fees that the treasury refused (see Escrowed).
+    /// @notice Sweep mint fees that the treasury refused (see Escrowed) and any other ETH that reached the mine: between
+    ///         transactions the mine holds nothing of its own, so the whole balance goes. Part of the emergency exit.
     function sweepEscrow(address to) external onlyOwner {
-        uint256 amt = escrowed;
+        uint256 amt = address(this).balance;
         escrowed = 0;
         (bool ok, ) = to.call{value: amt}("");
         require(ok, "Mine: sweep");

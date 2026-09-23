@@ -66,8 +66,9 @@ contract Alchemists is ERC721, Guarded {
         treasury = t;
     }
 
+    /// @notice Sweep fees the treasury refused and any other ETH that reached the contract: it holds nothing of its own.
     function sweepEscrow(address to) external onlyOwner {
-        uint256 amt = escrowed;
+        uint256 amt = address(this).balance;
         escrowed = 0;
         (bool ok, ) = to.call{value: amt}("");
         require(ok, "Alchemists: sweep");

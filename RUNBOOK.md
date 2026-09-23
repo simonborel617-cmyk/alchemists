@@ -63,6 +63,33 @@ Order of operations and checks. None of this is automated on purpose: every step
   to `claimUpTo` for one soul with a very long backlog. Never `drain` an epoch before a year has passed; a drained
   epoch is closed for claims.
 
+## Emergency: where the ETH is and how it comes out
+
+- **The Safe.** Every submit fee lands in the Safe in the same transaction. It is a plain Safe: two of three owners move
+  its ETH anywhere at any time, a normal Safe transfer, no timelock. No game contract holds an allowance on it or can
+  freeze it; a bug in the game cannot touch what is already there.
+- **The Stream** holds only what the Safe chose to pour. Pour in small, regular amounts: that is the whole exposure.
+- **Mine and Alchemists** hold nothing between transactions (fees are forwarded at once, change is refunded at once).
+
+When something is wrong (`node scripts/emergency.js` writes each step as a Transaction Builder batch; app.safe.global >
+Apps > Transaction Builder > drop the file > Create batch > Send batch > the second owner signs > Execute):
+
+1. **Freeze, minutes.** `NET=robinhood node scripts/emergency.js pause`: the Safe pauses Mine, Workshop, Souls, Stream
+   and the summoning at once. Submits, crafts, seals, pours and claims stop; ticks and reveals keep working.
+2. **Pull out, 48 hours.** `NET=robinhood node scripts/emergency.js rescue` writes two batches: step 1 queues it in the
+   timelock now, step 2 runs it after the delay. It returns the Stream's whole balance and anything in Mine and
+   Alchemists to the Safe; the Stream is closed for good (a new one can be deployed after a fix).
+3. **Move.** From the Safe, anywhere, two signatures.
+4. **After a fix.** `NET=robinhood node scripts/emergency.js unpause` (two batches, 48 hours); the summoning stays
+   paused, a rescued stream stays closed.
+
+`NET=robinhood node scripts/emergency.js status` shows pauses and balances at any time. `test/emergency.test.js` runs
+the whole sequence on the governed deployment.
+
+The Safe's own keys are the one thing no code can fix: lose one owner and the other two replace it (Safe > Settings >
+Owners); lose two and the Safe is gone. Keep each seed phrase on paper in a different place. Before the mainnet deploy,
+prove the keys: send 0.001 ETH into the new Safe and send it back out with two signatures.
+
 ## The first week
 
 - Twice a day: `status.js`, keeper balance, number of submits, share of reverts in miner logs.
