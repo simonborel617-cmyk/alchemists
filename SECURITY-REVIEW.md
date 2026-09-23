@@ -47,4 +47,4 @@ owns all eight contracts and the deployer holds no role (`test/launch.test.js`, 
 Claim cost for planning: about 30k gas per epoch for the first claimer of an epoch, about 13-14k for later ones. One
 claim covers roughly 1,000 daily pours before the 32M cap; the dapp splits racks at 12M.
 
-An external audit has still not been done.
+No external audit: the owner decided on 2026-09-24 to launch on these two internal reviews and the guardian pause.

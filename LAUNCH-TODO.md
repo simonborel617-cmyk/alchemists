@@ -23,13 +23,15 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
 
 ## Needed from the owner before the deploy
 
-1. **Safe.** A 2-of-3 Safe on Robinhood Chain (chainId 4663) in app.safe.global, three owner addresses on different
-   devices, never the deployer. The address goes into `governance.safe` in `deploy/params.mainnet.json` and `TREASURY`.
+1. **Safe.** A 2-of-3 Safe on Robinhood Chain (chainId 4663), three owner addresses on different devices, never the
+   deployer or the keeper. Either in app.safe.global from an owner's wallet, or `NET=robinhood node
+   scripts/create-safe.js --owners 0xA,0xB,0xC --threshold 2 --name cauldron` paid by the funded deployer (~0.00002 ETH;
+   the deployer holds no power over the Safe). The address goes into `governance.safe` in
+   `deploy/params.mainnet.json` and `TREASURY`.
 2. **Mainnet ETH.** Deployer `0xEd80…2a56`: 0.01 ETH. Keeper `0xA18d…9655`: 0.1 ETH (at today's 0.05 gwei a keeper
    ticking every minute uses ~0.19 ETH a month). Both hold 0 on mainnet today.
-3. **The audit decision.** There is no external audit and there will not be one by Friday. Launching without it rests
-   on two internal reviews, 61 tests and the guardian pause (the Safe can stop submits and crafting at once). Or the
-   launch waits for an audit.
+3. ~~The audit decision~~ **Decided 2026-09-24: no external audit.** The launch rests on two internal reviews, 61
+   tests and the guardian pause (the Safe can stop submits and crafting at once).
 4. **Keeper host.** A VPS (any 1 GB Ubuntu box, `deploy/vps/README.md`), or the PC for the first days, awake 24/7.
 5. **Alerts.** A Telegram bot token and chat id, or an ntfy topic name, in `.env` of the keeper host.
 6. **Constants, last call** (immutable after the deploy): corridor 30..43 bits; unlocks at 1/2/3/4 TH/s;
