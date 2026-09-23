@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=30">
 </head>
 <body data-app="8">
 <header>
@@ -171,7 +171,9 @@
     <div class="nowallet" id="nowalletInv"><b>No wallet connected.</b> You are looking at the session wallet that lives in this browser. Connect your wallet to see what it holds and to craft with it. <button class="btn gold" id="connect4">Connect wallet</button></div>
     <h2>Inventory <label class="f" style="margin-left:6px;flex-direction:row;align-items:center;gap:8px">showing<select id="invWho"><option value="miner">session wallet</option><option value="main" disabled>main wallet</option></select><span class="tag" id="invWhoAddr"></span></label><button class="btn gold" id="withdrawBtn2" style="margin-left:12px;display:none">Move loot to my wallet</button><span class="tag" id="invHint">empty</span></h2>
     <div class="tabs" id="tabs"></div>
+    <div class="inv-bar"><input id="invFind" type="search" placeholder="find by name or tier" autocomplete="off"><label class="f">sort<select id="invSort"><option value="kind">by kind</option><option value="tier">highest tier first</option><option value="count">most first</option><option value="name">by name</option></select></label></div>
     <div class="inv" id="invGrid"></div>
+    <div class="pager" id="invPager"></div>
     <div class="empty" id="invEmpty">Connect a wallet to see your ingredients, potions, items, keys and furnaces.</div>
   </section>
 
@@ -310,6 +312,6 @@
 <script src="rite.js?v=2"></script>
 <script src="reveal.js?v=3"></script>
 <script src="workshop.js?v=3"></script>
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>

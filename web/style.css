@@ -330,3 +330,17 @@ body.connected .nowallet { display:none; }
 .st-scene canvas { display:block; width:100%; image-rendering:pixelated; image-rendering:crisp-edges; }
 .pend { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 12px; background:var(--bg); border:2px solid var(--gold3); font:12px var(--mono); color:var(--ink2); }
 .pend .btn { margin-left:auto; }
+
+/* inventory pages: a search, a sort and a pager under the grid; the tabs carry their counts */
+.inv-bar { display:flex; gap:10px 14px; flex-wrap:wrap; align-items:flex-end; margin:0 0 14px; }
+.inv-bar input { flex:1 1 220px; max-width:340px; }
+.inv-bar label.f { flex-direction:row; align-items:center; gap:8px; }
+.tabs button small { font:9px var(--mono); color:var(--muted); margin-left:6px; }
+.tabs button.on small { color:var(--gold3); }
+.pager { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:14px; min-height:36px; }
+.pager button { font:10px var(--pix); min-width:36px; padding:9px 9px 8px; background:var(--bg2); color:var(--ink2); border:2px solid var(--bevel-lo); cursor:pointer; }
+.pager button:hover:not(:disabled) { border-color:var(--bevel-hi); }
+.pager button.on { color:var(--gold2); border-color:var(--gold); }
+.pager button:disabled { opacity:.35; cursor:default; }
+.pager .gap { font:10px var(--pix); color:var(--muted); padding:0 2px; }
+.pager .pg-info { margin-left:auto; font:11px var(--mono); color:var(--muted); }

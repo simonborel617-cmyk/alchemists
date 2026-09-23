@@ -436,7 +436,25 @@
   const TABS = [["all", "All"], ["0", "Metals"], ["1", "Minerals"], ["2", "Herbs"], ["3", "Woods"], ["4", "Beasts"], ["potion", "Potions"], ["item", "Items"], ["key", "Keys"], ["furnace", "Furnaces"]];
   let tab = "all";
   $("tabs").innerHTML = TABS.map(([k, v]) => `<button data-k="${k}" class="${k === tab ? "on" : ""}">${v}</button>`).join("");
-  $("tabs").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.k; [...$("tabs").children].forEach((x) => x.classList.toggle("on", x === b)); renderInventory(); };
+  $("tabs").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.k; invPage = 0; [...$("tabs").children].forEach((x) => x.classList.toggle("on", x === b)); renderInventory(); };
+  // ---- inventory pages: as many rows as fit the width (three, four on a phone), a pager, a search and a sort
+  let invPage = 0, invPer = 0;
+  const invPageSize = () => { // whole rows: the columns the grid actually laid out (auto-fill), three rows, four on a phone
+    const g = $("invGrid"), w = g.clientWidth || 800, tracks = (getComputedStyle(g).gridTemplateColumns || "").split(" ").filter((x) => x && x !== "none").length;
+    const cols = Math.max(2, tracks || Math.floor((w + 10) / 102)); return cols * (w < 520 ? 4 : 3);
+  };
+  $("invFind").addEventListener("input", () => { invPage = 0; renderInventory(); });
+  $("invSort").addEventListener("change", () => { invPage = 0; renderInventory(); });
+  $("invPager").onclick = (e) => { const b = e.target.closest("button"); if (!b || b.disabled) return; invPage = +b.dataset.p; renderInventory(); };
+  if (window.ResizeObserver) new ResizeObserver(() => { const per = invPageSize(); if (invPer && per !== invPer) { invPage = Math.floor((invPage * invPer) / per); renderInventory(); } }).observe($("invGrid"));
+  function pagerHtml(page, pages, from, to, total) {
+    if (pages <= 1) return total > 1 ? `<span class="pg-info">${total} stacks</span>` : "";
+    const btn = (p, label, on, off) => `<button data-p="${p}" class="${on ? "on" : ""}" ${off ? "disabled" : ""} aria-label="${typeof label === "number" ? "page " + label : label === "<" ? "previous page" : "next page"}">${label}</button>`;
+    const show = [...new Set([0, pages - 1, page - 1, page, page + 1])].filter((p) => p >= 0 && p < pages).sort((a, b) => a - b);
+    const parts = []; let last = -1;
+    for (const p of show) { if (p - last > 1) parts.push(`<span class="gap">…</span>`); parts.push(btn(p, p + 1, p === page)); last = p; }
+    return btn(page - 1, "<", false, page === 0) + parts.join("") + btn(page + 1, ">", false, page === pages - 1) + `<span class="pg-info">${from}–${to} of ${total}</span>`;
+  }
   let cards = [], inv = null, myFurnaces = [];
   function allIds() {
     const ids = [];
@@ -472,11 +490,22 @@
   async function myFurnaceIds(addr) { try { return await mine721(furnaces, "furnaces", addr, Number(await furnaces.nextId()) - 1); } catch { return []; } }
   const compact = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}m` : n >= 1e4 ? `${Math.round(n / 1e3)}k` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n));
   function renderInventory() {
-    const list = cards.filter((c) => tab === "all" || c.cat === tab);
-    $("invGrid").innerHTML = list.map((c) => `<div class="card t${c.tier}" title="${c.title}"><img class="px" src="${c.img}" alt=""><span class="n">×${compact(c.n)}</span><div class="t">${c.name}</div><div class="s">${c.sub}</div></div>`).join("");
+    const q = ($("invFind").value || "").trim().toLowerCase(), sort = $("invSort").value;
+    let list = cards.filter((c) => (tab === "all" || c.cat === tab) && (!q || `${c.name} ${c.sub}`.toLowerCase().includes(q)));
+    if (sort === "tier") list = [...list].sort((a, b) => b.tier - a.tier || a.name.localeCompare(b.name));
+    else if (sort === "count") list = [...list].sort((a, b) => b.n - a.n || b.tier - a.tier);
+    else if (sort === "name") list = [...list].sort((a, b) => a.name.localeCompare(b.name) || b.tier - a.tier);
+    invPer = invPageSize();
+    const pages = Math.max(1, Math.ceil(list.length / invPer)); invPage = Math.max(0, Math.min(invPage, pages - 1));
+    const from = invPage * invPer, view = list.slice(from, from + invPer);
+    $("invPager").innerHTML = pagerHtml(invPage, pages, from + 1, from + view.length, list.length);
+    // the tabs show how many stacks each one holds
+    for (const b of $("tabs").children) { const k = b.dataset.k, n = k === "all" ? cards.length : cards.filter((c) => c.cat === k).length, label = TABS.find((t) => t[0] === k)[1]; b.innerHTML = n ? `${label}<small>${n}</small>` : label; }
+    $("invGrid").innerHTML = view.map((c) => `<div class="card t${c.tier}" title="${c.title}"><img class="px" src="${c.img}" alt=""><span class="n">×${compact(c.n)}</span><div class="t">${c.name}</div><div class="s">${c.sub}</div></div>`).join("");
     $("invEmpty").style.display = list.length ? "none" : "";
-    $("invEmpty").textContent = "Nothing here yet. Mined ingredients land in the miner wallet a minute after the submit that reveals them.";
+    $("invEmpty").textContent = q && cards.length ? `Nothing here matches "${q}".` : "Nothing here yet. Mined ingredients land in the miner wallet a minute after the submit that reveals them.";
   }
+  if (new URLSearchParams(location.search).get("invdev")) window.alchInvDev = (n = 150) => { cards = Array.from({ length: n }, (_, i) => { const t = i % 40, tier = 1 + (i % 5); return { cat: String(Math.floor(t / 8)), tier, n: 1 + ((i * 37) % 2400), img: `metadata/${ing(t, tier)}.png`, name: names.types[t], sub: TIERS[tier], title: "" }; }); invPage = 0; renderInventory(); };
   async function refreshInventory() {
     const ids = allIds();
     const bal = await materials.balanceOfBatch(ids.map(() => me), ids);
