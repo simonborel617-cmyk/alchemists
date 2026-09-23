@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=32">
 </head>
 <body data-app="8">
 <header>
@@ -122,8 +122,6 @@
         <div style="grid-column:span 2"><b>session</b><div class="clock"><span id="clock">–</span><small id="session"></small></div></div>
         <div><b>submit price</b><span id="price" class="sm">–</span></div>
         <div><b>threshold this minute</b><span id="thr">–</span></div>
-        <div><b>network hashrate, estimate</b><span id="ema">–</span></div>
-        <div><b>submits total</b><span id="subs">–</span></div>
         <div><b>farm multiplier</b><span id="mult">–</span></div>
         <div><b>network pressure</b><span id="press">–</span></div>
       </div>
@@ -166,6 +164,26 @@
       </div>
     </section>
   </div>
+
+  <section class="panel" id="network" style="margin-bottom:26px">
+    <h2>The network <span class="tag" id="netState">…</span></h2>
+    <div class="net-tiles">
+      <div><b>network hashrate</b><span id="nHash">–</span><small id="nHashSub"></small></div>
+      <div><b>difficulty</b><span id="nDiff">–</span><small id="nDiffSub"></small></div>
+      <div><b>finds this window</b><span id="nWin">–</span><small id="nWinSub"></small></div>
+      <div><b>miners, last hour</b><span id="nMiners">–</span><small id="nMinersSub"></small></div>
+      <div><b>finds, last 24 h</b><span id="nFinds">–</span><small id="nFindsSub"></small></div>
+      <div class="you"><b>your odds</b><span id="nYou">–</span><small id="nYouSub"></small></div>
+    </div>
+    <div class="net-charts">
+      <div class="chart"><div class="chart-head"><b>hashrate · 24 h</b><span id="cHashNow"></span></div><canvas id="cHash"></canvas></div>
+      <div class="chart"><div class="chart-head"><b>difficulty · 24 h</b><span id="cDiffNow"></span></div><canvas id="cDiff"></canvas></div>
+    </div>
+    <div class="net-low">
+      <div><h3>rarities open as the network grows</h3><div class="utrack" id="uTrack"></div><p class="small" id="uNote"></p></div>
+      <div><h3>latest finds</h3><ol class="nfeed" id="nFeed"></ol></div>
+    </div>
+  </section>
 
   <section class="panel" id="inv" style="margin-bottom:26px">
     <div class="nowallet" id="nowalletInv"><b>No wallet connected.</b> You are looking at the session wallet that lives in this browser. Connect your wallet to see what it holds and to craft with it. <button class="btn gold" id="connect4">Connect wallet</button></div>
@@ -308,10 +326,11 @@
 <script src="gpu.js?v=13"></script>
 <script src="fx.js?v=15"></script>
 <script src="rpc.js?v=4"></script>
+<script src="charts.js?v=1"></script>
 <script src="stage.js?v=12"></script>
 <script src="rite.js?v=2"></script>
 <script src="reveal.js?v=3"></script>
 <script src="workshop.js?v=4"></script>
-<script src="app.js?v=36"></script>
+<script src="app.js?v=37"></script>
 </body>
 </html>

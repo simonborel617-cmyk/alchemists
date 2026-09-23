@@ -100,7 +100,7 @@
     const ck = document.querySelector(".clock"); if (ck) ck.classList.toggle("soon", left <= 5);
     $("session").textContent = `minute ${m} · until the next challenge`;
     if (m !== curMinute) { curMinute = m; refreshMine(); miner.onMinute(m); renderPending(); }
-    coolTick();
+    coolTick(); netTick();
     miner.tickUi();
   }
 
@@ -370,7 +370,7 @@
       const now = performance.now();
       this.hist = this.hist.filter((h) => now - h[0] < 10000);
       const span = this.hist.length ? Math.max(1000, now - this.hist[0][0]) : 1000;
-      const rate = this.hist.reduce((a, h) => a + h[1], 0) / (span / 1000);
+      const rate = this.hist.reduce((a, h) => a + h[1], 0) / (span / 1000); this.rate = this.running ? rate : 0;
       $("hashrate").innerHTML = this.running ? fmtHs(rate) : "–";
       stage("rate", { rate, running: this.running, sec: Math.floor(chainNow() % sessionSec), sessionSec, chainNow: chainNow(), m: this.m });
       $("bestBits").innerHTML = this.best ? `${(this.best.wq8 / 256).toFixed(2)} <small>bits</small>` : "–";
@@ -466,8 +466,10 @@
   // Events of this wallet since the deployment: scanned once from the deployment block and then only from where the
   // last scan ended. The official RPC takes the whole range at once; a capped one gets smaller and smaller chunks.
   const logScans = {};
-  async function eventsOf(key, contract, filter) {
-    const st = logScans[key] || (logScans[key] = { from: dep.block || 0, logs: [] });
+  async function eventsOf(key, contract, filter) { const st = logScans[key] || (logScans[key] = { from: dep.block || 0, logs: [] }); return scanInto(st, contract, filter); }
+  // the same, kept to a recent window: starts at `start` and drops what falls behind it
+  async function eventsSince(key, contract, filter, start) { const st = logScans[key] || (logScans[key] = { from: start, logs: [] }); await scanInto(st, contract, filter); st.logs = st.logs.filter((l) => l.blockNumber >= start); return st.logs; }
+  async function scanInto(st, contract, filter) {
     const latest = await provider.getBlockNumber();
     let from = st.from, span = Math.max(1, latest - from + 1);
     while (from <= latest) {
@@ -478,6 +480,115 @@
     st.from = latest + 1;
     return st.logs;
   }
+  // ------------------------------------------------------------ the network: its numbers, a day of charts, the latest finds
+  // Retarget events carry every window's measured hashrate, threshold and finds; Submitted events count finds and
+  // miners; Mined and KeyMined events feed the list of finds. Block times come from a sample of blocks, the rest
+  // interpolated between them.
+  const blockTimes = new Map(), net = { rate: null, winEnd: 0, bits: 0, ema: 0, gen: 0 };
+  async function blockRate(latest) {
+    if (net.rate && Date.now() - net.rate.at < 600e3) return net.rate.v;
+    const back = Math.max(dep.block || 0, latest.number - 100000), b = await provider.getBlock(back);
+    const v = (latest.number - back) / Math.max(1, Number(latest.timestamp) - Number(b.timestamp)); blockTimes.set(back, Number(b.timestamp)); net.rate = { at: Date.now(), v }; return v;
+  }
+  async function timesOf(blocks, latest) {
+    const u = [...new Set(blocks)].sort((a, b) => a - b); blockTimes.set(latest.number, Number(latest.timestamp));
+    const step = Math.max(1, Math.floor(u.length / 24)), want = u.filter((_, i) => i % step === 0); if (u.length) want.push(u[u.length - 1]);
+    await inChunks(want.filter((b) => !blockTimes.has(b)), (b) => provider.getBlock(b).then((x) => { if (x) blockTimes.set(b, Number(x.timestamp)); }).catch(() => {}), 8);
+    const pts = [...new Set(want.concat([latest.number]))].filter((b) => blockTimes.has(b)).sort((a, b) => a - b).map((b) => [b, blockTimes.get(b)]);
+    return (b) => { if (blockTimes.has(b)) return blockTimes.get(b); if (pts.length < 2) return pts.length ? pts[0][1] : Number(latest.timestamp); let i = 1; while (i < pts.length - 1 && pts[i][0] < b) i++; const [b0, t0] = pts[i - 1], [b1, t1] = pts[i]; return b1 === b0 ? t1 : t0 + ((b - b0) / (b1 - b0)) * (t1 - t0); };
+  }
+  const fmtHsTxt = (h) => fmtHs(h).replace(/<[^>]+>/g, "");
+  const fmtBig = (n) => (n >= 1e15 ? `${(n / 1e15).toFixed(1)} P` : n >= 1e12 ? `${(n / 1e12).toFixed(1)} T` : n >= 1e9 ? `${(n / 1e9).toFixed(1)} G` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} M` : `${Math.round(n / 1e3)} k`);
+  const ago = (s) => (s < 90 ? "just now" : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min ago`);
+  let netBusy = false, netGenesis = 0;
+  async function refreshNetwork(dev) {
+    if (netBusy || !document.getElementById("network")) return; netBusy = true;
+    try {
+      const d = dev || (await netData());
+      renderNetwork(d);
+    } catch (e) { log("network: " + (e.shortMessage || e.message), "warn"); }
+    finally { netBusy = false; }
+  }
+  async function netData() {
+    const latest = await provider.getBlock("latest"), now = Number(latest.timestamp), cfg = cfgCache || (await mine.config());
+    if (!netGenesis) netGenesis = Number(await mine.genesisTime());
+    const wsec = now < netGenesis + Number(cfg.firstHourSec) ? Number(cfg.windowSecEarly) : Number(cfg.windowSec);
+    const m = Math.floor(now / sessionSec);
+    const [ema, tQ8, wStart, wMints, sub, unlocked, kW3, mt] = await Promise.all([mine.emaHashrate(), mine.tQ8(), mine.windowStart(), mine.windowMints(), mine.submittedTotal(), mine.unlockedTier(), mine.kWindow3(wsec), mine.minuteThreshold(m).catch(() => 0n)]);
+    const rate = await blockRate(latest), from24 = Math.max(dep.block || 0, Math.floor(latest.number - rate * 86400 * 1.05));
+    const [rts, subs, mined, keysM] = await Promise.all([
+      eventsSince("net:retarget", mine, mine.filters.Retarget(), from24), eventsSince("net:submitted", mine, mine.filters.Submitted(), from24),
+      eventsSince("net:mined", mine, mine.filters.Mined(), from24), eventsSince("net:keys", mine, mine.filters.KeyMined(), from24),
+    ]);
+    const feed = [...mined.slice(-14), ...keysM.slice(-4)];
+    const timeOf = await timesOf([...rts, ...subs.slice(-300), ...feed].map((l) => l.blockNumber), latest);
+    return {
+      now, wsec, ema: Number(ema), bits: (Number(mt) || Number(tQ8)) / 256, winStart: Number(wStart), winMints: Number(wMints), target: Number(kW3) / 1000, sub: Number(sub), unlocked: Number(unlocked),
+      floor: Number(cfg.floorBitsQ8) / 256, ceil: Number(cfg.ceilBitsQ8) / 256, unlock: cfg.unlockHashrate.map(Number),
+      rts: rts.map((l) => ({ t: timeOf(l.blockNumber), h: Number(l.args.hashrate), bits: Number(l.args.tQ8) / 256, mints: Number(l.args.mints) })),
+      subs: subs.map((l) => ({ t: timeOf(l.blockNumber), who: l.args.miner })),
+      feed: feed.map((l) => ({ t: timeOf(l.blockNumber), block: l.blockNumber, who: l.args.miner, key: l.eventName === "KeyMined", tier: l.args.tier !== undefined ? Number(l.args.tier) : 6, type: l.args.typeId !== undefined ? Number(l.args.typeId) : -1, up: !!l.args.upgraded, keyIndex: l.args.keyIndex !== undefined ? Number(l.args.keyIndex) : -1 })),
+    };
+  }
+  // the value below which a share q of the list falls: one freak window does not flatten the rest of the bars
+  const pctl = (xs, q) => { if (!xs.length) return 0; const v = [...xs].sort((a, b) => a - b); return v[Math.min(v.length - 1, Math.floor(q * v.length))]; };
+  function renderNetwork(d) {
+    const day = d.now - 86400, hour = d.now - 3600;
+    // the day of windows: the measured hashrate smoothed the way the contract smooths it, the threshold, the finds
+    let e = null; const hashPts = [], rawPts = [], diffPts = [], bars = [];
+    for (const r of d.rts) { e = e === null ? r.h : (e * 4 + r.h) / 5; if (r.t < day) continue; hashPts.push([r.t, e]); rawPts.push([r.t, r.h]); diffPts.push([r.t, r.bits]); bars.push([r.t, r.mints]); }
+    hashPts.push([d.now, d.ema]); diffPts.push([d.now, d.bits]);
+    const live = d.ema > 0 || d.rts.some((r) => r.t >= day && r.h > 0);
+    $("netState").textContent = live ? "live" : "quiet"; $("netState").className = "tag" + (live ? " on" : "");
+    // headline numbers
+    const hourAgo = hashPts.filter((p) => p[0] <= d.now - 3600).pop(), trend = hourAgo && hourAgo[1] > 0 ? (d.ema - hourAgo[1]) / hourAgo[1] : 0, lastRaw = rawPts.length ? rawPts[rawPts.length - 1][1] : 0;
+    $("nHash").innerHTML = d.ema > 0 ? fmtHs(d.ema) : `0 <small>H/s</small>`;
+    $("nHashSub").innerHTML = d.ema > 0 ? `last window ${fmtHsTxt(lastRaw)}${Math.abs(trend) >= 0.01 ? ` · <span class="${trend > 0 ? "up" : "down"}">${trend > 0 ? "+" : ""}${(trend * 100).toFixed(0)}% in an hour</span>` : ""}` : "no one is mining right now";
+    $("nDiff").innerHTML = `${d.bits.toFixed(2)} <small>bits</small>`;
+    $("nDiffSub").textContent = `≈ ${fmtBig(Math.pow(2, d.bits))} hashes a find · corridor ${d.floor}–${d.ceil}`;
+    net.winEnd = d.winStart + d.wsec; net.winMints = d.winMints; net.target = d.target; net.bits = d.bits; net.ema = d.ema; net.floor = d.floor; net.ceil = d.ceil;
+    const miners = new Set(d.subs.filter((x) => x.t >= hour).map((x) => x.who.toLowerCase()));
+    $("nMiners").textContent = miners.size; $("nMinersSub").textContent = `${d.subs.filter((x) => x.t >= hour).length} finds submitted in the hour`;
+    $("nFinds").textContent = d.subs.filter((x) => x.t >= day).length.toLocaleString("en"); $("nFindsSub").textContent = `${d.sub.toLocaleString("en")} since the vein opened`;
+    netTick();
+    // charts
+    if (window.AlchChart) {
+      const pos = hashPts.map((p) => p[1]).concat(rawPts.map((p) => p[1])).filter((v) => v > 0), lo = pos.length ? Math.min(...pos) : 1e6, hi = pos.length ? Math.max(...pos) : 1e9;
+      AlchChart.set($("cHash"), { x0: day, x1: d.now, log: true, y0: Math.max(1e3, lo / 2), y1: Math.max(hi * 1.6, lo * 4), yfmt: (v) => fmtBig(v), empty: "no mining in the last 24 hours",
+        series: [{ pts: rawPts.filter((p) => p[1] > 0), color: "#c8742e", width: 1, faint: true, name: "window", fmt: (v) => fmtHsTxt(v) }, { pts: hashPts.filter((p) => p[1] > 0), color: "#f2c455", width: 2, area: true, name: "hashrate", fmt: (v) => fmtHsTxt(v) }] });
+      $("cHashNow").innerHTML = d.ema > 0 ? fmtHs(d.ema) : "";
+      // the threshold axis frames the day's range (at least four bits), the corridor edges show when they are near
+      // four rows of a round step (half a bit, one, two, three or four bits) that hold the day with a little air
+      const bs = diffPts.map((p) => p[1]), bLo = Math.min(...bs), bHi = Math.max(...bs), mid = (bLo + bHi) / 2;
+      let dStep = 4, dy0 = d.floor - 1, dy1 = d.ceil + 1;
+      for (const st of [0.5, 1, 2, 3, 4]) { const a = st * Math.round(mid / st) - 2 * st; if (a <= bLo - st * 0.25 && a + 4 * st >= bHi + st * 0.25) { dStep = st; dy0 = a; dy1 = a + 4 * st; break; } }
+      AlchChart.set($("cDiff"), { x0: day, x1: d.now, y0: dy0, y1: dy1, yfmt: (v) => v.toFixed(dStep < 1 ? 1 : 0), empty: "no windows yet",
+        bands: [{ y: d.floor, color: "#8f978f", label: `floor ${d.floor}` }, { y: d.ceil, color: "#8f978f", label: `ceiling ${d.ceil}` }],
+        bars: { pts: bars, max: Math.max(d.target * 2, pctl(bars.map((b) => b[1]), 0.95), 1), color: "#35c9e8", name: "finds", every: d.wsec },
+        series: [{ pts: diffPts, color: "#35c9e8", width: 2, step: true, name: "threshold", fmt: (v) => `${v.toFixed(2)} bits` }] });
+      $("cDiffNow").textContent = `${d.bits.toFixed(2)} bits`;
+    }
+    // the rarities: each opens for good when the network's hashrate first reaches it
+    const top = d.unlock[3] * 1.25, pct = (v) => Math.min(100, (100 * v) / top);
+    $("uTrack").innerHTML = `<div class="rail"></div><div class="fill" style="width:${pct(d.ema).toFixed(2)}%"></div>` + d.unlock.map((v, k) => `<div class="mk${k % 2 ? " alt" : ""}${d.unlocked >= k + 2 ? " on" : ""}" style="left:${pct(v).toFixed(2)}%;--g:${TC[k + 2]}"><i></i>${TIERS[k + 2]}<small>${fmtHsTxt(v)}</small></div>`).join("") + `<div class="pin" style="left:${pct(d.ema).toFixed(2)}%" title="the network now"></div>`;
+    const next = d.unlock.findIndex((v, k) => d.unlocked < k + 2);
+    $("uNote").textContent = next < 0 ? "Every rarity is open." : `Common${d.unlocked >= 2 ? " to " + TIERS[d.unlocked] : ""} open. ` + (d.ema >= d.unlock[next] ? `The network is past ${fmtHsTxt(d.unlock[next])}: ${TIERS[next + 2]} opens at the next retarget.` : `${TIERS[next + 2]} opens when the network reaches ${fmtHsTxt(d.unlock[next])}${d.ema > 0 ? `, it is at ${Math.round((100 * d.ema) / d.unlock[next])}% of that` : ""}.`);
+    // the latest finds, newest first
+    const mineSet = new Set([me, burner && burner.address, main && main.address].filter(Boolean).map((a) => a.toLowerCase()));
+    const items = d.feed.sort((a, b) => b.block - a.block).slice(0, 14);
+    $("nFeed").innerHTML = items.length ? items.map((f) => { const self = mineSet.has(String(f.who).toLowerCase()); return `<li class="${f.key ? "key " : ""}${self ? "me" : ""}" style="--tc:${TC[f.tier]}"><span class="who">${self ? "you" : short(f.who)}</span><span class="what">${f.key ? `MYTHIC KEY · ${names.keys[f.keyIndex] ? names.keys[f.keyIndex].key : ""}` : `${TIERS[f.tier]} ${names.types[f.type] || ""}${f.up ? " · upgraded" : ""}`}</span><span class="ago">${ago(d.now - f.t)}</span></li>`; }).join("") : `<li class="none">No finds in the last 24 hours.</li>`;
+  }
+  // every second: the window countdown and the odds of this browser's miner
+  function netTick() {
+    if (!document.getElementById("network") || !net.bits) return;
+    const now = chainNow(), left = Math.max(0, Math.round(net.winEnd - now)), dir = net.winMints > net.target ? (net.bits >= net.ceil ? "at the ceiling" : "difficulty will rise") : net.winMints < net.target ? (net.bits <= net.floor ? "at the floor" : "difficulty will ease") : "on target";
+    $("nWin").innerHTML = `${net.winMints} <small>of ${net.target.toFixed(net.target % 1 ? 1 : 0)} targeted</small>`;
+    $("nWinSub").textContent = left > 0 ? `retarget in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} · ${dir}` : `retargets with the next transaction · ${dir}`;
+    const r = miner && miner.rate ? miner.rate : 0;
+    if (r > 0) { const p = 1 - Math.exp((-r * sessionSec) / Math.pow(2, net.bits)); $("nYou").textContent = `${(p * 100).toFixed(p < 0.1 ? 1 : 0)}% a minute`; $("nYouSub").textContent = `at ${fmtHsTxt(r)}${net.ema > 0 ? ` · ${Math.min(100, (100 * r) / net.ema).toFixed(1)}% of the network` : ""}`; }
+    else { $("nYou").textContent = "–"; $("nYouSub").textContent = "start the miner to see your chance of a find each minute"; }
+  }
+  if (new URLSearchParams(location.search).get("netdev")) window.alchNetDev = (d) => refreshNetwork(d);
   // reads in parallel chunks, so hundreds of them do not queue one behind another
   async function inChunks(items, fn, size = 16) { const out = []; for (let i = 0; i < items.length; i += size) out.push(...(await Promise.all(items.slice(i, i + size).map(fn)))); return out; }
   const mine721 = async (c, key, addr, total) => { // the tokens of an ERC-721 this wallet holds now: its incoming transfers, checked against ownerOf
@@ -1002,6 +1113,7 @@
   await refreshMine();
   setInterval(tickClock, 1000); tickClock();
   setInterval(refreshMine, 30000); // the minute boundary triggers its own refresh; this only catches price and pressure drift
+  refreshNetwork(); setInterval(() => { if (!new URLSearchParams(location.search).get("netdev")) refreshNetwork(); }, 60000);
   setInterval(refreshInventory, 90000);
   await refreshInventory();
   await refreshWorkshop();
