@@ -399,3 +399,41 @@ body.connected .nowallet { display:none; }
   .nfeed li { grid-template-columns:1fr auto; grid-template-areas:"who ago" "what what"; gap:2px 10px; }
   .nfeed li .who { grid-area:who; } .nfeed li .ago { grid-area:ago; } .nfeed li .what { grid-area:what; white-space:normal; }
 }
+
+/* the section bar: a row of tabs under the header on wide screens (it sticks with the header), a tab bar at the
+   bottom of the screen on phones. The icons are the game's own art, dimmed until hovered or marked. */
+#bm, #mine, #network, #inv, #ws, #cauldron, #logs { scroll-margin-top:var(--navoff, 140px); }
+.secnav { border-top:2px solid var(--line); background:var(--bg2); }
+.secnav .wrap { position:relative; display:flex; gap:2px; padding:0 16px; overflow-x:auto; scrollbar-width:none; }
+.secnav .wrap::-webkit-scrollbar { display:none; }
+.secnav a { position:relative; flex:none; display:flex; align-items:center; gap:9px; padding:7px 14px 6px; color:var(--muted); font:9px var(--pix); text-transform:uppercase; text-decoration:none; white-space:nowrap; border-bottom:3px solid transparent; transition:color .15s, background .15s; }
+.secnav a img { width:28px; height:28px; flex:none; filter:saturate(.3) brightness(.72); transition:filter .2s, transform .2s; }
+.secnav a:hover { color:var(--ink2); background:rgba(255,255,255,.025); }
+.secnav a:hover img { filter:none; transform:translateY(-2px); }
+.secnav a:focus-visible { outline:2px solid var(--gold); outline-offset:-2px; }
+.secnav a.on { color:var(--gold2); border-bottom-color:var(--gold); background:linear-gradient(to top, rgba(242,196,85,.12), rgba(242,196,85,0) 75%); }
+.secnav a.on img { filter:drop-shadow(0 0 5px rgba(242,196,85,.5)); }
+/* live marks: a square light (the miner running, a craft ready) and a count (finds waiting for their reveal) */
+.secnav .dot { position:absolute; top:6px; left:37px; width:8px; height:8px; background:var(--verd); border:2px solid var(--bg2); box-shadow:0 0 6px var(--verd); display:none; }
+.secnav .dot.gold { background:var(--gold); box-shadow:0 0 6px var(--gold); }
+.secnav .dot.show { display:block; animation:snpulse 1.4s steps(2, end) infinite; }
+.secnav .num { position:absolute; top:3px; left:32px; min-width:16px; padding:2px 3px 1px; font:9px/1.2 var(--mono); text-align:center; color:var(--bg); background:var(--gold2); border:2px solid var(--bg2); display:none; }
+.secnav .num.show { display:block; }
+@keyframes snpulse { 50% { opacity:.35; } }
+@media (prefers-reduced-motion: reduce) { .secnav .dot.show { animation:none; } .secnav a img { transition:none; } }
+@media (max-width:1100px) { .secnav a { padding:7px 10px 6px; gap:7px; } }
+/* phones: the header scrolls away and the bar sits at the bottom, within reach of the thumb */
+@media (max-width:700px) {
+  header { position:static; z-index:auto; }
+  .secnav { position:fixed; left:0; right:0; bottom:0; z-index:60; border-top:3px solid var(--line); box-shadow:0 -3px 0 var(--bevel-hi); }
+  .secnav .wrap { gap:0; padding:0 2px; overflow:visible; }
+  .secnav a { flex:1 1 0; min-width:0; flex-direction:column; gap:3px; padding:6px 1px 5px; font:10px var(--mono); text-transform:none; border-bottom:0; border-top:3px solid transparent; margin-top:-3px; }
+  .secnav a span { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+  .secnav a img { width:26px; height:26px; }
+  .secnav a:hover img { transform:none; }
+  .secnav a.on { border-top-color:var(--gold); background:linear-gradient(to bottom, rgba(242,196,85,.14), rgba(242,196,85,0) 80%); }
+  .secnav a.lg { display:none; }
+  .secnav .dot { top:5px; left:calc(50% + 7px); }
+  .secnav .num { top:2px; left:calc(50% + 4px); }
+  body { padding-bottom:64px; }
+}

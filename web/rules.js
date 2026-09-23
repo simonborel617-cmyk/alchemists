@@ -42,7 +42,7 @@
     $("r-upgrade").textContent = `1 in ${N(cfg.upgradeChance)} reveals come out one tier higher`;
     $("r-key").textContent = `1 in ${N(cfg.keyChance).toLocaleString("en")} reveals drops an unclaimed mythic key`;
     $("r-price").textContent = `${ethers.formatEther(cfg.price0)} ETH × (1 + √(E / ${N(cfg.priceD).toLocaleString("en")})) × network pressure, where E is mined minus burned; no ceiling`;
-    $("r-ore").textContent = `${N(cfg.oreR0).toLocaleString("en")} ore in the vein; every submit consumes one; K halves at 50 %, 25 % and 12.5 % left (never below one mint per window); the vein is exhausted at 0`;
+    $("r-ore").textContent = `${N(cfg.oreR0).toLocaleString("en")} measures of prima materia; every submit consumes one; K halves at 50 %, 25 % and 12.5 % left (never below one mint per window); mining ends at 0`;
     $("r-farm").textContent = `K × (1 + log2(hashrate / ${fmtHs(N(cfg.refHashrate))})) above the reference, capped at ×${N(cfg.mCapQ8) / 256}`;
     $("r-inputs").textContent = String(v.inputs);
     $("r-inputs2").textContent = `right now ${v.inputs}; 10 at the corridor floor, down to 6 at the ceiling`;

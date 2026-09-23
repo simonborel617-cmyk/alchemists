@@ -126,7 +126,7 @@
       $("oreBar").querySelector("i").style.width = (100 * oreN / r0).toFixed(2) + "%";
       $("oreLbl").textContent = `${oreN.toLocaleString("en")} / ${r0.toLocaleString("en")}`;
       const halv = oreN > 0 ? Math.floor(Math.log2(r0 / Math.max(1, oreN))) : 3;
-      $("halv").textContent = oreN === 0 ? "the vein is exhausted" : `halvings so far: ${Math.min(3, halv)}`;
+      $("halv").textContent = oreN === 0 ? "the prima materia is spent" : `halvings so far: ${Math.min(3, halv)}`;
       $("price").innerHTML = `${Number(ethers.formatEther(price)).toLocaleString("en", { maximumSignificantDigits: 3 })} <small>ETH</small>`;
       $("ema").innerHTML = fmtHs(Number(ema));
       $("subs").textContent = Number(sub).toLocaleString("en");
@@ -262,7 +262,7 @@
         if (L.rounds && this.stats.rounds >= L.rounds) { this.settleThen(() => this.stop(`${L.rounds} rounds done`)); return; }
       }
       if (mineFlags.paused) { this.stop("the mine is paused"); return; }
-      if (mineFlags.exhausted) { this.stop("the vein is exhausted"); return; }
+      if (mineFlags.exhausted) { this.stop("the prima materia is spent"); return; }
       this.m = m; this.best = null;
       // challenge + threshold of the new minute (the keeper ticks at the start of each minute)
       let ch = null, tq = 0;
@@ -549,7 +549,7 @@
     net.winEnd = d.winStart + d.wsec; net.winMints = d.winMints; net.target = d.target; net.bits = d.bits; net.ema = d.ema; net.floor = d.floor; net.ceil = d.ceil;
     const miners = new Set(d.subs.filter((x) => x.t >= hour).map((x) => x.who.toLowerCase()));
     $("nMiners").textContent = miners.size; $("nMinersSub").textContent = `${d.subs.filter((x) => x.t >= hour).length} finds submitted in the hour`;
-    $("nFinds").textContent = d.subs.filter((x) => x.t >= day).length.toLocaleString("en"); $("nFindsSub").textContent = `${d.sub.toLocaleString("en")} since the vein opened`;
+    $("nFinds").textContent = d.subs.filter((x) => x.t >= day).length.toLocaleString("en"); $("nFindsSub").textContent = `${d.sub.toLocaleString("en")} since mining began`;
     netTick();
     // charts
     if (window.AlchChart) {

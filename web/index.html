@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=32">
+<link rel="stylesheet" href="style.css?v=33">
 </head>
 <body data-app="8">
 <header>
@@ -31,6 +31,17 @@
     <span id="who"></span>
     <button id="connect" class="btn gold">Connect wallet</button>
   </div>
+  <nav class="secnav" id="secnav" aria-label="Sections">
+    <div class="wrap">
+      <a href="#bm" data-s="bm"><img src="img/nav/mine.png" alt=""><span>Mine</span><i class="dot" id="snMine"></i></a>
+      <a href="#mine" data-s="mine"><img src="img/nav/finds.png" alt=""><span>Finds</span><i class="num" id="snFinds"></i></a>
+      <a href="#network" data-s="network"><img src="img/nav/network.png" alt=""><span>Network</span></a>
+      <a href="#inv" data-s="inv"><img src="img/nav/inventory.png" alt=""><span>Inventory</span></a>
+      <a href="#ws" data-s="ws"><img src="img/nav/workshop.png" alt=""><span>Workshop</span><i class="dot gold" id="snWs"></i></a>
+      <a href="#cauldron" data-s="cauldron"><img src="img/nav/cauldron.png" alt=""><span>Cauldron</span></a>
+      <a href="#logs" data-s="logs" class="lg"><img src="img/nav/log.png" alt=""><span>Log</span></a>
+    </div>
+  </nav>
 </header>
 
 <div class="wrap hero">
@@ -103,7 +114,7 @@
         <label class="f">max submits<input id="maxSubmits" value="0" inputmode="numeric"></label>
         <label class="f">keep at least in the signing wallet, ETH<input id="reserve" value="0.0005" inputmode="decimal"></label>
         <label class="f">overpay margin, %<input id="margin" value="25" inputmode="numeric"></label>
-        <p class="small">The limits apply to whichever wallet signs, session or your own. 0 means no limit. Mining stops on its own when a limit is reached, the vein is exhausted or the mine is paused. The margin covers a price step between the quote and the block; the contract refunds the excess.</p>
+        <p class="small">The limits apply to whichever wallet signs, session or your own. 0 means no limit. Mining stops on its own when a limit is reached, the prima materia runs out or the mine is paused. The margin covers a price step between the quote and the block; the contract refunds the excess.</p>
       </div>
       <div class="bm-engine">
         <h3>power</h3>
@@ -130,7 +141,7 @@
         <div class="bar" id="thrBar"><i style="width:0"></i><span class="pin" style="left:0"></span></div>
       </div>
       <div style="margin-top:12px">
-        <div class="barlbl"><span>ore left in the vein</span><span id="oreLbl">–</span></div>
+        <div class="barlbl"><span>prima materia left</span><span id="oreLbl">–</span></div>
         <div class="bar ore" id="oreBar"><i style="width:100%"></i><span class="mark" style="left:50%"></span><span class="mark" style="left:75%"></span><span class="mark" style="left:87.5%"></span></div>
         <div class="barlbl"><span>halvings at 50 / 25 / 12.5 %</span><span id="halv"></span></div>
       </div>
@@ -304,7 +315,7 @@
         </div>
       </div>
     </section>
-    <section class="panel">
+    <section class="panel" id="logs">
       <h2>Log</h2>
       <div class="log" id="log"></div>
     </section>
@@ -331,6 +342,7 @@
 <script src="rite.js?v=2"></script>
 <script src="reveal.js?v=3"></script>
 <script src="workshop.js?v=4"></script>
-<script src="app.js?v=37"></script>
+<script src="app.js?v=38"></script>
+<script src="nav.js?v=1"></script>
 </body>
 </html>

@@ -436,7 +436,7 @@ class Orchestrator:
                     b.params(ch, floor, self.addrs())
                 cur_minute = m
                 try:
-                    log("minute %d: challenge %s.. floor %d bits (threshold %.2f), unlocked tier %d, ore %d, price %.7f ETH" % (
+                    log("minute %d: challenge %s.. floor %d bits (threshold %.2f), unlocked tier %d, materia %d, price %.7f ETH" % (
                         m, ch[:10], floor, tq8 / 256, self.chain.unlocked(), self.chain.ore(), self.chain.price() / 1e18))
                 except Exception:
                     log("minute %d: challenge %s.. floor %d bits" % (m, ch[:10], floor))

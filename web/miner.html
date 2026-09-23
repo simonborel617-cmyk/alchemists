@@ -33,7 +33,7 @@
     <h2>Mining in the browser</h2>
     <p>The easiest way: open the <a href="./">mine</a>, press <b>Start mining</b> and pick the power. <b>CPU</b> runs in any modern browser with the number of threads you choose; <b>GPU</b> uses WebGPU (Chrome or Edge on desktop) and an intensity slider that leaves the card idle between batches. A session wallet created in the browser signs the submits, so there are no wallet pop-ups every minute: fund it with a little ETH, and move the loot to your main wallet with one click when you want. The <a href="gputest.html">GPU self-test</a> shows what your card does.</p>
     <p><b>Two ways to sign.</b> The <em>session wallet</em> is a key created in your browser: you fund it with a small amount and it submits on its own, no pop-ups, and you move the loot to your main wallet with one click. Your <em>own wallet</em> mines under your main address with nothing deposited anywhere, but every submit has to be confirmed in the wallet within the minute after the find, so you stay at the keyboard.</p>
-    <p><b>Limits.</b> Set a maximum price per submit (the mine skips the minute when the price is higher), a budget for the run, the number of rounds (minutes) or submits, a minimum balance to keep in the wallet and the overpay margin that covers a price step between the quote and the block. Mining stops by itself when a limit is reached, when the vein is exhausted or when the mine is paused. The settings are remembered by your browser.</p>
+    <p><b>Limits.</b> Set a maximum price per submit (the mine skips the minute when the price is higher), a budget for the run, the number of rounds (minutes) or submits, a minimum balance to keep in the wallet and the overpay margin that covers a price step between the quote and the block. Mining stops by itself when a limit is reached, when the prima materia runs out or when the mine is paused. The settings are remembered by your browser.</p>
     <p>Everything below is the standalone miner for rigs and rented cards: it is faster per card, runs unattended and drives up to 32 addresses per card.</p>
 
     <h2>Two files</h2>
@@ -68,7 +68,7 @@
     <p>Several cards: repeat <code>--box</code> for each one, every address goes to every card. Dry run without transactions: <code>--dry</code>. Stop: create a file named <code>gpu-stop.txt</code> next to the program.</p>
 
     <h2>What you will see</h2>
-    <p>One line per minute with the challenge, threshold, unlocked tiers, ore and price, and a line <code>submitted N bits ... revealed type T tier K</code> for every submit. If the best hash of the minute is below the threshold there is no submit and nothing is spent. Every ten minutes a report by tier and the hashrate of every card.</p>
+    <p>One line per minute with the challenge, threshold, unlocked tiers, prima materia left and price, and a line <code>submitted N bits ... revealed type T tier K</code> for every submit. If the best hash of the minute is below the threshold there is no submit and nothing is spent. Every ten minutes a report by tier and the hashrate of every card.</p>
 
     <h2>Costs</h2>
     <p>Gas is about 300k per submit with reveal; at a 0.01 gwei base fee that is thousandths of a cent. The main cost is the submit price. It goes to the Cauldron and is visible in the contract as <code>currentPrice()</code>. The orchestrator pays with a 25 % margin and the contract refunds the excess in the same transaction.</p>

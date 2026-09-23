@@ -64,7 +64,7 @@ python orchestrator/gpu-miner.py --net robinhoodTestnet --box "./hb-miner-linux-
 Several cards: repeat `--box` for each one, every address goes to every card. Dry run without transactions: `--dry`.
 Stop: create a file named `gpu-stop.txt` next to the program. Custom RPC: `--rpc URL`.
 
-You will see one line per minute with the challenge, threshold, unlocked tiers, ore and price, and a line
+You will see one line per minute with the challenge, threshold, unlocked tiers, prima materia left and price, and a line
 `submitted N bits ... revealed type T tier K` for every submit. If the best hash of the minute is below the threshold
 there is no submit and nothing is spent. Every ten minutes a report by tier and the hashrate of every card.
 

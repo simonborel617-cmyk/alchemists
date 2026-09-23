@@ -14,7 +14,7 @@ Hardhat 2, Solidity 0.8.26, OpenZeppelin 5, EVM target Cancun.
 |---|---|
 | `Materials` | ERC-1155: ingredients `1 + type*8 + tier`, potions `1000 + tier`, ritual items `2000 + kind*8 + tier`. Tracks `circulating`, `minedTotal`, `burnedIngredients`. |
 | `Keys` | ERC-721: the 21 mythic keys, token id = key index, each bound to one item kind and one named alchemist. Holds the list of unclaimed keys; the Mine claims a random one on a lucky reveal, the Workshop one of the crafted kind on a lucky craft, the summoning burns the key offered in its slot. Metadata `<base><id>.json`. |
-| `Mine` | One-minute sessions, a challenge per minute, the best hash is submitted in the next minute and revealed by the challenge after that; threshold corridor 30…43 bits, retarget from a hashrate estimate, rarity unlocks, supply extras per type×tier, ore reserve with halvings, price without a ceiling. |
+| `Mine` | One-minute sessions, a challenge per minute, the best hash is submitted in the next minute and revealed by the challenge after that; threshold corridor 30…43 bits, retarget from a hashrate estimate, rarity unlocks, supply extras per type×tier, a prima materia reserve with halvings, price without a ceiling. |
 | `Furnaces` | ERC-721 furnaces with a tier and a cooldown. |
 | `Workshop` | Refining (inputs follow the heat of the network), reroll (5/5/5/4/3 out with a category), item crafting (5 % tier up, key roll), potions and furnaces. Commit on send, reveal with the next minute's challenge. |
 | `Alchemists` | Summoning from eight items, rank = floor of the average tier, empty enhancer = Common, quotas by rank, cap 5555, named 1/1s through keys, appearance seed, Cauldron weights. Stage two, not part of the first mainnet release. |
