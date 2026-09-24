@@ -125,7 +125,7 @@ estimated.
 
 "The opening act is live on Robinhood Chain mainnet. / The mine: a new challenge every minute, real proof of work in
 your browser or on a rig. / The workshop: potions, furnaces, the crucible, the ritual table. / The souls: each one a
-share of the Cauldron. / alchemist-mine.com" (271 characters; each system on its own line). Only what is live at the first minute: the summoning stays paused for the main act and is not named. [scene to render: the mine's gate at dawn, the furnace lit for the
+share of the Cauldron. / alchemist-mine.com" (270 characters; each system on its own line). Only what is live at the first minute: the summoning stays paused for the main act and is not named. [scene to render: the mine's gate at dawn, the furnace lit for the
 first time, an empty rack of vials waiting: rendered as `scenes/first-fire.png`] Post it only once `verify-launch.js`
 passed and one submit from the site landed. Pin it above the article.
 
