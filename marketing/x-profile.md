@@ -90,13 +90,39 @@ skeleton: 256x144 grid, 16:9, SNES palette, strong outline, no text, no characte
 11. "Every rule on one page, read live from the chain." [link: /rules]
 12. "Set a price ceiling, a budget, a number of rounds. The miner stops itself at any of them." [screenshot: the limits panel]
 
+## Mainnet warm-up (launch Friday 2026-09-25, 16:00 UTC)
+
+Four beats, no countdown spam. Nothing links to the site's rules or the miner release before the switch: until the
+deploy they still read the testnet.
+
+1. **Thursday evening: the announcement.** Scene `scenes/eve.png` (the night before: the athanor laid but cold, the last
+   sand in the hourglass, twelve empty vials, the mine door shut). Pin it over the article until the launch.
+   "Friday, 16:00 UTC: the mine opens on Robinhood Chain mainnet. / The testnet stays behind. Nothing carries over:
+   every ingredient, item, soul and key starts from the first minute. / One million units of prima materia.
+   Twenty-one keys. The fire is laid." (249 characters)
+   Alt: "A stone workshop at night: a brass furnace packed with charcoal but unlit, an hourglass with its last sand, a
+   rack of twelve empty glass vials, a closed mine door, moonlight and one candle."
+2. **Friday morning (~11:00 UTC): the keys.** Scene `scenes/keys.png`. "Twenty-one keys. Zero claimed. / Each belongs to
+   a named alchemist. From 16:00 UTC today any reveal can drop one, and so can a lucky craft, while any remain. When
+   they are gone, they are gone." (191 characters)
+3. **15:00 UTC, optional: one hour.** No image. "One hour. / A browser is enough: CPU or GPU, nothing to install, nothing
+   to deposit. A rig with a CUDA card goes further." (120 characters)
+4. **The launch**, below, with scene `scenes/first-fire.png` (the furnace lit, the mine door open on dawn, the first
+   vial filled and sealed). Alt: "The same workshop at dawn: the brass furnace burning, the mine door open onto a
+   sunrise and a path into the shaft, the first of twelve vials filled with green liquid and sealed with red wax."
+   Pin it in place of the announcement.
+
+After the launch: live beats from the chain only (first find, first Uncommon once the network reaches 1 TH/s, the first
+key when it falls, "hour one" with the network panel as the one interface shot). Numbers read from the chain, never
+estimated.
+
 ## Launch post (mainnet day, after the site switched and the first tick landed)
 
 "The mine is open. / Robinhood Chain mainnet. A new challenge every minute, real proof of work: in your browser on a
 CPU or a GPU, or on a rig. Forty types, five tiers, twenty-one keys, one Cauldron. / The first challenge is already on
 chain. / alchemist-mine.com" (under 280 characters) [scene to render: the mine's gate at dawn, the furnace lit for the
-first time, an empty rack of vials waiting] Post it only once `verify-launch.js` passed and one submit from the site
-landed. Pin it above the article.
+first time, an empty rack of vials waiting: rendered as `scenes/first-fire.png`] Post it only once `verify-launch.js`
+passed and one submit from the site landed. Pin it above the article.
 
 ## Reply templates
 
