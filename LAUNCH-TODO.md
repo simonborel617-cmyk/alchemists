@@ -35,7 +35,7 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
    `deploy/params.mainnet.json` and `TREASURY`.
 2. **Mainnet ETH.** One new wallet deploys and keeps; its key goes into `.env` as `MAINNET_KEY` (the owner writes it
    there, never in chat). Fund it with 0.01 ETH for the deploy plus 0.03-0.05 ETH of ticks (at today's 0.05 gwei a keeper
-   ticking every minute uses ~0.19 ETH a month). Both hold 0 on mainnet today.
+   ticking every minute uses ~0.19 ETH a month).
 3. ~~The audit decision~~ **Decided 2026-09-24: no external audit.** The launch rests on two internal reviews, 61
    tests and the guardian pause (the Safe can stop submits and crafting at once).
 4. **Keeper host.** A VPS (any 1 GB Ubuntu box, `deploy/vps/README.md`), or the PC for the first days, awake 24/7.
