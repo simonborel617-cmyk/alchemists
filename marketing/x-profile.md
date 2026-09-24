@@ -92,7 +92,7 @@ skeleton: 256x144 grid, 16:9, SNES palette, strong outline, no text, no characte
 
 ## Mainnet warm-up (launch Friday 2026-09-25; the hour is never posted)
 
-Three beats, no countdown spam, no hour of the launch anywhere (owner's rule). Nothing links to the site's rules or the miner release before the switch: until the
+Three beats before the launch, no countdown spam, no hour of the launch anywhere (owner's rule). Nothing links to the site's rules or the miner release before the switch: until the
 deploy they still read the testnet.
 
 1. **Thursday evening: the announcement.** Scene `scenes/eve.png` (the night before: the athanor laid but cold, the last
@@ -102,7 +102,14 @@ deploy they still read the testnet.
    keys. The fire is laid." (238 characters)
    Alt: "A stone workshop at night: a brass furnace packed with charcoal but unlit, an hourglass with its last sand, a
    rack of twelve empty glass vials, a closed mine door, moonlight and one candle."
-2. **Friday morning: the keys.** Scene `scenes/keys.png`. "Twenty-one keys. Zero claimed. / Each belongs to a named
+2. **Friday morning: the souls' stream.** Scene `scenes/soul-stream.png` (the Cauldron's golden steam pouring into a
+   row of soul lanterns, the first ones largest and brightest). "The souls hold the stream. / 60 % of the Cauldron flows
+   to soul holders every day, split by weight: rarity times earliness. Soul #1 weighs double; by #100 the bonus is
+   gone. / Claims open at the hundredth soul. Every pour before that waits for them." (247 characters) It is rent to
+   holders, never "rewards", "yield" or "dividends".
+   Alt: "A vaulted chamber at night: golden steam rises from a great iron cauldron and flows in an arc into a long row
+   of glass lanterns with pale blue flames, the first lanterns the largest and brightest."
+   **After the launch (day two): the keys.** Scene `scenes/keys.png`. "Twenty-one keys. Zero claimed. / Each belongs to a named
    alchemist. From the first minute on mainnet any reveal can drop one, and so can a lucky craft, while any remain.
    When they are gone, they are gone." (203 characters)
 3. **The launch**, below, with scene `scenes/first-fire.png` (the furnace lit, the mine door open on dawn, the first
@@ -117,8 +124,8 @@ estimated.
 ## Launch post (mainnet day, after the site switched and the first tick landed)
 
 "The opening act is live on Robinhood Chain mainnet. / The mine: a new challenge every minute, real proof of work in
-your browser or on a rig. / The workshop: potions, furnaces, the crucible, the ritual table. / The souls: eight items
-sealed into one. / The Cauldron. / alchemist-mine.com" (279 characters; each system on its own line). Only what is live at the first minute: the summoning stays paused for the main act and is not named. [scene to render: the mine's gate at dawn, the furnace lit for the
+your browser or on a rig. / The workshop: potions, furnaces, the crucible, the ritual table. / The souls: each one a
+share of the Cauldron. / alchemist-mine.com" (271 characters; each system on its own line). Only what is live at the first minute: the summoning stays paused for the main act and is not named. [scene to render: the mine's gate at dawn, the furnace lit for the
 first time, an empty rack of vials waiting: rendered as `scenes/first-fire.png`] Post it only once `verify-launch.js`
 passed and one submit from the site landed. Pin it above the article.
 
