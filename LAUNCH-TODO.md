@@ -38,7 +38,9 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
    ticking every minute uses ~0.19 ETH a month).
 3. ~~The audit decision~~ **Decided 2026-09-24: no external audit.** The launch rests on two internal reviews, 61
    tests and the guardian pause (the Safe can stop submits and crafting at once).
-4. **Keeper host.** A VPS (any 1 GB Ubuntu box, `deploy/vps/README.md`), or the PC for the first days, awake 24/7.
+4. ~~Keeper host~~ **Decided: two rented boxes.** Box A runs the keeper, box B the watcher (`keeper-box/README.md`);
+   both installed and rehearsed on testnet 2026-09-24 (the keeper ticked every minute ~2-3 s after the boundary). Left:
+   the owner pipes `MAINNET_KEY` into box A's `.env` with the one command in that README.
 5. **Alerts.** A Telegram bot token and chat id, or an ntfy topic name, in `.env` of the keeper host.
 6. **Constants, last call** (immutable after the deploy): corridor 30..43 bits; unlocks at 1/2/3/4 TH/s;
    `refHashrate` 10 TH/s; `price0` 0.0002 ETH, `priceD` 50,000; prima materia 1,000,000; `keyChance` 1 in 65,536 per
@@ -49,7 +51,8 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
 1. Safe address into the profile, `node scripts/preflight.js deploy/params.mainnet.json` clean.
 2. Deploy (`RUNBOOK.md`, launch day 1), commit `deployments/robinhood.json`.
 3. `NET=robinhood node scripts/verify-launch.js`: "all checks passed".
-4. Keeper and watcher running, `--test-alert` arrives. The first tick opens the first minute.
+4. Push `deployments/robinhood.json` to both boxes, start the keeper on box A and the watcher on box B
+   (`keeper-box/README.md`), `--test-alert` arrives. The first tick opens the first minute.
 5. `node scripts/build-web.js robinhood`, commit, push: the site switches to mainnet in 1-2 minutes. One submit from
    the site with a small session wallet to see a find land.
 6. `scripts/release-miner.ps1 -Version v1.0.0`, review the folder, publish the release.

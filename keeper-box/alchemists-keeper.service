@@ -1,0 +1,20 @@
+# /etc/systemd/system/alchemists-keeper.service: the key is MAINNET_KEY in /opt/alchemists-keeper/.env (chmod 600)
+[Unit]
+Description=Alchemists keeper (fixes each minute's challenge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=alchemists
+WorkingDirectory=/opt/alchemists-keeper
+Environment=NET=robinhood
+Environment=KEEPER_REVEAL=none
+Environment=KEEPER_INTERVAL_MS=10000
+ExecStart=/opt/alchemists-keeper/node/bin/node scripts/keeper.js
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/alchemists/keeper.log
+StandardError=append:/var/log/alchemists/keeper.log
+
+[Install]
+WantedBy=multi-user.target

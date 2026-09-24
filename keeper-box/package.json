@@ -1,0 +1,9 @@
+{
+  "name": "alchemists-keeper-box",
+  "private": true,
+  "description": "The keeper and the watcher, without the rest of the project: scripts/keeper.js, scripts/watch.js, three ABIs and the deployment record",
+  "dependencies": {
+    "dotenv": "17.4.2",
+    "ethers": "6.17.0"
+  }
+}
