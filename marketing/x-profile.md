@@ -116,9 +116,10 @@ estimated.
 
 ## Launch post (mainnet day, after the site switched and the first tick landed)
 
-"The mine is open. / Robinhood Chain mainnet. A new challenge every minute, real proof of work: in your browser on a
-CPU or a GPU, or on a rig. Forty types, five tiers, twenty-one keys, one Cauldron. / The first challenge is already on
-chain. / alchemist-mine.com" (under 280 characters) [scene to render: the mine's gate at dawn, the furnace lit for the
+"The opening act is live on Robinhood Chain mainnet. Every system at once. / The mine: a new challenge every minute,
+real proof of work in your browser or on a rig. / The workshop: potions, furnaces, the crucible, the ritual table. /
+The souls: eight ritual items, sealed into one. / The Cauldron. / alchemist-mine.com" (309 characters; each system on
+its own line). Only what is live at the first minute: the summoning stays paused for the main act and is not named. [scene to render: the mine's gate at dawn, the furnace lit for the
 first time, an empty rack of vials waiting: rendered as `scenes/first-fire.png`] Post it only once `verify-launch.js`
 passed and one submit from the site landed. Pin it above the article.
 
