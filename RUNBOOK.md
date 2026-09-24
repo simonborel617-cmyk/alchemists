@@ -21,7 +21,7 @@ Order of operations and checks. None of this is automated on purpose: every step
 6. **Keeper.** A separate `KEEPER_KEY`, a VPS running `node scripts/keeper.js` and `node scripts/watch.js` under
    systemd (`deploy/vps/README.md` has the whole setup), alerts to Telegram or ntfy on "no tick for 3 minutes", a low
    keeper balance, a pause or no RPC. A tick is ~87k gas: at 0.05 gwei a keeper that ticks every minute burns ~0.19 ETH
-   a month (submits tick too, so less once people mine); start with 0.1 ETH, the watcher warns below 0.02. The keeper
+   a month (it wakes right after each minute boundary, so it is nearly always the first to tick, busy network or not); start with 0.1 ETH, the watcher warns below 0.02. The keeper
    rotates to the next RPC after three failed rounds and logs its balance and days left every half hour. The keeper wakes right after
    every minute boundary on chain time and only fixes the challenge; it does not reveal (`KEEPER_REVEAL=none` by default),
    a player's find is revealed by their next submit or their Reveal button.

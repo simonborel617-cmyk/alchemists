@@ -43,7 +43,7 @@ tail -n 5 /var/log/alchemists/watch.log      # "ok: minute N ..." every hour, AL
 ```
 
 Budget: one tick is about 87,000 gas. At 0.05 gwei that is about 0.19 ETH a month if the keeper ticks every minute
-(submits tick as well, so the real figure is lower once people mine). The watcher warns below 0.02 ETH.
+(it wakes right after each minute boundary, so it is nearly always the one that ticks, busy network or not). The watcher warns below 0.02 ETH.
 
 ## Updates
 
