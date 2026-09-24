@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # From the project root on the PC: copies the keeper bundle to a box (never .env, never a key).
-#   bash keeper-box/push.sh root@74.0.60.8 [robinhood|robinhoodTestnet ...]
+#   bash keeper-box/push.sh root@BOX [robinhood|robinhoodTestnet ...]
 set -euo pipefail
 host=$1; shift
 nets=${*:-robinhood}
