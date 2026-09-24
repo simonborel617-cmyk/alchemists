@@ -22,10 +22,12 @@ const safeAbi = [
 (async () => {
   const safeAddr = ethers.getAddress(arg("--safe"));
   const tx = arg("--tx") ? JSON.parse(arg("--tx")) : { to: arg("--to"), value: arg("--value", "0"), data: arg("--data", "0x") };
-  const keyNames = (arg("--keys", "DEPLOYER_KEY,KEEPER_KEY")).split(",");
+  // mainnet: the owners' keys SAFE_OWNER_1_KEY/SAFE_OWNER_2_KEY sign, MAINNET_KEY pays the gas; testnet: the rehearsal keys
+  const keyNames = (arg("--keys", NET === "robinhood" ? "SAFE_OWNER_1_KEY,SAFE_OWNER_2_KEY" : "DEPLOYER_KEY,KEEPER_KEY")).split(",");
   const provider = new ethers.JsonRpcProvider(rpc, undefined, { staticNetwork: true, batchMaxCount: 4 });
   const signers = keyNames.map((n) => { if (!process.env[n]) throw new Error(`missing ${n} in .env`); return new ethers.Wallet(process.env[n], provider); });
-  const sender = signers[0];
+  const payer = NET === "robinhood" && process.env.MAINNET_KEY ? new ethers.Wallet(process.env.MAINNET_KEY, provider) : null;
+  const sender = payer || signers[0];
   const safe = new ethers.Contract(safeAddr, safeAbi, sender);
   const [nonce, threshold, owners] = await Promise.all([safe.nonce(), safe.getThreshold(), safe.getOwners()]);
   const ownerSet = new Set(owners.map((o) => o.toLowerCase()));
