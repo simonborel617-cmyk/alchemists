@@ -25,7 +25,9 @@ const safeAbi = ["function setup(address[] _owners, uint256 _threshold, address 
 
 (async () => {
   const provider = new ethers.JsonRpcProvider(rpc, undefined, { staticNetwork: true, batchMaxCount: 4 });
-  const wallet = new ethers.Wallet(process.env.DEPLOYER_KEY, provider);
+  const key = NET === "robinhood" ? process.env.MAINNET_KEY : process.env.DEPLOYER_KEY;
+  if (!key) throw new Error(NET === "robinhood" ? "MAINNET_KEY missing in .env" : "DEPLOYER_KEY missing in .env");
+  const wallet = new ethers.Wallet(key, provider);
   for (const a of [FACTORY, SINGLETON_L2, FALLBACK]) if ((await provider.getCode(a)) === "0x") throw new Error(`Safe contract ${a} is not deployed on this chain`);
   const factory = new ethers.Contract(FACTORY, factoryAbi, wallet);
   const iface = new ethers.Interface(safeAbi);

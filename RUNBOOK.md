@@ -18,7 +18,8 @@ Order of operations and checks. None of this is automated on purpose: every step
    (`SECURITY-REVIEW.md`), every finding closed or accepted, tests green (`npx hardhat test`).
 5. **Simulation** with the final constants: `npx hardhat run scripts/simulate.js` in two regimes, a normal season and the
    ceiling with pressure (`CEIL_BITS=16 FARM_MINERS=24 WILLING_X=3`).
-6. **Keeper.** A separate `KEEPER_KEY`, a VPS running `node scripts/keeper.js` and `node scripts/watch.js` under
+6. **Keeper.** One new mainnet wallet deploys and then keeps: its key is `MAINNET_KEY` in `.env` (mainnet signs with
+   nothing else; the testnet keys stay as they are). After the deploy it owns nothing, it only ticks. A VPS running `node scripts/keeper.js` and `node scripts/watch.js` under
    systemd (`deploy/vps/README.md` has the whole setup), alerts to Telegram or ntfy on "no tick for 3 minutes", a low
    keeper balance, a pause or no RPC. A tick is ~87k gas: at 0.05 gwei a keeper that ticks every minute burns ~0.19 ETH
    a month (it wakes right after each minute boundary, so it is nearly always the first to tick, busy network or not); start with 0.1 ETH, the watcher warns below 0.02. The keeper
@@ -35,7 +36,7 @@ Order of operations and checks. None of this is automated on purpose: every step
 ## Launch day
 
 1. `TREASURY=<Safe> PARAMS=deploy/params.mainnet.json npx hardhat run scripts/deploy.js --network robinhood` with a
-   `DEPLOYER_KEY` holding ~0.01 ETH (the deploy is 37 transactions, ~21M gas: ~0.0011 ETH at 0.05 gwei plus the L1
+   `MAINNET_KEY` holding ~0.01 ETH for the deploy plus the keeper's budget (the deploy is 37 transactions, ~21M gas: ~0.0011 ETH at 0.05 gwei plus the L1
    data fee). The script runs the preflight itself and refuses on any problem. It deploys eight contracts and the
    timelock, pauses the summoning (`pausedAtLaunch`), sets the guardian and hands ownership over. Commit
    `deployments/robinhood.json`.
@@ -101,5 +102,6 @@ prove the keys: send 0.001 ETH into the new Safe and send it back out with two s
 ## Never
 
 - Deploy mainnet with the deployer as the Safe or without `materialsURI`: the preflight refuses, do not work around it.
-- Keep a balance on `DEPLOYER_KEY` after the deploy: it owns nothing any more and needs no money.
+- Keep more on the `MAINNET_KEY` wallet than a few weeks of ticks: after the deploy it owns nothing, and its key lives
+  on the keeper host.
 - Change `sessionSec`, `oreR0`, `price0`: they are immutable, a second season is a new contract.

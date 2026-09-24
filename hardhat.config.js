@@ -14,10 +14,11 @@ module.exports = {
       chainId: 46630,
       accounts: process.env.DEPLOYER_KEY ? [process.env.DEPLOYER_KEY] : [],
     },
+    // mainnet signs only with MAINNET_KEY (the mainnet deployer and keeper), never with the testnet DEPLOYER_KEY
     robinhood: {
       url: process.env.ROBINHOOD_RPC || "https://robinhood-rpc.publicnode.com",
       chainId: 4663,
-      accounts: process.env.DEPLOYER_KEY ? [process.env.DEPLOYER_KEY] : [],
+      accounts: process.env.MAINNET_KEY ? [process.env.MAINNET_KEY] : [],
     },
   },
   mocha: { timeout: 120000 },

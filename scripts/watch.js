@@ -24,7 +24,8 @@ const PUBLIC_RPCS = {
   localhost: ["http://127.0.0.1:8545"],
 };
 const RPCS = [...new Set([...(process.env.RPC_URLS || "").split(","), process.env.RPC_URL, ...(PUBLIC_RPCS[NET] || [])].map((u) => (u || "").trim()).filter(Boolean))];
-const KEEPER = process.env.KEEPER_ADDRESS || (process.env.KEEPER_KEY ? new ethers.Wallet(process.env.KEEPER_KEY).address : null);
+const KEEPER_KEY = NET === "robinhood" ? process.env.MAINNET_KEY || process.env.KEEPER_KEY : process.env.KEEPER_KEY;
+const KEEPER = process.env.KEEPER_ADDRESS || (KEEPER_KEY ? new ethers.Wallet(KEEPER_KEY).address : null);
 const MIN_BALANCE = ethers.parseEther(process.env.WATCH_MIN_BALANCE || "0.02");
 const STALE = Number(process.env.WATCH_STALE_MINUTES || 3);
 const INTERVAL = Number(process.env.WATCH_INTERVAL_MS || 60000);

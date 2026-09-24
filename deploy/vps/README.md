@@ -18,7 +18,7 @@ sudo mkdir -p /var/log/alchemists && sudo chown alchemists /var/log/alchemists
 `/opt/alchemists/.env`, owned by `alchemists`, `chmod 600`:
 
 ```
-KEEPER_KEY=0x...            # the keeper's own key: it only ticks, it owns nothing; fund it, never reuse the deployer
+MAINNET_KEY=0x...           # the mainnet deployer-keeper wallet: after the deploy it owns nothing, it only ticks
 # RPC_URLS=https://your-dedicated-endpoint,https://rpc.mainnet.chain.robinhood.com
 # alerts, one or both:
 # TELEGRAM_BOT_TOKEN=...    # from @BotFather

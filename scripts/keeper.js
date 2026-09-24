@@ -25,7 +25,10 @@ function connect(i) {
   rpcIndex = i % RPCS.length;
   provider = new ethers.JsonRpcProvider(RPCS[rpcIndex], dep.chainId || undefined, { staticNetwork: true });
   provider.pollingInterval = 1000; // blocks come every ~140 ms here; the default 4 s poll only delays receipts
-  wallet = new ethers.Wallet(process.env.KEEPER_KEY || process.env.DEPLOYER_KEY, provider);
+  // mainnet: MAINNET_KEY (on a keeper-only host KEEPER_KEY works too); test networks: KEEPER_KEY, else DEPLOYER_KEY
+  const key = NET === "robinhood" ? process.env.MAINNET_KEY || process.env.KEEPER_KEY : process.env.KEEPER_KEY || process.env.DEPLOYER_KEY;
+  if (!key) throw new Error(NET === "robinhood" ? "MAINNET_KEY missing in .env" : "KEEPER_KEY missing in .env");
+  wallet = new ethers.Wallet(key, provider);
   mine = new ethers.Contract(dep.contracts.Mine, art("Mine"), wallet);
   workshop = new ethers.Contract(dep.contracts.Workshop, art("Workshop"), wallet);
   alchemists = new ethers.Contract(dep.contracts.Alchemists, art("Alchemists"), wallet);
