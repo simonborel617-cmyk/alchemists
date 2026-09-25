@@ -174,8 +174,8 @@ describe("Workshop", function () {
     const { materials, workshop, alice, mine } = await loadFixture(deployFixture);
     // chalice: 3 metals + 2 minerals, tier 3
     await give(materials, alice.address, [[ing(5, 3), 3], [ing(9, 3), 2]]);
-    await expect(workshop.connect(alice).craftItem(2, 3, [ing(5, 3)], [3])).to.be.revertedWith("Workshop: recipe");
-    await workshop.connect(alice).craftItem(2, 3, [ing(5, 3), ing(9, 3)], [3, 2]);
+    await expect(workshop.connect(alice).craftItem(2, [ing(5, 3)], [3])).to.be.revertedWith("Workshop: recipe");
+    await workshop.connect(alice).craftItem(2, [ing(5, 3), ing(9, 3)], [3, 2]);
     await nextMinute();
     await mine.tick();
     const rc = await (await workshop.reveal(0)).wait();

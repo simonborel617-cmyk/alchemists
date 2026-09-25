@@ -677,7 +677,7 @@
   // recipes and odds are tunables that change only through the timelock: fetched in parallel once, then cached per deployment
   async function recipes() {
     const key = "alch.recipes." + dep.contracts.Workshop;
-    try { const c = JSON.parse(localStorage.getItem(key) || "null"); if (c && c.v === 2 && Date.now() - c.at < 6 * 3600e3) return c.rc; } catch {}
+    try { const c = JSON.parse(localStorage.getItem(key) || "null"); if (c && c.v === 3 && Date.now() - c.at < 6 * 3600e3) return c.rc; } catch {}
     // the public RPC rate-limits bursts (and its 429 page carries a broken CORS header the browser rejects), so the
     // ~65 reads go out in sequential batches of 8, one HTTP request each, with a retry
     const N = (x) => Number(x);
@@ -686,7 +686,7 @@
     for (let c = 0; c < 5; c++) tasks.push(["F", c, 0, () => workshop.furnaceRecipe(c)]);
     for (let i = 0; i < 4; i++) tasks.push(["refineSuccess", i, 0, () => workshop.refineSuccess(i)]);
     for (let i = 0; i < 5; i++) { tasks.push(["rerollOut", i, 0, () => workshop.rerollOutCategory(i)]); tasks.push(["rerollDown", i, 0, () => workshop.rerollDown(i)]); tasks.push(["keyChance", i, 0, () => workshop.keyChance(i)]); }
-    tasks.push(["rerollUpPct", 0, 0, () => workshop.rerollUpPct()], ["rerollUp2", 0, 0, () => workshop.rerollUp2PerMille()], ["craftUp", 0, 0, () => workshop.craftUpgradePct()], ["furnaceBonus", 0, 0, () => workshop.furnaceBonus()], ["rerollOutAny", 0, 0, () => workshop.rerollOutAny().catch(() => 5n)]);
+    tasks.push(["rerollUpPct", 0, 0, () => workshop.rerollUpPct()], ["rerollUp2", 0, 0, () => workshop.rerollUp2PerMille()], ["craftUp", 0, 0, () => workshop.craftUpgradePct()], ["furnaceBonus", 0, 0, () => workshop.furnaceBonus()], ["rerollOutAny", 0, 0, () => workshop.rerollOutAny().catch(() => 5n)], ["mixFail", 0, 0, () => (workshop.mixFailStep ? workshop.mixFailStep().catch(() => -1n) : Promise.resolve(-1n))]);
     const rc = { R: Array.from({ length: 8 }, () => [0, 0, 0, 0, 0]), F: [0, 0, 0, 0, 0], refineSuccess: [0, 0, 0, 0], rerollOut: [0, 0, 0, 0, 0], rerollDown: [0, 0, 0, 0, 0], keyChance: [0, 0, 0, 0, 0] };
     for (let i = 0; i < tasks.length; i += 8) {
       const chunk = tasks.slice(i, i + 8);
@@ -697,7 +697,7 @@
       if (!vals) throw new Error("recipes: the RPC keeps failing");
       chunk.forEach(([key, a, b], j) => { if (key === "R") rc.R[a][b] = vals[j]; else if (Array.isArray(rc[key])) rc[key][a] = vals[j]; else rc[key] = vals[j]; });
     }
-    try { localStorage.setItem(key, JSON.stringify({ v: 2, at: Date.now(), rc })); } catch {}
+    try { localStorage.setItem(key, JSON.stringify({ v: 3, at: Date.now(), rc })); } catch {}
     return rc;
   }
   let RC = null, WS = { inputs: 10, cooldown: 600, paused: false };
@@ -710,6 +710,26 @@
   const have = (id) => (inv && inv.get(id)) || 0;
   const haveCat = (cat, tier) => { let s = 0; for (let t = cat * 8; t < cat * 8 + 8; t++) s += have(ing(t, tier)); return s; };
   const okcls = (h, n) => (h >= n ? "ok" : "bad");
+  // ---- the ritual table mixes tiers: five slots in recipe order (a category per slot), a tier per slot
+  let itSlots = null, itSlotsKey = "";
+  const slotCats = (k) => RC.R[k].flatMap((n, c) => Array(n).fill(c));
+  const mixOn = () => { try { return RC && RC.mixFail >= 0 && C("Workshop").interface.getFunction("craftItem").inputs.length === 3; } catch { return false; } };
+  // what the contract does at the reveal: fails with mixFail x (tiers - 1) %, else the tier of one input drawn evenly
+  function itOdds(slots) {
+    const counts = [0, 0, 0, 0, 0, 0]; slots.forEach((t) => counts[t]++);
+    const tiers = [1, 2, 3, 4, 5].filter((t) => counts[t]), fail = mixOn() ? RC.mixFail * (tiers.length - 1) : 0;
+    return { counts, tiers, fail, p: (t) => Math.floor((counts[t] * (100 - fail)) / slots.length) };
+  }
+  function pickMixed(cats, slots) {
+    const need = new Map(); cats.forEach((c, i) => { const kk = c * 8 + slots[i]; need.set(kk, (need.get(kk) || 0) + 1); });
+    const ids = [], amts = [];
+    for (const [kk, n0] of need) {
+      const c = Math.floor(kk / 8), tier = kk % 8; let n = n0;
+      for (let t = c * 8; t < c * 8 + 8 && n > 0; t++) { const h = inv.get(ing(t, tier)) || 0; if (!h) continue; const take = Math.min(h, n); ids.push(ing(t, tier)); amts.push(take); n -= take; }
+      if (n > 0) return null;
+    }
+    return { ids, amts };
+  }
   const req = (label, h, n) => `<span class="${okcls(h, n)}">${label}: ${h} / ${n}</span>`;
   const badge = (label, ok) => `<span class="${ok ? "ok" : "bad"}">${label}</span>`;
   let station = "potion";
@@ -734,7 +754,7 @@
     const fid = +$("refFurnace").value, f = myFurnaces.find((x) => x.id === fid);
     WSX.set("refine", { furnace: f ? f.tier : 0, furnaceId: f ? f.id : 0, coolUntil: coolUntil(f), cooldown: WS.cooldown * 1000, sealed: sealedFor(1, (c) => c.furnace === fid), now: () => chainNow() * 1000 });
     WSX.set("reroll", { tier: +$("rrTier").value || 1, sealed: sealedFor(2) });
-    const k = +$("itKind").value || 0, it = +$("itTier").value || 1; WSX.set("item", { tier: it, kindName: names.kinds[k], itemSrc: img(item(k, it)), sealed: sealedFor(3) });
+    const k = +$("itKind").value || 0, it = itSlots && itSlots.length ? Math.max(...itSlots) : +$("itTier").value || 1; WSX.set("item", { tier: it, kindName: names.kinds[k], itemSrc: img(item(k, it)), sealed: sealedFor(3) });
   }
   // sealed crafts of a station: how many, whether they can be revealed yet, and a button that reveals them right here
   // ?wsdev=1: alchPendDev([{ id, op, rm }]) shows made-up crafts waiting for their reveal (for checking the marks)
@@ -778,7 +798,7 @@
         let ev = null; try { ev = workshop.interface.parseLog(l); } catch {} if (!ev) continue;
         if (ev.name === "Refined" && Number(ev.args.inputs) === 0) jobs.push({ st: "refine", id: Number(ev.args.id), t: Number(ev.args.typeId), tier: Number(ev.args.tier), success: ev.args.success });
         if (ev.name === "Rerolled") jobs.push({ st: "reroll", id: Number(ev.args.id), tier: Number(ev.args.tier), outs: ev.args.outIds.map(Number) });
-        if (ev.name === "Crafted") { const j = { st: "item", id: Number(ev.args.id), kind: Number(ev.args.kind), tier: Number(ev.args.tier), outTier: Number(ev.args.outTier), key: Number(ev.args.keyIndex) }; if (j.key !== 255) keysHeld.add(j.key); jobs.push(j); }
+        if (ev.name === "Crafted") { const j = { st: "item", id: Number(ev.args.id), kind: Number(ev.args.kind), tier: Number(ev.args.tier), outTier: Number(ev.args.outTier), key: Number(ev.args.keyIndex) }; if (!j.tier) { const w = wsOpen.find((c) => c.id === j.id); j.tier = w ? Number(w.b) || 1 : 1; } if (j.key !== 255) keysHeld.add(j.key); jobs.push(j); }
       }
       playReveals(jobs);
     });
@@ -797,6 +817,8 @@
         await WSX.play("refine", "melt", { furnace: ft, outSrc: img(ing(j.t, j.tier + 1)), tier: j.tier, success: j.success, name: names.types[j.t], seed: j.id + 1 }, { speed });
       } else if (j.st === "reroll") {
         await WSX.play("reroll", "deal", { tier: j.tier, outs: j.outs.map((id) => ({ src: img(id), tier: (id - 1) % 8, name: names.types[Math.floor((id - 1) / 8)] })), seed: j.id + 1 }, { speed: j.outs.some((id) => (id - 1) % 8 - j.tier >= 2) ? 1 : speed });
+      } else if (j.outTier === 0) {
+        await WSX.play("item", "broken", { tier: j.tier, kindName: names.kinds[j.kind], seed: j.id + 1 }, { speed: 1 });
       } else {
         const isKey = j.outTier === 6 && j.key !== 255;
         await WSX.play("item", "manifest", { tier: j.tier, outTier: isKey ? j.tier : j.outTier, key: isKey, itemSrc: isKey ? keyImg(KEY_ID + j.key) : img(item(j.kind, j.outTier)), kindName: names.kinds[j.kind], name: isKey ? names.keys[j.key].key : "", seed: j.id + 1 }, { speed: isKey ? 1 : speed });
@@ -844,14 +866,22 @@
       $("rq-reroll").innerHTML = req(`${T[tier]} ingredients of any type`, total, 10);
       $("doReroll").disabled = !inv || total < 10; }
     // ritual table
-    { const k = +$("itKind").value || 0, tier = +$("itTier").value || 1;
-      const rec = RC.R[k];
-      $("itImg").src = `metadata/${item(k, tier)}.png`; $("navItImg").src = `metadata/${item(k, tier)}.png`;
-      let html = "", ok = true;
-      rec.forEach((n, c) => { if (!n) return; const h = haveCat(c, tier); ok = ok && h >= n; html += chip(ing(CAT_TYPE[c], tier), `${n} × ${CAT[c]}`, T[tier], okcls(h, n), tier) + PLUS; });
-      html = html.replace(/<span class="plus">\+<\/span>$/, "") + ARROW + chip(item(k, tier), names.kinds[k], T[tier], "", tier) + `<div class="odds">tier up <b>${RC.craftUp} %</b><br>mythic key <b>1 in ${RC.keyChance[tier - 1].toLocaleString("en")}</b> (${T[tier]})</div>`;
-      $("rc-item").innerHTML = html;
-      $("rq-item").innerHTML = rec.map((n, c) => n ? req(`${CAT[c]} ${T[tier]}`, haveCat(c, tier), n) : "").join("") + `<span>${k < 5 ? "required for the summoning" : "optional enhancer"}</span>`;
+    { const k = +$("itKind").value || 0, base = +$("itTier").value || 1, mixed = mixOn();
+      const cats = slotCats(k), key = `${k}|${base}`;
+      if (!itSlots || itSlotsKey !== key || itSlots.length !== cats.length || !mixed) { itSlots = cats.map(() => base); itSlotsKey = key; }
+      // what each (category, tier) needs against what the wallet holds
+      const need = new Map(); cats.forEach((c, i) => { const kk = c * 8 + itSlots[i]; need.set(kk, (need.get(kk) || 0) + 1); });
+      let ok = true; const lack = new Set();
+      for (const [kk, n] of need) if (haveCat(Math.floor(kk / 8), kk % 8) < n) { ok = false; lack.add(kk); }
+      const o = itOdds(itSlots), top = Math.max(...itSlots), likely = [...o.tiers].sort((a, b) => o.counts[b] - o.counts[a] || b - a)[0];
+      $("itImg").src = `metadata/${item(k, top)}.png`; $("navItImg").src = `metadata/${item(k, top)}.png`;
+      const slots = cats.map((c, i) => { const t = itSlots[i]; return `<div class="slot${mixed ? " mix" : ""}" data-slot="${i}"${mixed ? ' title="click: a tier up · right-click: a tier down"' : ""}>${chip(ing(CAT_TYPE[c], t), CAT[c].replace(/s$/, ""), T[t], lack.has(c * 8 + t) ? "bad" : "ok", t)}</div>`; }).join("");
+      const lines = o.tiers.slice().sort((a, b) => b - a).map((t) => `<span style="color:${TC[t]}">${T[t]}</span> <b>${o.p(t)} %</b>`);
+      if (o.fail) lines.push(`<span class="brk">the rite breaks</span> <b>${o.fail} %</b>`);
+      lines.push(`then a tier up <b>${RC.craftUp} %</b>`, `mythic key up to <b>1 in ${RC.keyChance[top - 1].toLocaleString("en")}</b>`);
+      $("rc-item").innerHTML = slots + ARROW + chip(item(k, likely), names.kinds[k], o.tiers.length > 1 ? `${T[likely]} ${o.p(likely)} %` : T[likely], "", likely) + `<div class="odds">${lines.join("<br>")}</div>`;
+      $("rq-item").innerHTML = [...need].map(([kk, n]) => req(`${CAT[Math.floor(kk / 8)]} ${T[kk % 8]}`, haveCat(Math.floor(kk / 8), kk % 8), n)).join("") + `<span>${k < 5 ? "required for the soul" : "optional enhancer"}</span>`;
+      $("itMixHint").style.display = mixed ? "" : "none";
       $("doItem").disabled = !inv || !ok; }
     renderSoul();
     pushScenes();
@@ -1135,7 +1165,16 @@
     }, "refHint");
   };
   $("doReroll").onclick = () => { const tier = +$("rrTier").value, cat = +$("rrCat").value; if (!inv) return; const ids = [], amts = []; let need = 10; for (let t = 0; t < 40 && need > 0; t++) { const h = inv.get(ing(t, tier)) || 0; if (!h) continue; const take = Math.min(h, need); ids.push(ing(t, tier)); amts.push(take); need -= take; } if (need > 0) { log("10 ingredients of this tier are required", "warn"); return; } const used = expand(ids, amts); tx(`reroll ${TIERS[tier]}`, () => wsSend("Workshop", "reroll", [tier, cat, ids, amts]), () => { if (WSX) WSX.play("reroll", "pour", { tier, srcs: used.map(img), cats: used.map((id) => Math.floor((id - 1) / 64)), seed: Date.now() % 1000 }); }, "rrHint"); };
-  $("doItem").onclick = () => { const k = +$("itKind").value, tier = +$("itTier").value; if (!inv) return; const p = pick(RC.R[k], tier); if (!p) { $("itHint").textContent = `recipe: met/min/herb/wood/beast = ${RC.R[k].join("/")} of tier ${TIERS[tier]}`; return; } $("itHint").textContent = ""; tx(`craft ${names.kinds[k]} ${TIERS[tier]}`, () => wsSend("Workshop", "craftItem", [k, tier, p.ids, p.amts]), () => { if (WSX) WSX.play("item", "inscribe", { tier, kindName: names.kinds[k], srcs: expand(p.ids, p.amts).map(img).slice(0, 5), seed: Date.now() % 1000 }); }, "itHint"); };
+  $("doItem").onclick = () => {
+    const k = +$("itKind").value; if (!inv) return;
+    const mixed = mixOn(), cats = slotCats(k), slots = mixed && itSlots ? itSlots.slice() : cats.map(() => +$("itTier").value);
+    const p = pickMixed(cats, slots), top = Math.max(...slots), many = new Set(slots).size > 1;
+    if (!p) { $("itHint").textContent = "not enough ingredients of those tiers"; return; }
+    $("itHint").textContent = "";
+    tx(`craft ${names.kinds[k]} ${many ? "(mixed)" : TIERS[top]}`, () => wsSend("Workshop", "craftItem", mixed ? [k, p.ids, p.amts] : [k, top, p.ids, p.amts]), () => { if (WSX) WSX.play("item", "inscribe", { tier: top, kindName: names.kinds[k], srcs: expand(p.ids, p.amts).map(img).slice(0, 5), seed: Date.now() % 1000 }); }, "itHint");
+  };
+  $("rc-item").addEventListener("click", (e) => { const el = e.target.closest("[data-slot]"); if (!el || !mixOn() || !itSlots) return; const i = +el.dataset.slot; itSlots[i] = (itSlots[i] % 5) + 1; renderStations(); });
+  $("rc-item").addEventListener("contextmenu", (e) => { const el = e.target.closest("[data-slot]"); if (!el || !mixOn() || !itSlots) return; e.preventDefault(); const i = +el.dataset.slot; itSlots[i] = ((itSlots[i] + 3) % 5) + 1; renderStations(); });
 
   async function refreshAll() { await refreshMine(); await refreshWorkshop(); await refreshInventory(); }
   fillSelects(); renderInventory();

@@ -53,3 +53,11 @@ closed stream cannot be reopened for claims. `Mine.sweepEscrow` and `Alchemists.
 balance, which covers ETH forced into them. Submit fees never rest in the game contracts: they go to the Safe at once.
 
 No external audit: the owner decided on 2026-09-24 to launch on these two internal reviews and the guardian pause.
+
+Mixed tiers at the ritual table (added 2026-09-25, `test/craft-mix.test.js`): `craftItem(kind, ids, amts)` takes the recipe's
+categories at any tiers; the counts per tier are packed one byte each into the commit (bounded by the recipe total of five,
+so no lane can overflow); at the reveal the rite fails with `mixFailStep x (tiers - 1)` percent (the setter caps the step at 5,
+so at most 20 %) and yields nothing, otherwise the tier of one of the five inputs is drawn evenly, then the key roll and the
+tier-up at the drawn tier's odds. A one-tier rite never fails and keeps its tier, exactly as before. In expectation a mixed
+rite returns the average of the pure rites of its inputs, so mixing cannot cheapen a high tier; it adds variance and burns.
+The furnace recipe still demands one tier.

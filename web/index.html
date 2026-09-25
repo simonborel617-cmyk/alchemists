@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=35">
+<link rel="stylesheet" href="style.css?v=36">
 </head>
 <body data-app="8">
 <header>
@@ -256,9 +256,10 @@
         </div>
         <div class="st" id="st-item">
           <div class="st-scene" id="sc-item"></div>
-          <div class="st-head"><div><h3>Ritual table</h3><p>Five ingredients by the recipe of the item are sealed into a ritual item of their tier. A small chance of one tier higher, and a roll for a mythic key bound to the item kind. Sealed until the next minute.</p></div></div>
+          <div class="st-head"><div><h3>Ritual table</h3><p>Five ingredients by the recipe of the item are sealed into a ritual item: of their tier, or, when tiers are mixed, of the tier of one of them drawn at the reveal. A small chance of one tier higher, and a roll for a mythic key bound to the item kind. Sealed until the next minute.</p></div></div>
           <div class="recipe" id="rc-item"></div>
-          <div class="ctl"><label class="f">item<select id="itKind"></select></label><label class="f">tier<select id="itTier"></select></label></div>
+          <p class="small mixhint" id="itMixHint" style="display:none">Tiers mix: click an ingredient to raise its tier, right-click to lower it. The item takes the tier of one of the five, drawn evenly; every extra tier adds 5 % to the chance the rite breaks, and a broken rite burns all five.</p>
+          <div class="ctl"><label class="f">item<select id="itKind"></select></label><label class="f">fill with<select id="itTier"></select></label></div>
           <div class="req" id="rq-item"></div>
           <div class="act"><button id="doItem" class="btn gold">Craft item</button><span class="hint" id="itHint"></span></div>
           <div class="pend" id="pd-item" style="display:none"></div>
@@ -341,8 +342,8 @@
 <script src="stage.js?v=12"></script>
 <script src="rite.js?v=2"></script>
 <script src="reveal.js?v=3"></script>
-<script src="workshop.js?v=4"></script>
-<script src="app.js?v=40"></script>
+<script src="workshop.js?v=5"></script>
+<script src="app.js?v=41"></script>
 <script src="nav.js?v=3"></script>
 </body>
 </html>

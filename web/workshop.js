@@ -1062,6 +1062,56 @@ window.AlchWS = (() => {
         },
         end(S, E, memo) { S.sealed = false; memo.sealed = false; memo.result = { spr: E.item, c: E.key ? E.cOut : tierColor(E.outTier), tier: E.key ? 6 : E.outTier }; for (const k of ["smoke", "sparks", "motes"]) S[k] = E[k]; },
       },
+      // a mixed rite that did not hold. It gathers exactly like a success (nobody can tell early), then in its last
+      // third the sigil stutters toward red, and instead of the white flash it tears: dark red shards and ash burst
+      // out and fall, smoke rolls up, the chamber goes dark. Nothing forms.
+      broken: {
+        async load() { return {}; },
+        build(S, o) {
+          const E = chamber(S.W, S.H, { tier: o.tier || 1, kindName: o.kindName }, { item: null }, o.seed || 47);
+          E.c = tierColor(E.tier); E.cBad = [201, 58, 46];
+          E.T = { form: 1.1 }; E.T.falter = E.T.form * 0.62; E.T.label = E.T.form + 0.8; E.T.end = E.T.label + 2.6;
+          return E;
+        },
+        step(E) {
+          const { T, rand, s } = E, t = (E.t += DT);
+          if (t < T.form && rand() < 0.9) { const a = rand() * TAU, r = E.R * (1 + rand() * 0.6); E.motes.push({ x: E.C[0] + Math.cos(a) * r, y: E.C[1] + Math.sin(a) * r, vx: -Math.cos(a) * r * 1.6, vy: -Math.sin(a) * r * 1.6, g: 0, life: 0.55, age: 0, c: t > T.falter && rand() < 0.45 ? E.cBad : rand() < 0.5 ? WHITE : E.c }); }
+          if (t > T.falter && t < T.form && rand() < 0.35) E.shake = Math.max(E.shake || 0, 0.8 * s); // the sigil fights itself
+          if (t >= T.form && !E.broke) {
+            E.broke = true; E.shake = 3.2 * s;
+            E.rings.push({ x: E.C[0], y: E.C[1], r0: E.R * 0.2, r1: E.R * 1.4, life: 0.45, age: 0, c: E.cBad });
+            E.rings.push({ x: E.C[0], y: E.C[1], r0: E.R * 0.6, r1: E.R * 2.1, life: 0.8, age: 0.12, c: [120, 40, 34] });
+            for (let k = 0; k < 90; k++) { // shards of the sigil: chunky, fast, falling
+              const a = rand() * TAU, v = (60 + rand() * 210) * s * 0.6;
+              E.sparks.push({ x: E.C[0] + Math.cos(a) * E.R * 0.2, y: E.C[1] + Math.sin(a) * E.R * 0.2, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30 * s, g: 240 * s, z: rand() < 0.35 ? 3 : 2, bounce: true, life: 0.9 + rand() * 0.9, age: 0, c: rand() < 0.55 ? E.cBad : rand() < 0.5 ? [92, 86, 82] : [58, 54, 52] });
+            }
+            for (let k = 0; k < 40; k++) { // embers of ash drifting down
+              const a = rand() * TAU, r = rand() * E.R * 0.9;
+              E.sparks.push({ x: E.C[0] + Math.cos(a) * r, y: E.C[1] + Math.sin(a) * r, vx: (rand() - 0.5) * 30 * s, vy: (10 + rand() * 30) * s, g: 20 * s, life: 1.6 + rand() * 1.4, age: -rand() * 0.4, c: rand() < 0.5 ? [150, 70, 58] : [110, 104, 100] });
+            }
+            for (let k = 0; k < 26; k++) { // the smoke of a spoiled rite
+              const a = rand() * TAU;
+              E.smoke.push({ x: E.C[0] + Math.cos(a) * E.R * 0.3, y: E.C[1] + Math.sin(a) * E.R * 0.3, vx: Math.cos(a) * (20 + rand() * 40) * s, vy: -(18 + rand() * 30) * s, r: (4 + rand() * 6) * s, gr: (10 + rand() * 12) * s, life: 1.6 + rand() * 1.4, age: -rand() * 0.25, a: 0.55 + rand() * 0.3, c: rand() < 0.5 ? [34, 30, 32] : [60, 50, 50] });
+            }
+          }
+          stepParts(E);
+          if (t >= T.end) E.done = true;
+        },
+        draw(E, ctx) {
+          const { T, t } = E, q = clamp(t / T.form), bad = clamp((t - T.falter) / (T.form - T.falter));
+          const flick = t > T.falter && t < T.form ? (Math.sin(t * 47) > -0.2 ? 1 : 0.45) : 1;
+          const lit = t < T.form ? 0.9 * flick : 0.9 * (1 - clamp((t - T.form) / 0.25));
+          drawChamber(E, ctx, lit, mix(E.c, E.cBad, bad * 0.8), { scale: 1 - 0.7 * inCubic(q), rot: 2.5 * q * q }, (cx) => (t < T.form + 0.3 ? Math.sign(E.C[0] - cx) * clamp(t / 0.6) : 0));
+          ctx.globalCompositeOperation = "lighter";
+          if (t >= T.form && t - T.form < 0.35) glow(ctx, E.C[0], E.C[1], E.R * (1 + 1.3 * outCubic((t - T.form) / 0.35)), E.cBad, 0.85 * (1 - (t - T.form) / 0.35) ** 2);
+          if (t >= T.form) glow(ctx, E.C[0], E.C[1] + E.R * 0.2, E.R * 0.7, [120, 40, 34], 0.22 * (1 - clamp((t - T.form) / 2.5)));
+          ctx.globalCompositeOperation = "source-over";
+          drawParts(E, ctx);
+          const a = clamp((t - T.label) / 0.4);
+          if (a > 0) plate(ctx, E.W * 0.86, E.W < 520 ? E.H * 0.72 : E.H * 0.08, [["THE RITE BROKE", pix(fsz(E, 11)), ASH], ["the mix did not hold", mono(fsz(E, 13)), INK]], a, E.cBad);
+        },
+        end(S, E, memo) { S.sealed = false; memo.sealed = false; memo.result = null; for (const k of ["smoke", "sparks", "motes"]) S[k] = E[k]; },
+      },
     },
   };
 

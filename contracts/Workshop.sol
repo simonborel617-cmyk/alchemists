@@ -25,11 +25,11 @@ contract Workshop is Guarded, ReentrancyGuard {
         address user;
         uint8 op;
         uint8 a; // refine: type, reroll: tier, craft: kind
-        uint8 b; // refine: tier, reroll: category, craft: tier
+        uint8 b; // refine: tier, reroll: category, craft: the highest input tier
         uint8 c; // refine: furnace bonus flag
         bool settled;
         uint64 revealMinute;
-        uint256 furnace;
+        uint256 furnace; // refine: the furnace; craft: how many inputs of each tier, one byte per tier (tier 1 lowest)
     }
 
     Commit[] public commits;
@@ -48,12 +48,14 @@ contract Workshop is Guarded, ReentrancyGuard {
     uint8[5] public rerollDown = [0, 5, 10, 20, 30];
     uint32[5] public keyChance = [1000000, 100000, 10000, 1000, 100];
     uint8 public craftUpgradePct = 5;
+    uint8 public mixFailStep = 5; // a ritual mixing tiers fails with this many percent per tier beyond the first (max 4 x 5 = 20)
 
     event Committed(uint256 indexed id, address indexed user, uint8 op, uint8 a, uint8 b, uint64 revealMinute);
     event Refined(uint256 indexed id, address indexed user, uint8 typeId, uint8 tier, bool success, uint256 inputs);
     event Rerolled(uint256 indexed id, address indexed user, uint8 tier, uint8 category, uint256[] outIds);
     event Crafted(uint256 indexed id, address indexed user, uint8 kind, uint8 tier, uint8 outTier, uint8 keyIndex);
     event PotionCrafted(address indexed user, uint8 tier);
+    event MixFailSet(uint8 step);
     event FurnaceCrafted(address indexed user, uint8 tier, uint256 furnaceId);
 
     constructor(Mine m, Materials mat, Keys k, Furnaces f, uint8[5][8] memory recipes, uint8[5] memory fr) Ownable(msg.sender) {
@@ -94,6 +96,14 @@ contract Workshop is Guarded, ReentrancyGuard {
         for (uint256 i = 0; i < 5; i++) require(chances[i] > 0, "Workshop: chance");
         keyChance = chances;
         craftUpgradePct = upgradePct;
+    }
+
+    /// @notice Instability of a mixed ritual: percent of failure per tier beyond the first. At most 5 (a ritual of all
+    ///         five tiers fails at most one time in five).
+    function setMixFail(uint8 step) external onlyOwner {
+        require(step <= 5, "Workshop: mix fail");
+        mixFailStep = step;
+        emit MixFailSet(step);
     }
 
     function commitCount() external view returns (uint256) {
@@ -138,12 +148,16 @@ contract Workshop is Guarded, ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------- crafting
-    function craftItem(uint8 kind, uint8 tier, uint256[] calldata ids, uint256[] calldata amts) external whenNotPaused nonReentrant returns (uint256 commitId) {
-        require(kind < 8 && tier >= 1 && tier <= 5, "Workshop: kind/tier");
-        _checkRecipe(itemRecipe[kind], tier, ids, amts);
+    /// @notice Seal five ingredients into a ritual item. The categories follow the recipe; the tiers may be mixed. The
+    ///         item's tier is the tier of one of the five drawn at the reveal, so each tier comes out in proportion to how
+    ///         many of the inputs carry it; a ritual of more than one tier can fail (mixFailStep percent per extra tier),
+    ///         and a failed ritual yields nothing. All five inputs burn at once, as always.
+    function craftItem(uint8 kind, uint256[] calldata ids, uint256[] calldata amts) external whenNotPaused nonReentrant returns (uint256 commitId) {
+        require(kind < 8, "Workshop: kind/tier");
+        (uint256 packed, uint8 top) = _checkMixed(itemRecipe[kind], ids, amts);
         materials.burnBatch(msg.sender, ids, amts);
         mine.tick();
-        commitId = _commit(msg.sender, OP_CRAFT, kind, tier, 0, 0);
+        commitId = _commit(msg.sender, OP_CRAFT, kind, top, 0, packed);
     }
 
     function craftPotion(uint8 tier, uint256 herbA, uint256 herbB) external whenNotPaused nonReentrant {
@@ -179,6 +193,26 @@ contract Workshop is Guarded, ReentrancyGuard {
             got[materials.ingCategory(ids[i])] += amts[i];
         }
         for (uint256 c = 0; c < 5; c++) require(got[c] == recipe[c], "Workshop: recipe");
+    }
+
+    /// @dev A recipe check that lets tiers mix: returns the count of inputs per tier (one byte each, tier 1 lowest) and
+    ///      the highest tier. The per-category totals must match the recipe, which caps every count at 5.
+    function _checkMixed(uint8[5] memory recipe, uint256[] calldata ids, uint256[] calldata amts) internal view returns (uint256 packed, uint8 top) {
+        require(ids.length == amts.length && ids.length > 0, "Workshop: len");
+        uint256[5] memory got;
+        uint256[6] memory perTier;
+        for (uint256 i = 0; i < ids.length; i++) {
+            require(materials.isIngredient(ids[i]), "Workshop: input");
+            uint8 t = materials.ingTier(ids[i]);
+            got[materials.ingCategory(ids[i])] += amts[i];
+            perTier[t] += amts[i];
+        }
+        for (uint256 c = 0; c < 5; c++) require(got[c] == recipe[c], "Workshop: recipe");
+        for (uint8 t = 1; t <= 5; t++) {
+            if (perTier[t] == 0) continue;
+            packed |= perTier[t] << (8 * (t - 1));
+            top = t;
+        }
     }
 
     // ---------------------------------------------------------------- commit / reveal
@@ -252,7 +286,25 @@ contract Workshop is Guarded, ReentrancyGuard {
 
     function _settleCraft(uint256 id, Commit memory c, uint256 r) internal {
         uint8 kind = c.a;
-        uint8 tier = c.b;
+        uint256 packed = c.furnace;
+        uint256 distinct;
+        for (uint8 t = 1; t <= 5; t++) if ((packed >> (8 * (t - 1))) & 0xff != 0) distinct++;
+        // the instability of a mixed ritual: it fails outright, and the inputs are already gone
+        if ((r >> 128) % 100 < uint256(mixFailStep) * (distinct - 1)) {
+            emit Crafted(id, c.user, kind, 0, 0, 255);
+            return;
+        }
+        // the tier of one of the five inputs, drawn evenly
+        uint256 pick = (r >> 160) % 5;
+        uint8 tier;
+        for (uint8 t = 1; t <= 5; t++) {
+            uint256 n = (packed >> (8 * (t - 1))) & 0xff;
+            if (pick < n) {
+                tier = t;
+                break;
+            }
+            pick -= n;
+        }
         if (r % keyChance[tier - 1] == 0) {
             (bool ok, uint8 idx) = keys.claimOfKind(c.user, kind, r >> 32);
             if (ok) {

@@ -24,6 +24,9 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
   delay its whole balance returns to the Safe and it closes); Mine and Alchemists sweep their whole balance.
   `scripts/emergency.js` writes the Safe batches (pause, rescue, unpause, status); `RUNBOOK.md` has the procedure.
 - **Simulations.** Both regimes ran on the mainnet constants, scaled: `SIMULATION.md`.
+- **Mixed tiers at the ritual table** (owner's call for the first release): any tiers by recipe, the item's tier drawn from
+  the inputs, 5 % break chance per extra tier (20 % at most); chance preview and slot picker on the site, a broken-rite
+  scene; checked end to end on a local chain through the site. 70 tests.
 
 ## Needed from the owner before the deploy
 

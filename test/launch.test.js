@@ -10,6 +10,7 @@ describe("Launch: the mainnet profile", function () {
   it("passes the preflight with a Safe and refuses without one, or with the summoning open", async function () {
     const [, safe] = await ethers.getSigners();
     const P = JSON.parse(JSON.stringify(PM));
+    P.governance.safe = ethers.ZeroAddress; // the profile carries the real Safe now; without one the preflight refuses
     expect(preflight(P, { TREASURY: safe.address })).to.include("governance.safe must be the Safe multisig address");
     P.governance.safe = safe.address;
     expect(preflight(P, { TREASURY: safe.address })).to.deep.equal([]);

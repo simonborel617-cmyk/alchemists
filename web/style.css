@@ -461,3 +461,10 @@ body.connected .nowallet { display:none; }
   .ws-nav button { flex:1 1 0; min-width:0; justify-content:center; padding:6px 3px; }
   .ws-nav button img { width:36px; height:36px; }
 }
+
+/* the ritual table mixes tiers: each slot is a chip that cycles its tier */
+.recipe .slot.mix { cursor:pointer; }
+.recipe .slot.mix .chip img { transition:transform .12s; }
+.recipe .slot.mix:hover .chip img { transform:translateY(-2px); border-color:var(--gold); }
+.recipe .odds .brk { color:#e07a6f; }
+.mixhint { margin:8px 0 0; }

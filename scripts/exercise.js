@@ -75,7 +75,7 @@ async function main() {
   commitIds.push(events(rcR, workshop, ["Committed"])[0].args.id);
   const rcRe = await send("reroll tier2 -> beasts", workshop.reroll(2, 4, [ing(1, 2), ing(33, 2)], [6, 4], G));
   commitIds.push(events(rcRe, workshop, ["Committed"])[0].args.id);
-  const rcC = await send("craftItem chalice tier3", workshop.craftItem(2, 3, [ing(5, 3), ing(9, 3)], [3, 2], G));
+  const rcC = await send("craftItem chalice tier3", workshop.craftItem(2, [ing(5, 3), ing(9, 3)], [3, 2], G));
   commitIds.push(events(rcC, workshop, ["Committed"])[0].args.id);
   await send("refine again (cooldown) should fail", workshop.refine(furnaceId, 2, 1, G).then((tx) => tx.wait()).then(() => { throw new Error("cooldown not enforced"); }).catch((e) => {
     if (String(e.message).includes("cooldown not enforced")) throw e;

@@ -133,11 +133,11 @@ describe("Stage 1: workshop", function () {
     expect(parse(rc2, workshop, "Rerolled")[0].args.outIds.length).to.equal(3); // legendary with a category: 3 outputs
   });
 
-  it("rejects wrong recipes and mixed tiers", async function () {
+  it("rejects wrong recipes and anything that is not an ingredient (mixed tiers are allowed, see craft-mix)", async function () {
     const { materials, workshop, alice } = await loadFixture(deployFixture);
-    await materials.mintCraftedBatch(alice.address, [ing(5, 3), ing(9, 3), ing(9, 2)], [3, 1, 1]);
-    await expect(workshop.connect(alice).craftItem(2, 3, [ing(5, 3), ing(9, 3), ing(9, 2)], [3, 1, 1])).to.be.revertedWith("Workshop: input");
-    await expect(workshop.connect(alice).craftItem(2, 3, [ing(5, 3), ing(9, 3)], [3, 1])).to.be.revertedWith("Workshop: recipe");
+    await materials.mintCraftedBatch(alice.address, [ing(5, 3), ing(9, 3), 1003], [3, 1, 1]);
+    await expect(workshop.connect(alice).craftItem(2, [ing(5, 3), ing(9, 3), 1003], [3, 1, 1])).to.be.revertedWith("Workshop: input");
+    await expect(workshop.connect(alice).craftItem(2, [ing(5, 3), ing(9, 3)], [3, 1])).to.be.revertedWith("Workshop: recipe");
     await expect(workshop.connect(alice).craftPotion(3, ing(5, 3), ing(9, 3))).to.be.revertedWith("Workshop: two herbs of the tier");
   });
 
@@ -146,7 +146,7 @@ describe("Stage 1: workshop", function () {
     await workshop.connect(owner).setCraft([1, 1, 1, 1, 1], 0); // every craft rolls a key
     // censer (kind 5) has two keys: 14 and 15
     await materials.mintCraftedBatch(alice.address, [ing(0, 1), ing(16, 1)], [6, 9]);
-    for (let i = 0; i < 3; i++) await workshop.connect(alice).craftItem(5, 1, [ing(0, 1), ing(16, 1)], [2, 3]);
+    for (let i = 0; i < 3; i++) await workshop.connect(alice).craftItem(5, [ing(0, 1), ing(16, 1)], [2, 3]);
     await nextMinute();
     await mine.tick();
     const rc = await (await workshop.revealMany([0, 1, 2])).wait();
