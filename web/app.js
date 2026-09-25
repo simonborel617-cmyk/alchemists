@@ -877,9 +877,10 @@
       $("itImg").src = `metadata/${item(k, top)}.png`; $("navItImg").src = `metadata/${item(k, top)}.png`;
       // each slot: the ingredient chip and, when this Workshop mixes, its own tier picker right under it
       const slots = cats.map((c, i) => { const t = itSlots[i]; const pickT = mixed ? `<select class="slot-tier t${t}" data-slot-tier="${i}" aria-label="tier of slot ${i + 1}">${[1, 2, 3, 4, 5].map((x) => `<option value="${x}"${x === t ? " selected" : ""}>${T[x]}</option>`).join("")}</select>` : ""; return `<div class="slot${mixed ? " mix" : ""}" data-slot="${i}"${mixed ? ' title="pick the tier below, or click: a tier up · right-click: a tier down"' : ""}>${chip(ing(CAT_TYPE[c], t), CAT[c].replace(/s$/, ""), mixed ? "" : T[t], lack.has(c * 8 + t) ? "bad" : "ok", t)}${pickT}</div>`; }).join("");
-      const lines = o.tiers.slice().sort((a, b) => b - a).map((t) => `<span style="color:${TC[t]}">${T[t]}</span> <b>${o.p(t)} %</b>`);
+      // each tier that can come out, with the key roll at that tier's odds (the key replaces the item when it hits)
+      const lines = o.tiers.slice().sort((a, b) => b - a).map((t) => `<span style="color:${TC[t]}">${T[t]}</span> <b>${o.p(t)} %</b> <span class="kc">· key 1 in ${RC.keyChance[t - 1].toLocaleString("en")}</span>`);
       if (o.fail) lines.push(`<span class="brk">the rite breaks</span> <b>${o.fail} %</b>`);
-      lines.push(`then a tier up <b>${RC.craftUp} %</b>`, `mythic key up to <b>1 in ${RC.keyChance[top - 1].toLocaleString("en")}</b>`);
+      lines.push(`then a tier up <b>${RC.craftUp} %</b>`);
       $("rc-item").innerHTML = slots + ARROW + chip(item(k, likely), names.kinds[k], o.tiers.length > 1 ? `${T[likely]} ${o.p(likely)} %` : T[likely], "", likely) + `<div class="odds">${lines.join("<br>")}</div>`;
       $("rq-item").innerHTML = [...need].map(([kk, n]) => req(`${CAT[Math.floor(kk / 8)]} ${T[kk % 8]}`, haveCat(Math.floor(kk / 8), kk % 8), n)).join("") + `<span>${k < 5 ? "required for the soul" : "optional enhancer"}</span>`;
       $("itMixHint").style.display = mixed ? "" : "none";
