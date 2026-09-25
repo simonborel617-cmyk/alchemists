@@ -9,8 +9,10 @@ import "./Materials.sol";
 import "./Keys.sol";
 
 /// @notice One-minute PoW sessions that mint random ingredients. GAME_DESIGN.md section 2.
-///         Preimage: sha256(miner ‖ nonce ‖ challenge[minute]). Type, upgrade and mythic-key rolls are
-///         settled with the challenge of the minute after submission, which does not exist at submit time.
+///         Preimage: sha256(miner ‖ nonce ‖ challenge[minute]). A hash only has to clear the minute's threshold: the
+///         find's tier, type, upgrade and mythic-key rolls are all settled at reveal with a seed nobody can know when the
+///         find is paid for and nobody can choose afterwards (revealSeed), so the miner pays for every find before
+///         learning what it is. Workshop crafts and summons draw on the same seeds.
 contract Mine is Guarded, ReentrancyGuard {
     struct Config {
         uint32 floorBitsQ8; // 30 * 256
@@ -21,7 +23,7 @@ contract Mine is Guarded, ReentrancyGuard {
         uint32 mCapQ8; // 4 * 256
         uint128 price0; // wei
         uint64 priceD; // 50 000
-        uint128[4] unlockHashrate; // H/s that open Uncommon, Rare, Epic, Legendary
+        uint64[4] unlockFinds; // finds of the season (submittedTotal) that open Uncommon, Rare, Epic, Legendary
         uint32[4] extraK; // circulating units of a (type,tier) pair per +1 bit, for U, R, E, L
         uint32 keyChance; // 1 in N per revealed mint
         uint32 upgradeChance; // 1 in N, single step
@@ -40,6 +42,7 @@ contract Mine is Guarded, ReentrancyGuard {
         uint32 tQ8;
         uint32 workQ8;
         uint8 unlockedTier;
+        uint64 l1; // parent-chain block number at submit: the find settles by revealSeed(l1)
     }
 
     Materials public immutable materials;
@@ -48,14 +51,24 @@ contract Mine is Guarded, ReentrancyGuard {
     uint64 public immutable genesisTime;
     uint32 public immutable sessionSec; // 60 on mainnet; shorter only for test deployments
     Config internal cfg;
-    uint16[5] internal stepQ8 = [0, 512, 1024, 1792, 2560]; // tier 1..5 offsets over T, bits * 256
+    uint16[5] internal stepQ8 = [0, 512, 1024, 1792, 2560]; // tier 1..5: bits the reveal roll must clear, * 256
 
     mapping(uint64 => bytes32) public challenge;
     mapping(uint64 => uint32) public minuteThreshold; // Common threshold fixed together with the minute's challenge
     bytes32 public findAcc; // running hash of every submitted find; mixed into each new challenge so no single actor picks it
     uint256 public escrowed; // mint fees the treasury could not receive; owner sweeps
     uint64 public lastChallengeMinute;
-    uint64[] public fills; // start minutes of challenge ranges written after a gap
+
+    /// @dev Reveal seeds by parent-chain block, see revealSeed. Every tick() notes its parent block (every commit ticks
+    ///      first, so every commit's block is noted) and records the seeds of noted blocks once final, so a commit can
+    ///      still be settled after the chain's 256-block blockhash window has moved past it.
+    uint64 internal constant SEED_SPAN = 4;
+    /// @notice The seed of a commit whose parent block was never recorded within the window (nobody touched the mine for
+    ///         ~50 minutes after it): it settles as the worst outcome, so waiting for it never pays.
+    bytes32 public constant LOST_SEED = bytes32(uint256(1));
+    mapping(uint64 => bytes32) internal _parentSeed;
+    uint64[] internal _noted; // parent blocks in which the mine was ticked, each once, in order
+    uint256 public notedHead; // _noted before this index are recorded or were lost
 
     /// @dev Hashrate estimator: each submission contributes 2^floor(bits), capped at 2^(minute threshold + estCapBits),
     ///      and the sum is divided by estDivX10/10. Best-of-N hashes have a heavy tail; cap 6 and divisor 3.4 make
@@ -81,6 +94,7 @@ contract Mine is Guarded, ReentrancyGuard {
     event Mined(address indexed miner, uint8 indexed typeId, uint8 indexed tier, uint256 id, bool upgraded);
     event KeyMined(address indexed miner, uint8 keyIndex);
     event Retarget(uint32 tQ8, uint256 hashrate, uint32 mints, uint256 kWindow3, uint128 netPressure, uint32 mQ8, uint8 unlockedTier);
+    event Unlocked(uint8 tier, uint64 finds);
     event TreasurySet(address treasury);
     event Escrowed(uint256 amount);
     event EscrowSwept(address to, uint256 amount);
@@ -102,6 +116,7 @@ contract Mine is Guarded, ReentrancyGuard {
         tQ8 = c.floorBitsQ8;
         windowStart = uint64(block.timestamp - (block.timestamp % c.windowSecEarly)); // windows aligned to minutes
         oreRemaining = c.oreR0;
+        _unlock();
     }
 
     function _checkConfig(Config memory c) internal pure {
@@ -111,6 +126,18 @@ contract Mine is Guarded, ReentrancyGuard {
         require(c.windowSec > 0 && c.windowSecEarly > 0, "Mine: windows");
         require(c.estCapBits >= 1 && c.estCapBits <= 32 && c.estDivX10 >= 10, "Mine: estimator");
         for (uint256 i = 0; i < 4; i++) require(c.extraK[i] > 0, "Mine: extraK");
+        for (uint256 i = 1; i < 4; i++) require(c.unlockFinds[i] >= c.unlockFinds[i - 1], "Mine: unlocks");
+    }
+
+    /// @dev Opens every tier whose find count the season has reached. Tiers never close again.
+    function _unlock() internal {
+        uint8 u = unlockedTier;
+        uint64 s = submittedTotal;
+        while (u < 5 && s >= cfg.unlockFinds[u - 1]) {
+            u += 1;
+            emit Unlocked(u, s);
+        }
+        unlockedTier = u;
     }
 
     // ---------------------------------------------------------------- admin
@@ -131,6 +158,7 @@ contract Mine is Guarded, ReentrancyGuard {
         cfg = c;
         if (tQ8 < c.floorBitsQ8) tQ8 = c.floorBitsQ8;
         if (tQ8 > c.ceilBitsQ8) tQ8 = c.ceilBitsQ8;
+        _unlock();
     }
 
     // ---------------------------------------------------------------- time & challenges
@@ -139,15 +167,19 @@ contract Mine is Guarded, ReentrancyGuard {
         return uint64(block.timestamp / sessionSec);
     }
 
-    /// @notice Runs a due retarget, then fixes challenge and threshold for every minute up to now (bounded back-fill).
+    /// @notice Records the reveal seeds that became final, runs a due retarget, then fixes challenge and threshold for
+    ///         every minute up to now (bounded back-fill).
     function tick() public {
+        _recordSeeds();
+        uint64 here = uint64(block.number);
+        uint256 nn = _noted.length;
+        if (nn == 0 || _noted[nn - 1] != here) _noted.push(here);
         _maybeRetarget();
         uint64 nowM = currentMinute();
         if (lastChallengeMinute < nowM) {
             bytes32 bh = blockhash(block.number - 1);
             uint64 from = lastChallengeMinute + 1;
             if (nowM - from >= 120) from = nowM - 119;
-            if (from > lastChallengeMinute + 1) fills.push(from);
             bytes32 prev = challenge[from - 1];
             uint32 t = tQ8;
             bytes32 acc = findAcc;
@@ -161,20 +193,46 @@ contract Mine is Guarded, ReentrancyGuard {
         }
     }
 
-    /// @notice Entropy for minute m: its challenge, or the first challenge written after a gap. Zero if not yet available.
-    function entropy(uint64 m) public view returns (bytes32) {
-        if (m > lastChallengeMinute) return bytes32(0);
-        bytes32 c = challenge[m];
-        if (c != bytes32(0)) return c;
-        uint256 lo = 0;
-        uint256 hi = fills.length;
-        while (lo < hi) {
-            uint256 mid = (lo + hi) / 2;
-            if (fills[mid] > m) hi = mid;
-            else lo = mid + 1;
+    // ---------------------------------------------------------------- reveal randomness
+    /// @notice Randomness for anything committed at parent-chain block `l1` (a find, a craft, a summon); zero until parent
+    ///         block l1 + 4 has begun.
+    /// @dev On this chain block.number is the parent-chain (L1) block number, and blockhash(n) is written when the chain
+    ///      moves past parent block n: the hash of the last L2 block before the move. When the chain jumps several numbers
+    ///      at once, ArbOS writes the last one with that hash and fills the skipped ones from it, while the number it
+    ///      jumped from keeps a stale value. So among blockhash(l1 .. l1+3) at least one value comes from the last L2 block
+    ///      of parent block l1, which is at or after the commit's own block and so unknown when the commit is sent. Once parent block l1 + 4 has begun the four values are final and the same
+    ///      for every caller at any moment, so neither a ticker nor anyone else can choose among candidates (the old seed,
+    ///      the next minute's challenge, was readable in the last seconds of a minute and fixed by whoever ticked). The
+    ///      value is read straight from blockhash while it is in the 256-block window (~51 minutes of 12 s parent blocks)
+    ///      and recorded by the first tick after it is final; a commit whose block nobody recorded within the window (no
+    ///      transaction to the mine or the workshop for the whole window after the commit) gets LOST_SEED, which every
+    ///      settle path turns into its worst outcome, so letting a commit lapse never beats the real seed.
+    function revealSeed(uint64 l1) public view returns (bytes32) {
+        bytes32 s = _parentSeed[l1];
+        if (s != bytes32(0)) return s;
+        uint256 top = block.number;
+        if (top < uint256(l1) + SEED_SPAN) return bytes32(0);
+        if (top <= uint256(l1) + 256) return _seedAt(l1);
+        return LOST_SEED;
+    }
+
+    function _seedAt(uint64 p) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(address(this), p, blockhash(p), blockhash(p + 1), blockhash(p + 2), blockhash(p + 3)));
+    }
+
+    /// @dev Records the seeds of the noted parent blocks that became final, oldest first, at most 16 per call. A tick
+    ///      notes at most one block, so the queue never falls behind; a noted block past the window is lost.
+    function _recordSeeds() internal {
+        uint256 top = block.number;
+        uint256 h = notedHead;
+        uint256 end = _noted.length;
+        if (end > h + 16) end = h + 16;
+        for (; h < end; h++) {
+            uint64 p = _noted[h];
+            if (uint256(p) + SEED_SPAN > top) break; // not final yet
+            if (top <= uint256(p) + 256 && _parentSeed[p] == bytes32(0)) _parentSeed[p] = _seedAt(p);
         }
-        if (lo == fills.length) return bytes32(0);
-        return challenge[fills[lo]];
+        notedHead = h;
     }
 
     // ---------------------------------------------------------------- views
@@ -206,10 +264,11 @@ contract Mine is Guarded, ReentrancyGuard {
         return uint256(cfg.price0) * oreQ / 1e6 * netPressure / 1e6;
     }
 
-    /// @dev Threshold in Q8 bits for a (type, tier) pair at the current Common threshold.
-    function tierThresholdQ8(uint8 typeId, uint8 tier) public view returns (uint256) {
+    /// @notice Bits (Q8) the reveal roll must clear for a (type, tier) pair right now: the tier step plus the pair's
+    ///         saturation extra. Before the 1/16 upgrade, P(tier >= k) = 2^-(tierRollQ8 / 256) while tier k is open.
+    function tierRollQ8(uint8 typeId, uint8 tier) public view returns (uint256) {
         require(tier >= 1 && tier <= 5, "Mine: tier");
-        uint256 thr = uint256(tQ8) + stepQ8[tier - 1];
+        uint256 thr = stepQ8[tier - 1];
         if (tier >= 2) thr += materials.circulating(materials.ingId(typeId, tier)) * 256 / cfg.extraK[tier - 2];
         return thr;
     }
@@ -248,7 +307,8 @@ contract Mine is Guarded, ReentrancyGuard {
         windowMints += 1;
         oreRemaining -= 1;
         submittedTotal += 1;
-        _pending[msg.sender].push(Pending(h, nowM + 1, tm, w, unlockedTier));
+        _unlock();
+        _pending[msg.sender].push(Pending(h, nowM + 1, tm, w, unlockedTier, uint64(block.number)));
         findAcc = keccak256(abi.encodePacked(findAcc, h));
         emit Submitted(msg.sender, forMinute, w, price);
 
@@ -288,7 +348,7 @@ contract Mine is Guarded, ReentrancyGuard {
         uint256 n;
         while (head < q.length && n < 8) {
             Pending memory pd = q[head];
-            bytes32 e = entropy(pd.revealMinute);
+            bytes32 e = revealSeed(pd.l1);
             if (e == bytes32(0)) break;
             delete q[head]; // effects first: the slot is gone before any token hook can run
             head++;
@@ -300,9 +360,17 @@ contract Mine is Guarded, ReentrancyGuard {
     }
 
     function _settle(address miner, Pending memory pd, bytes32 e) internal {
+        if (e == LOST_SEED) {
+            // a lapsed find: a Common of the type its own hash names, no upgrade, no key
+            uint8 lt = uint8(uint256(pd.hash) % 40);
+            uint256 lid = materials.ingId(lt, 1);
+            materials.mintMined(miner, lid, 1);
+            emit Mined(miner, lt, 1, lid, false);
+            return;
+        }
         uint256 r = uint256(keccak256(abi.encodePacked(pd.hash, e)));
         uint8 t = uint8(r % 40);
-        uint8 tier = _tierFor(pd, t);
+        uint8 tier = _tierFor(pd.unlockedTier, t, FixedMath.workQ8(keccak256(abi.encodePacked(r))));
         bool upgraded;
         if (tier < 5 && ((r >> 8) % cfg.upgradeChance) == 0) {
             tier += 1;
@@ -318,14 +386,15 @@ contract Mine is Guarded, ReentrancyGuard {
         emit Mined(miner, t, tier, id, upgraded);
     }
 
-    /// @dev Highest tier the work clears: base thresholds from the submit-time snapshot, per-pair extras read at reveal time
-    ///      (a pair that filled up between submit and reveal costs the miner a tier), capped by the unlocks at submit time.
-    function _tierFor(Pending memory pd, uint8 t) internal view returns (uint8 tier) {
+    /// @dev Highest tier the reveal roll clears. The roll is the work of a fresh random hash, P(roll >= x bits) = 2^-x: the
+    ///      odds a single small miner's best hash would have over the threshold, the same for every find whatever the
+    ///      network load or the miner's size. Per-pair extras are read at reveal time; the unlocks are those at submit time.
+    function _tierFor(uint8 unlocked, uint8 t, uint256 rollQ8) internal view returns (uint8 tier) {
         tier = 1;
         for (uint8 k = 2; k <= 5; k++) {
-            if (k > pd.unlockedTier) break;
-            uint256 thr = uint256(pd.tQ8) + stepQ8[k - 1] + materials.circulating(materials.ingId(t, k)) * 256 / cfg.extraK[k - 2];
-            if (uint256(pd.workQ8) >= thr) tier = k;
+            if (k > unlocked) break;
+            uint256 thr = stepQ8[k - 1] + materials.circulating(materials.ingId(t, k)) * 256 / cfg.extraK[k - 2];
+            if (rollQ8 >= thr) tier = k;
         }
     }
 
@@ -343,9 +412,6 @@ contract Mine is Guarded, ReentrancyGuard {
         uint256 hPerSec = work / elapsed;
 
         emaHashrate = uint128((uint256(emaHashrate) * 4 + hPerSec) / 5);
-        for (uint8 k = 0; k < 4; k++) {
-            if (emaHashrate >= cfg.unlockHashrate[k] && unlockedTier < k + 2) unlockedTier = k + 2;
-        }
         if (cfg.refHashrate > 0 && emaHashrate > cfg.refHashrate) {
             uint256 mm = 256 + FixedMath.log2Q8(emaHashrate) - FixedMath.log2Q8(cfg.refHashrate);
             if (mm > cfg.mCapQ8) mm = cfg.mCapQ8;

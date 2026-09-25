@@ -6,7 +6,7 @@ const net = process.argv[2] || process.env.NET || "robinhoodTestnet";
 const root = path.join(__dirname, "..");
 const out = path.join(root, "web", "abi");
 fs.mkdirSync(out, { recursive: true });
-for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Alchemists", "Souls", "Stream"]) {
+for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Alchemists", "Souls", "Stream", "Kettle"]) {
   const art = JSON.parse(fs.readFileSync(path.join(root, "artifacts", "contracts", `${n}.sol`, `${n}.json`), "utf8"));
   fs.writeFileSync(path.join(out, `${n}.json`), JSON.stringify(art.abi));
 }

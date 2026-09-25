@@ -36,7 +36,7 @@ async function main() {
   const P = JSON.parse(JSON.stringify(P0));
   P.mine.oreR0 = ORE;
   P.mine.kPerHour = K_PER_HOUR;
-  P.mine.unlockHashrate = ["2", "6", "20", "60"]; // scaled to the emulated hashrates (H/s of the corrected estimate)
+  P.mine.unlockFinds = [0.025, 0.05, 0.1, 0.15].map((f) => Math.round(ORE * f)); // the mainnet shares of the reserve
   P.mine.extraK = [20, 8, 3, 1];
   P.mine.refHashrate = REF_HS;
   P.mine.ceilBits = CEIL_BITS;

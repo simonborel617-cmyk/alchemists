@@ -8,7 +8,7 @@ Wants=network-online.target
 User=alchemists
 WorkingDirectory=/opt/alchemists-keeper
 Environment=NET=robinhood
-Environment=KEEPER_REVEAL=none
+Environment=KEEPER_REVEAL=stale
 Environment=KEEPER_INTERVAL_MS=10000
 ExecStart=/opt/alchemists-keeper/node/bin/node scripts/keeper.js
 Restart=always

@@ -26,6 +26,7 @@ contract Alchemists is ERC721, Guarded {
         uint16 avgTier100; // average tier * 100 (empty enhancer counts as 1)
         uint8 nameId; // key index or NO_NAME
         uint64 revealMinute;
+        uint64 l1; // parent-chain block number at the summoning: it settles by mine.revealSeed(l1)
         bytes32 seed;
     }
 
@@ -117,7 +118,7 @@ contract Alchemists is ERC721, Guarded {
         mintedByRank[rank] += 1;
         id = ++total;
         mine.tick();
-        data[id] = Data(rank, uint16(tierSum * 100 / SLOTS), nameId, mine.currentMinute() + 1, bytes32(0));
+        data[id] = Data(rank, uint16(tierSum * 100 / SLOTS), nameId, mine.currentMinute() + 1, uint64(block.number), bytes32(0));
         _mint(msg.sender, id);
         if (msg.value > 0) {
             (bool ok, ) = treasury.call{value: msg.value}("");
@@ -131,9 +132,9 @@ contract Alchemists is ERC721, Guarded {
         require(d.rank != 0, "Alchemists: no token");
         require(d.seed == bytes32(0), "Alchemists: revealed");
         mine.tick();
-        bytes32 e = mine.entropy(d.revealMinute);
+        bytes32 e = mine.revealSeed(d.l1);
         require(e != bytes32(0), "Alchemists: not yet");
-        d.seed = keccak256(abi.encodePacked(e, id));
+        d.seed = e == mine.LOST_SEED() ? e : keccak256(abi.encodePacked(e, id)); // a lapsed summoning keeps the plain look
         emit Revealed(id, d.seed);
     }
 

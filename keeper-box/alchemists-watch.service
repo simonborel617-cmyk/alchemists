@@ -8,7 +8,7 @@ Wants=network-online.target
 User=alchemists
 WorkingDirectory=/opt/alchemists-keeper
 Environment=NET=robinhood
-Environment=WATCH_MIN_BALANCE=0.005
+Environment=WATCH_MIN_BALANCE=0.01
 ExecStart=/opt/alchemists-keeper/node/bin/node scripts/watch.js
 Restart=always
 RestartSec=10

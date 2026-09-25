@@ -1,6 +1,6 @@
 # The keeper and the watcher on two rented boxes
 
-Only what the two processes need goes to a box: `scripts/keeper.js`, `scripts/watch.js`, three ABIs, the deployment
+Only what the two processes need goes to a box: `scripts/keeper.js`, `scripts/watch.js`, four ABIs (Mine, Workshop, Alchemists, Kettle), the deployment
 record, a private Node.js in `/opt/alchemists-keeper/node` and two npm packages. No system packages are touched. Box A
 runs the keeper, box B the watcher, so one machine keeps an eye on the other.
 

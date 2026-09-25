@@ -4,16 +4,18 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./Guarded.sol";
-import "./FixedMath.sol";
 import "./Mine.sol";
 import "./Materials.sol";
 import "./Keys.sol";
 
 /// @notice The soul of an alchemist: the closing piece of the opening act. Eight ritual items (five required, three
 ///         enhancers, a mythic key in its slot) are sealed into a soul for free; rank and average tier follow the
-///         summoning rules, quotas per rank, cap 5555. Souls carry the Cauldron weight until the alchemists come:
-///         weight = rarity x early, rarity = 2^(avgTier-1) (named = 16), early = 2.0 for the first soul down to 1.0
-///         for the hundredth and 1.0 after. The summoning of the main act burns a soul and inherits its data.
+///         summoning rules, quotas per rank (Apprentice 3014, Adept 1111, Master 833, Magister 555, Archmage 21; with
+///         the 21 named souls they fill the cap 5555 exactly). Souls carry the Cauldron weight until the alchemists
+///         come: weight = rank weight x founder mark; rank weight 1 / 4 / 16 / 64 / 256 for Apprentice..Archmage and
+///         512 for a named soul; founder mark 2.0 for No.1 of its rank down to 1.0 for No.100, 1.0 after, from Adept
+///         up (named souls numbered among the named); Apprentices carry no mark. The main act burns a soul and
+///         inherits its data.
 contract Souls is ERC721, Guarded {
     Mine public immutable mine;
     Materials public immutable materials;
@@ -23,16 +25,17 @@ contract Souls is ERC721, Guarded {
     uint8 public constant SLOTS = 8;
     uint8 public constant REQUIRED = 5;
     uint8 public constant NO_NAME = 255;
-    uint256 public constant EARLY_N = 100; // the first hundred souls carry the early multiplier
+    uint256 public constant EARLY_N = 100; // the first hundred souls of each rank (Adept and up) carry the founder mark
 
     struct Data {
         uint8 rank; // 1..5, 6 = named 1/1
         uint16 avgTier100; // average tier * 100 (empty enhancer counts as 1)
         uint8 nameId; // key index or NO_NAME
         uint64 mintedMinute;
+        uint16 ordinal; // No. of this soul within its rank (named souls: among the named), 1-based
     }
 
-    uint16[6] public quota = [0, 0, 1111, 833, 555, 277]; // by rank; rank 1 unlimited within the cap
+    uint16[6] public quota = [0, 3014, 1111, 833, 555, 21]; // by rank; + 21 named = CAP
     uint32[7] public mintedByRank; // index 1..6
     mapping(uint256 => Data) public data;
     uint256 public total;
@@ -98,11 +101,11 @@ contract Souls is ERC721, Guarded {
         } else {
             rank = uint8(tierSum / SLOTS);
             require(rank >= 1 && rank <= 5, "Souls: rank");
-            if (rank >= 2) require(mintedByRank[rank] < quota[rank], "Souls: quota");
+            require(mintedByRank[rank] < quota[rank], "Souls: quota");
         }
-        mintedByRank[rank] += 1;
+        uint32 ord = ++mintedByRank[rank];
         id = ++total;
-        data[id] = Data(rank, uint16(tierSum * 100 / SLOTS), nameId, mine.currentMinute());
+        data[id] = Data(rank, uint16(tierSum * 100 / SLOTS), nameId, mine.currentMinute(), uint16(ord));
         totalWeight += _weight(id);
         _mint(msg.sender, id);
         emit Sealed(id, msg.sender, rank, data[id].avgTier100, nameId);
@@ -123,19 +126,19 @@ contract Souls is ERC721, Guarded {
         return _ownerOf(id) != address(0);
     }
 
-    /// @notice The early multiplier, 1e6 = 1.0: 2.0 for soul #1, linearly down to 1.0 for soul #100, 1.0 after.
-    function early(uint256 id) public pure returns (uint256) {
-        if (id >= EARLY_N) return 1e6;
-        return 2e6 - (id - 1) * 1e6 / (EARLY_N - 1);
+    /// @notice The founder mark of soul `id`, 1e6 = 1.0: by its No. within its rank, 2.0 for No.1 down to 1.0 for
+    ///         No.100, 1.0 after; Apprentices always 1.0.
+    function early(uint256 id) public view returns (uint256) {
+        Data memory d = data[id];
+        if (d.rank <= 1 || d.ordinal >= EARLY_N) return 1e6;
+        return 2e6 - (uint256(d.ordinal) - 1) * 1e6 / (EARLY_N - 1);
     }
 
-    /// @notice Rarity, 1e6 = 1.0: 2^(avgTier-1) on the unrounded average tier, a named soul = 16.
+    /// @notice Rank weight, 1e6 = 1.0: 1, 4, 16, 64, 256 for Apprentice..Archmage, 512 for a named soul.
     function rarity(uint256 id) public view returns (uint256) {
-        Data memory d = data[id];
-        require(d.rank != 0, "Souls: no token");
-        if (d.rank == 6) return 16e6;
-        uint256 xQ8 = (uint256(d.avgTier100) - 100) * 256 / 100;
-        return (FixedMath.exp2Q8(xQ8) * 1e6) >> 64;
+        uint8 r = data[id].rank;
+        require(r != 0, "Souls: no token");
+        return r == 6 ? 512e6 : (uint256(1) << (2 * (r - 1))) * 1e6;
     }
 
     /// @notice Cauldron weight, 1e6 = 1.0: rarity x early. Zero for a released (burned) soul.

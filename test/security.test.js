@@ -10,6 +10,7 @@ const P = require("../deploy/params.local.json");
 async function nextMinute() {
   const ts = await time.latest();
   await time.increaseTo((Math.floor(ts / 60) + 1) * 60 + 1);
+  await ethers.provider.send("hardhat_mine", ["0x4"]); // a minute spans ~5 parent-chain blocks on mainnet; reveal seeds need 4
 }
 async function deployFixture() {
   const [owner, alice, bob, treasury] = await ethers.getSigners();
@@ -19,7 +20,7 @@ async function deployFixture() {
 const parse = (rc, c, name) => rc.logs.map((l) => { try { return c.interface.parseLog(l); } catch { return null; } }).filter((e) => e && e.name === name);
 
 describe("Security", function () {
-  it("a contract miner cannot re-enter reveal from the ERC-1155 receive hook and double-mint", async function () {
+  it("a contract miner gets its find without a receive hook, so it can neither re-enter a reveal nor refuse one", async function () {
     const { mine, materials, alice } = await loadFixture(deployFixture);
     const attacker = await ethers.deployContract("ReentrantMiner", [await mine.getAddress()]);
     const addr = await attacker.getAddress();
@@ -36,8 +37,7 @@ describe("Security", function () {
     const rc = await (await mine.reveal(addr)).wait();
     const mined = parse(rc, mine, "Mined");
     expect(mined.length).to.equal(1);
-    expect(await attacker.hookCalls()).to.equal(1n);
-    expect(await attacker.reentryFailures()).to.equal(1n); // the nested reveal reverted (ReentrancyGuard)
+    expect(await attacker.hookCalls()).to.equal(0n); // mined ingredients skip onERC1155Received
     expect(await materials.balanceOf(addr, mined[0].args.id)).to.equal(1n);
     expect(await mine.pendingCount(addr)).to.equal(0n);
     expect(await materials.minedTotal()).to.equal(1n);

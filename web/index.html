@@ -191,7 +191,7 @@
       <div class="chart"><div class="chart-head"><b>difficulty · 24 h</b><span id="cDiffNow"></span></div><canvas id="cDiff"></canvas></div>
     </div>
     <div class="net-low">
-      <div><h3>rarities open as the network grows</h3><div class="utrack" id="uTrack"></div><p class="small" id="uNote"></p></div>
+      <div><h3>rarities open as the season goes on</h3><div class="utrack" id="uTrack"></div><p class="small" id="uNote"></p></div>
       <div><h3>latest finds</h3><ol class="nfeed" id="nFeed"></ol></div>
     </div>
   </section>
@@ -265,7 +265,7 @@
           <div class="pend" id="pd-item" style="display:none"></div>
         </div>
         <div class="st" id="st-soul">
-          <div class="st-head"><img class="px" src="metadata/souls/5.png" alt="" id="soulImg"><div><h3>The soul <span class="tag" id="soulCount"></span></h3><p>The closing rite of the opening act. Eight ritual items on eight pedestals are sealed into a soul: five required, three enhancers, a mythic key in the slot of its kind. Sealing is free. The soul carries the Cauldron's stream until the alchemist is summoned from it.</p></div></div>
+          <div class="st-head"><img class="px" src="metadata/souls/5.png" alt="" id="soulImg"><div><h3>The soul <span class="tag" id="soulCount"></span></h3><p>The closing rite of the opening act. Eight ritual items on eight pedestals are sealed into a soul: five required, three enhancers, a mythic key in the slot of its kind. Sealing is free. The soul carries the Cauldron's stream until the alchemist is summoned from it, by the weight of its rank: Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named soul 512; the first hundred of every rank from Adept up weigh up to twice as much. There will never be more than 21 Archmages and 21 named souls.</p></div></div>
           <div class="altar" id="altar">
             <div class="altar-ring" id="altarRing"></div>
             <div class="altar-core" id="altarCore">
@@ -279,7 +279,7 @@
           <div class="act altar-act"><button id="doSoul" class="btn gold big">Seal the soul</button><span class="hint" id="soulHint"></span></div>
           <div class="stream" id="streamBox">
             <div class="stream-head">
-              <div><h3>The stream</h3><p class="small" id="streamNote">The Cauldron pours its steam into the stream; every soul claims its share by weight. Claims open at the hundredth soul; the pours before that are all claimable at once.</p></div>
+              <div><h3>The stream</h3><p class="small" id="streamNote">Every hour the Kettle pours steam into the stream; every soul claims its share by weight, any hour it likes. Claims open at the hundredth soul; until then the steam waits in the Kettle and then drips hour by hour.</p></div>
               <div class="stream-gate"><div class="stream-count" id="streamCount">0<small>/ 100</small></div><div class="bar" id="streamBar"><i style="width:0"></i></div><div class="tag" id="streamState"></div></div>
             </div>
             <div class="inv" id="mySouls" style="grid-template-columns:repeat(auto-fill,120px);margin-top:12px"></div>
@@ -295,7 +295,7 @@
       <div class="art">
         <div class="txt">
           <h2>How to mine</h2>
-          <p>One process per card, up to 32 addresses on it. Your keys stay with you: the card only ever sees public addresses. Starting submit price 0.0002 ETH, gas about 300k per submit with reveal.</p>
+          <p>One process per card, up to 32 addresses on it. Your keys stay with you: the card only ever sees public addresses. Starting submit price 0.0002 ETH, gas about 210k per submit with reveal (about 0.00001 ETH at today's fees).</p>
           <p><code>alchemists-miner --net robinhood --box "ssh -p PORT root@HOST ./hb-miner-linux-x64" --miners-file miners.txt</code></p>
           <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end"><a class="btn gold" href="miner.html">Guide and files</a></div>
         </div>
@@ -310,7 +310,8 @@
         <span class="pot"><img class="px" src="img/cauldron.png" alt=""><i style="left:44px;top:42px;animation-delay:0s"></i><i style="left:62px;top:48px;animation-delay:.7s"></i><i style="left:78px;top:40px;animation-delay:1.4s"></i></span>
         <div>
           <div class="big" id="treasury">–</div>
-          <p>All ether from submits gathers here. The mine, the workshop and the souls are the opening act; every line of it leads to the ritual. Every day 60 % of the Cauldron streams to the souls, split by weight, and 40 % thickens for the ritual of the Philosopher's Stone. What the ritual asks for, and what the Stone is, is not written anywhere yet.</p>
+          <p>All ether from submits boils in the Kettle. Every hour 40 % of it thickens here, in the Cauldron, for the ritual of the Philosopher's Stone, and 60 % rises as steam: a twenty-fourth of the Kettle drips to the souls each hour, split by weight. The mine, the workshop and the souls are the opening act; every line of it leads to the ritual. What the ritual asks for, and what the Stone is, is not written anywhere yet.</p>
+          <p class="small" id="kettleLine"></p>
           <div class="split"><i></i><i></i></div>
           <div class="barlbl" style="margin-top:4px"><span>60 % stream</span><span>40 % brew</span></div>
         </div>
@@ -326,7 +327,7 @@
 <footer>
   <div class="wrap">
     <div><b>Contracts</b><div id="contracts"></div></div>
-    <div><b>Rules</b>One submit per minute per address. Type and tier are revealed by the next minute's challenge. The submit price rises with mining and falls with burning. The threshold stays inside the 30…43 bit corridor.</div>
+    <div><b>Rules</b>One submit per minute per address. A hash only has to clear the threshold: type and tier are rolled when the find is revealed, the same odds for everyone. The submit price rises with mining and falls with burning. The threshold stays inside the 30…43 bit corridor.</div>
     <div><b>Network</b><span id="netFoot"></span></div>
     <div><b>Open source</b><a target="_blank" rel="noopener" href="https://github.com/simonborel617-cmyk/alchemists">contracts and dapp</a> · <a target="_blank" rel="noopener" href="https://github.com/simonborel617-cmyk/alchemists-miner">standalone miner</a> · <a target="_blank" rel="noopener" href="https://github.com/simonborel617-cmyk/alchemists-miner/releases/latest">latest miner release</a> · <a href="rules.html">rules and recipes</a></div>
     <div><b>Follow</b><a target="_blank" rel="noopener" href="https://x.com/alchemistmine">@alchemistmine on X</a></div>

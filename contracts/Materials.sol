@@ -87,16 +87,28 @@ contract Materials is ERC1155, Ownable {
     }
 
     // ---------------------------------------------------------------- mint / burn
+    /// @dev No receiver hook: anyone may reveal anyone's finds, and a contract miner must not be able to refuse the mint
+    ///      to hold a find back until the supply of its pair suits it (the reveal reads the supply extras live).
     function mintMined(address to, uint256 id, uint256 amt) external onlyMinter {
         require(isIngredient(id), "Materials: mined must be ingredient");
         minedTotal += amt;
-        circulating[id] += amt;
-        _mint(to, id, amt, "");
+        _mintQuiet(to, id, amt);
     }
 
+    /// @dev Also without the hook: a contract that commits a craft must not be able to refuse (or be unable to take)
+    ///      its outcome, or the commit could never settle.
     function mintCrafted(address to, uint256 id, uint256 amt) external onlyMinter {
+        _mintQuiet(to, id, amt);
+    }
+
+    function _mintQuiet(address to, uint256 id, uint256 amt) internal {
+        require(to != address(0), "Materials: to");
         circulating[id] += amt;
-        _mint(to, id, amt, "");
+        uint256[] memory ids = new uint256[](1);
+        uint256[] memory amts = new uint256[](1);
+        ids[0] = id;
+        amts[0] = amt;
+        _update(address(0), to, ids, amts);
     }
 
     function mintCraftedBatch(address to, uint256[] calldata ids, uint256[] calldata amts) external onlyMinter {

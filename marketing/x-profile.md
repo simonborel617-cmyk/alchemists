@@ -46,8 +46,8 @@ wallet or your own, your call.
 3/ Ingredients go to the workshop. The furnace refines one tier up. The crucible melts ten into five and gambles on
 a higher tier. The ritual table seals five ingredients into an item.
 
-4/ Every submit pays a small price in ETH. All of it flows into the Cauldron: a Safe behind a 48-hour timelock, on
-chain, readable by anyone.
+4/ Every submit pays a small price in ETH. It boils in the Kettle: every hour 40 % thickens in the Cauldron, a multisig
+Safe at a public address, and 60 % drips to the holders of souls. On chain, readable by anyone.
 
 5/ Twenty-one mythic keys exist. Each belongs to a named alchemist. A key drops from a lucky reveal or a lucky craft,
 while any remain.
@@ -85,8 +85,8 @@ skeleton: 256x144 grid, 16:9, SNES palette, strong outline, no text, no characte
 7. "Twenty-one keys. Zero claimed." [scene: keys.png, the ring of 21 keys, one glowing]
 8. "No GPU? The CPU tab works. Slower, same rules." [screenshot: CPU mining at a few MH/s]
 9. "Open source, MIT. Contracts, dapp, miner." [link to the repos]
-10. "The Cauldron: 60 % streams to the alchemists' holders once they are summoned. 40 % thickens." [screenshot: the
-    Cauldron block] No more than that.
+10. "The Kettle: every hour 40 % thickens in the Cauldron, 60 % drips to the souls." [screenshot: the Cauldron block]
+    No more than that.
 11. "Every rule on one page, read live from the chain." [link: /rules]
 12. "Set a price ceiling, a budget, a number of rounds. The miner stops itself at any of them." [screenshot: the limits panel]
 
@@ -103,10 +103,10 @@ deploy they still read the testnet.
    Alt: "A stone workshop at night: a brass furnace packed with charcoal but unlit, an hourglass with its last sand, a
    rack of twelve empty glass vials, a closed mine door, moonlight and one candle."
 2. **Friday morning: the souls' stream.** Scene `scenes/soul-stream.png` (the Cauldron's golden steam pouring into a
-   row of soul lanterns, the first ones largest and brightest). "The souls hold the stream. / 60 % of the Cauldron flows
-   to soul holders every day, split by weight: rarity times earliness. Soul #1 weighs double; by #100 the bonus is
-   gone. / Claims open at the hundredth soul. Every pour before that waits for them." (247 characters) It is rent to
-   holders, never "rewards", "yield" or "dividends".
+   row of soul lanterns, the first ones largest and brightest). "Every hour 60 % of the fees drips to soul holders by
+   weight: Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, named 512; the first of each rank from Adept up
+   weigh double. / 21 Archmages. 21 named souls. Never more. / Claims open at the hundredth soul." (264 characters)
+   It is rent to holders, never "rewards", "yield" or "dividends".
    Alt: "A vaulted chamber at night: golden steam rises from a great iron cauldron and flows in an arc into a long row
    of glass lanterns with pale blue flames, the first lanterns the largest and brightest."
    **After the launch (day two): the keys.** Scene `scenes/keys.png`. "Twenty-one keys. Zero claimed. / Each belongs to a named
@@ -117,7 +117,7 @@ deploy they still read the testnet.
    sunrise and a path into the shaft, the first of twelve vials filled with green liquid and sealed with red wax."
    Pin it in place of the announcement.
 
-After the launch: live beats from the chain only (first find, first Uncommon once the network reaches 1 TH/s, the first
+After the launch: live beats from the chain only (first find, first Uncommon at the season's 25,000th find, the first
 key when it falls, "hour one" with the network panel as the one interface shot). Numbers read from the chain, never
 estimated.
 

@@ -28,6 +28,13 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
   the inputs, 5 % break chance per extra tier (20 % at most); chance preview and slot picker on the site, a broken-rite
   scene; checked end to end on a local chain through the site. 70 tests.
 
+- **Owner decisions of 2026-09-25, in the code:** the tier is rolled at reveal, tiers open by finds (25k/50k/100k/150k);
+  reveals take `Mine.revealSeed` of the commit's parent block (the old next-minute challenge was predictable: proven on
+  testnet); souls weigh 1/4/16/64/256 by rank, named 512, with founders per rank from Adept; seats 3014/1111/833/555/21 +
+  21 named; the Kettle pays rent every hour (40 % brew to the Safe, 60 % steam, 1/24 of the pot an hour). Third and fourth
+  internal reviews in `SECURITY-REVIEW.md`. 86 tests. Still to do: testnet v13 with the Kettle, keeper box re-push.
+- **The Safe is 2-of-2.** Losing either key loses it: add a third owner before real money lands there.
+
 ## Needed from the owner before the deploy
 
 1. **Safe.** A 2-of-3 Safe on Robinhood Chain (chainId 4663), three NEW owner wallets on different devices, never the
@@ -38,14 +45,14 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
    `deploy/params.mainnet.json` and `TREASURY`.
 2. **Mainnet ETH.** One new wallet deploys and keeps; its key goes into `.env` as `MAINNET_KEY` (the owner writes it
    there, never in chat). Fund it with 0.01 ETH for the deploy plus 0.03-0.05 ETH of ticks (at today's 0.05 gwei a keeper
-   ticking every minute uses ~0.19 ETH a month).
+   ticking every minute, recording reveal seeds and the hourly Kettle uses ~0.35-0.5 ETH a month).
 3. ~~The audit decision~~ **Decided 2026-09-24: no external audit.** The launch rests on two internal reviews, 61
    tests and the guardian pause (the Safe can stop submits and crafting at once).
 4. ~~Keeper host~~ **Decided: two rented boxes.** Box A runs the keeper, box B the watcher (`keeper-box/README.md`);
    both installed and rehearsed on testnet 2026-09-24 (the keeper ticked every minute ~2-3 s after the boundary). Left:
    the owner pipes `MAINNET_KEY` into box A's `.env` with the one command in that README.
 5. **Alerts.** A Telegram bot token and chat id, or an ntfy topic name, in `.env` of the keeper host.
-6. **Constants, last call** (immutable after the deploy): corridor 30..43 bits; unlocks at 1/2/3/4 TH/s;
+6. **Constants, last call** (immutable after the deploy): corridor 30..43 bits; unlocks at 25,000/50,000/100,000/150,000 finds (decided 2026-09-25, with the tier rolled at reveal);
    `refHashrate` 10 TH/s; `price0` 0.0002 ETH, `priceD` 50,000; prima materia 1,000,000; `keyChance` 1 in 65,536 per
    reveal, crafts 1e6..100 by tier; furnace cooldown 10 minutes; stream opens at the 100th soul; summoning paused.
 

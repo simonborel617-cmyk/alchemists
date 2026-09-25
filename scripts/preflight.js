@@ -21,7 +21,7 @@ function preflight(P, env) {
   if (BigInt(m.price0Wei) !== 200000000000000n) problems.push("mine.price0Wei must be 0.0002 ETH");
   if (m.mCap !== 2) problems.push("mine.mCap must be 2");
   if (BigInt(m.refHashrate) < 5n * 10n ** 12n) problems.push("mine.refHashrate must be at least 5 TH/s");
-  if (m.unlockHashrate.some((u) => BigInt(u) < 10n ** 12n)) problems.push("mine.unlockHashrate must be TH/s-scale");
+  if (JSON.stringify(m.unlockFinds) !== JSON.stringify([25000, 50000, 100000, 150000])) problems.push("mine.unlockFinds must be 25000/50000/100000/150000 finds (owner decision 2026-09-25)");
   if (m.keyChance < 10000) problems.push("mine.keyChance must be mainnet-scale (65536)");
   if (m.windowSecEarly !== 60 || m.windowSec !== 120 || m.firstHourSec !== 3600) problems.push("mine windows must be 60/120 with a 3600s first hour");
   if (!P.materialsURI || P.materialsURI.includes("example")) problems.push("materialsURI still points at the placeholder host");
@@ -34,6 +34,9 @@ function preflight(P, env) {
   if (!w.keyChance || w.keyChance[4] < 100 || w.keyChance[0] < 1000000) problems.push("workshop.keyChance must be mainnet-scale (1e6 .. 100)");
   if (w.furnaceCooldown < 600) problems.push("workshop.furnaceCooldown must be at least 600s");
   if (w.craftUpgradePct !== 5) problems.push("workshop.craftUpgradePct must be 5");
+  const k = P.kettle || {};
+  if (k.steamBps !== 6000 || k.dripBps !== 417) problems.push("kettle must be { steamBps: 6000, dripBps: 417 }: the Mine's fees go to the Kettle, 60 % steam dripping 1/24 an hour, 40 % brew to the Safe (decided 2026-09-25)");
+  if ((P.pausedAtLaunch || []).includes("kettle") || (P.pausedAtLaunch || []).includes("stream")) problems.push("the Kettle and the Stream must not start paused");
   return problems;
 }
 

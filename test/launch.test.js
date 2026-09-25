@@ -18,22 +18,30 @@ describe("Launch: the mainnet profile", function () {
     expect(preflight(open, { TREASURY: safe.address }).join(" ")).to.match(/pausedAtLaunch/);
   });
 
-  it("deploys into the state the runbook verifies: timelock owns all, Safe guards and collects, summoning paused", async function () {
+  it("deploys into the state the runbook verifies: timelock owns all, Safe guards, the Kettle collects and pours, summoning paused", async function () {
     const [deployer, safe, alice] = await ethers.getSigners();
     const P = JSON.parse(JSON.stringify(PM));
     P.governance.safe = safe.address;
     const b0 = await ethers.provider.getBlockNumber();
     const d = await deployAll(ethers, P, safe.address);
     const b1 = await ethers.provider.getBlockNumber();
-    const { materials, keys, mine, furnaces, workshop, alchemists, souls, stream, timelock } = d;
+    const { materials, keys, mine, furnaces, workshop, alchemists, souls, stream, kettle, timelock } = d;
     const tl = await timelock.getAddress();
+    const k = await kettle.getAddress();
 
     // ownership and guardians
-    for (const c of [materials, keys, mine, furnaces, workshop, alchemists, souls, stream]) expect(await c.owner()).to.equal(tl);
-    for (const c of [mine, workshop, alchemists, souls, stream]) expect(await c.guardian()).to.equal(safe.address);
-    expect(await mine.treasury()).to.equal(safe.address);
-    expect(await stream.pourer()).to.equal(safe.address); // only the Safe (or the timelock) pours into the stream
+    for (const c of [materials, keys, mine, furnaces, workshop, alchemists, souls, stream, kettle]) expect(await c.owner()).to.equal(tl);
+    for (const c of [mine, workshop, alchemists, souls, stream, kettle]) expect(await c.guardian()).to.equal(safe.address);
+    // the fees: the Mine pays the Kettle, the Kettle alone pours into the stream and sends the brew to the Safe
+    expect(await mine.treasury()).to.equal(k);
+    expect(await stream.pourer()).to.equal(k);
+    expect(await kettle.safe()).to.equal(safe.address);
+    expect(await kettle.stream()).to.equal(await stream.getAddress());
+    expect(await kettle.steamBps()).to.equal(6000n);
+    expect(await kettle.dripBps()).to.equal(417n);
     expect(await stream.closed()).to.equal(false); // the emergency exit has not been used
+    expect(await kettle.closed()).to.equal(false);
+    expect(await alchemists.treasury()).to.equal(safe.address); // the summoning fee stays the team's
 
     // the timelock: the Safe proposes and executes, 48 hours, no admin left with the deployer
     expect(await timelock.getMinDelay()).to.equal(172800n);
@@ -47,7 +55,7 @@ describe("Launch: the mainnet profile", function () {
       expect(await materials.minters(await c.getAddress())).to.equal(true);
       expect(await keys.minters(await c.getAddress())).to.equal(true);
     }
-    for (const who of [deployer.address, safe.address, tl, await stream.getAddress()]) {
+    for (const who of [deployer.address, safe.address, tl, await stream.getAddress(), k]) {
       expect(await materials.minters(who)).to.equal(false);
       expect(await keys.minters(who)).to.equal(false);
     }
@@ -57,6 +65,7 @@ describe("Launch: the mainnet profile", function () {
     expect(await workshop.paused()).to.equal(false);
     expect(await souls.paused()).to.equal(false);
     expect(await stream.paused()).to.equal(false);
+    expect(await kettle.paused()).to.equal(false);
     expect(await alchemists.paused()).to.equal(true);
     await expect(alchemists.connect(alice).summon([0, 0, 0, 0, 0, 0, 0, 0], 255)).to.be.revertedWith("Guarded: paused");
     await expect(alchemists.connect(deployer).unpause()).to.be.revertedWithCustomError(alchemists, "OwnableUnauthorizedAccount");

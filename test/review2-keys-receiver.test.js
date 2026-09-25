@@ -13,6 +13,7 @@ const P = require("../deploy/params.local.json");
 async function nextMinute() {
   const ts = await time.latest();
   await time.increaseTo((Math.floor(ts / 60) + 1) * 60 + 1);
+  await ethers.provider.send("hardhat_mine", ["0x4"]); // a minute spans ~5 parent-chain blocks on mainnet; reveal seeds need 4
 }
 
 async function fixture() {

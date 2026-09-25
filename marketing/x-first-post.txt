@@ -4,11 +4,11 @@ A mine that issues a new challenge every minute. You hash it with your address, 
 
 HOW THE MINE WORKS
 
-Every minute has a bar, a number of leading zero bits a hash must clear. The bar moves with the network: every two minutes, at most two bits at a time, inside a corridor of 30 to 43 bits. More hashrate, higher bar. Clear the bar and you submit. Clear it by 2 bits and the ingredient is Uncommon, by 4 Rare, by 7 Epic, by 10 Legendary. One submit per address per minute, no exceptions.
+Every minute has a bar, a number of leading zero bits a hash must clear. The bar moves with the network: every two minutes, at most two bits at a time, inside a corridor of 30 to 43 bits. More hashrate, higher bar. Clear the bar and you submit. How far above it you land buys nothing. One submit per address per minute, no exceptions.
 
-The ingredient stays sealed until the next minute's challenge exists. Then it is revealed: type, tier and a 1-in-16 upgrade roll are all decided by a challenge that did not exist when you mined. There is no way to mine for a specific ingredient, and no way to know what you are getting before you pay.
+The ingredient stays sealed until the chain has moved on a few blocks past your submit. Then it is revealed: type, tier and a 1-in-16 upgrade roll are all rolled from a seed that did not exist when you paid, the same odds for every find: Uncommon 1 in 4, Rare 1 in 16, Epic 1 in 128, Legendary 1 in 1,024 before the upgrade. There is no way to mine for a specific ingredient, and no way to know what you are getting before you pay.
 
-Rarities unlock as the network grows: Uncommon, Rare, Epic and Legendary open one after another as the estimated hashrate rises, permanently. A cold network mints only Common, however lucky the hash.
+Rarities open as the season goes on: Uncommon at the 25,000th find, Rare at the 50,000th, Epic at the 100,000th, Legendary at the 150,000th, permanently. Until then a find stops at the highest open tier.
 
 You can mine in the browser on a CPU, in the browser on a GPU through WebGPU, or with a standalone CUDA miner on a rig with up to 32 addresses per card. Sign submits with a session wallet that lives in your browser, or with your own wallet, one confirmation a minute. Nothing is deposited anywhere.
 
@@ -22,9 +22,7 @@ The ritual table seals five ingredients by recipe into an item: a grimoire, a ca
 
 THE CAULDRON
 
-Every submit pays a small price in ETH. It starts low and grows with the square root of everything mined, and falls back as ingredients are burned in the workshop. All of it flows into the Cauldron: a Safe multisig behind a 48-hour timelock, on chain, readable by anyone at any time.
-
-Once the alchemists are summoned, 60 percent of the Cauldron streams daily to their holders, weighted by rarity and by how early they were summoned. The other 40 percent thickens.
+Every submit pays a small price in ETH. It starts low and grows with the square root of everything mined, and falls back as ingredients are burned in the workshop. All of it boils in the Kettle, on chain, readable by anyone at any time. Every hour 40 percent thickens in the Cauldron, a multisig Safe at a public address, and 60 percent rises as steam: a twenty-fourth of the Kettle drips to the holders of souls each hour, weighted by rank (Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named soul 512), and the first hundred of every rank from Adept up weigh up to double. There will never be more than 21 Archmages and 21 named souls. The game's rules change only through a 48-hour timelock.
 
 THE KEYS
 

@@ -42,8 +42,9 @@ tail -n 20 /var/log/alchemists/keeper.log    # "tick minute N", every 30 min a b
 tail -n 5 /var/log/alchemists/watch.log      # "ok: minute N ..." every hour, ALERT lines otherwise
 ```
 
-Budget: one tick is about 87,000 gas. At 0.05 gwei that is about 0.19 ETH a month if the keeper ticks every minute
-(it wakes right after each minute boundary, so it is nearly always the one that ticks, busy network or not). The watcher warns below 0.02 ETH.
+Budget: one tick is about 200-230k gas (the challenge plus the reveal seeds it records), plus ~150k for the hourly
+Kettle tick. At 0.036-0.05 gwei that is about 0.35-0.5 ETH a month if the keeper ticks every minute (it wakes right after
+each minute boundary, so it is nearly always the one that ticks, busy network or not). The watcher warns below 0.05 ETH.
 
 ## Updates
 

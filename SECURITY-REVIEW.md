@@ -61,3 +61,85 @@ so at most 20 %) and yields nothing, otherwise the tier of one of the five input
 tier-up at the drawn tier's odds. A one-tier rite never fails and keeps its tier, exactly as before. In expectation a mixed
 rite returns the average of the pure rites of its inputs, so mixing cannot cheapen a high tier; it adds variance and burns.
 The furnace recipe still demands one tier.
+
+# Third internal review: reveal randomness, 2026-09-25
+
+**Finding (critical, fixed).** Every reveal (mined finds, refining, rerolls, rites, summons) used the challenge of the
+next minute, `keccak(blockhash(block.number - 1), minute, previous challenge, findAcc)`, fixed by the first tick of that
+minute. On Robinhood Chain `block.number` is the parent-chain block number and `blockhash(block.number - 1)` is the hash
+of the last L2 block before the chain moved to it: it stays the same for ~15 s and anyone can read it. A player acting in
+the last seconds of a minute could therefore compute the next challenge, and with it the outcome of a submit or a
+Workshop commit before sending it; a farm could also reorder its last submits to choose among several challenges. Proven
+on testnet v12 without any special access: 12 of 12 minutes predicted exactly from values read at :58.5. The worst case
+was the ritual key at Legendary (1 in 100): a player could wait, commit only in a minute whose outcome was a key, and
+take the named keys at will.
+
+**Fix.** `Mine.revealSeed(l1)`: a find, a craft or a summon records its parent-chain block number `l1` and settles with
+`keccak(mine, l1, blockhash(l1), blockhash(l1+1), blockhash(l1+2), blockhash(l1+3))`, available once parent block
+`l1 + 4` has begun (under a minute). ArbOS writes `blockhash(n)` when the chain moves past parent block n; on a jump of
+several numbers it writes the last one with the new hash and fills the skipped ones from it, while the number it jumped
+from keeps a stale value, so one of the four values always derives from the last L2 block of parent block `l1`, which is
+at or after the commit's own block. The seed is unknown at the commit and, once final, the same for every caller at any
+time: no ticker, keeper or player can choose among candidates. A first version of the fix (a seed per minute taken at the
+tick) was rejected by the review because a late ticker could still choose among public candidates, one per parent block.
+Every `tick()` notes its parent block (every commit ticks first) and records the seeds of noted blocks once final, so a
+craft revealed hours later still settles the same way. A commit whose block nobody recorded within the 256-block window
+(~51 minutes of 12 s parent blocks with no transaction to the mine or the workshop after it) gets `LOST_SEED` and settles
+as its worst outcome: a lapsed find is a plain Common of the type its own hash names, a lapsed craft fails. A re-check
+found the first version's fallback (a fixed value known before the commit) gave a second candidate to anyone who could
+let a commit lapse, and could even be ground by the choice of nonce or block. The PoW challenge is unchanged.
+
+**Tier at reveal and unlocks by finds** (owner decisions the same day): a hash only has to clear the threshold; the tier
+is `FixedMath.workQ8(keccak(r))` against 2/4/7/10 bits plus the pair's supply extra, so P(tier >= k) = 2^-step for every
+find whatever the load; tiers open at 25,000/50,000/100,000/150,000 finds, permanently. `test/reveal-seed.test.js`
+replays type, tier, upgrade and key off-chain for 36 finds (half of them with a hash 8 bits over the bar) and checks the
+seed formula, the four-block wait, the recording and the fallback.
+
+**Smaller items from the review, fixed.** A find's tier reads the supply of its pair when it settles, so holding a find
+back could pick that moment: `Materials.mintMined` no longer calls the ERC-1155 receiver hook (a contract miner can no
+longer refuse a third party's reveal), and the keeper on the boxes runs `KEEPER_REVEAL=stale` (it reveals finds left
+behind for 3 minutes). The keeper reveals Workshop commits in batches of 8 (a reroll reveal costs up to ~290k gas). The
+site re-checks sealed crafts every 5 s instead of trusting the clock.
+
+**Residual.** The sequencer orders transactions and builds the L2 blocks whose hashes make the seed (as before, H1 of the
+first review). A lapse (nobody touching the mine for ~51 minutes after a commit, the keeper included) costs the
+committer; the keeper's minute ticks are what prevents it, and the watcher alerts after three silent minutes. Mainnet
+data behind the design: 901 consecutive parent transitions (237 jumps of two, and jumps of up to five in a month of
+headers) matched the ArbOS blockhash model with no mismatch.
+
+# Fourth internal review: the Kettle and the soul ladder, 2026-09-25
+
+Owner decisions the same day: soul weights by rank (Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named
+soul 512) times a founder mark (No.1 of each rank from Adept up weighs 2.0, fading to 1.0 at No.100); seats 3014 / 1111 /
+833 / 555 / 21 plus at most 21 named souls (5555); rent every hour through `Kettle`, the Mine's treasury: once per clock
+hour anyone ticks it, 40 % of new fees go to the Safe, 60 % join the pot, and a twenty-fourth of the pot drips into the
+unchanged `Stream`, whose only pourer is the Kettle. Three reviewers (Kettle funds, Souls and Stream, deployment and
+operations) and a skeptic per finding: 13 findings confirmed, none that loses or freezes ETH.
+
+**Checked sound.** A 400-step invariant fuzz with force-sent ETH, a Safe that reverts, re-enters or sends back, a Stream
+that reverts, refunds or reports closed, rate and stream changes and pauses: `balance >= pot + brewOwed` held at every
+step and every wei was accounted for. The guard covers `tick` and `rescue`; a starved tick reverts instead of skipping the
+hour. Quotas hold for every rank (named souls are bounded by the 21 keys), ordinals cannot overflow, the weight order
+(every named soul above every Archmage, every rank above the best founder of the rank below) holds strictly, and
+`totalWeight` only moves on seal and release. The mainnet profile deploys, passes `verify-launch` and runs the emergency
+pause, rescue and unpause end to end with every wei landing in the Safe.
+
+**Fixed.**
+- Medium: a pot below 0.01 ETH was poured whole, so anyone could make the Kettle open a 1-wei epoch every hour after the
+  season (the epoch spam that the pourer lock of review 2 had closed). Every pour is now at least 0.01 ETH and never
+  leaves a smaller remainder; a smaller pot waits.
+- Medium: the keeper-box bundle lacked the Kettle ABI, so the mainnet keeper would have crashed at start. The bundle
+  carries it and the keeper now has the few Kettle functions it needs inline.
+- Medium: the runbook still described fees landing in the Safe; it now describes the Kettle, its exposure and its place
+  in the emergency steps.
+- Low: `Kettle.set` accepts only a contract; `isOpen` is read with a low-level call so a broken stream counts as closed
+  instead of blocking the brew; the keeper simulates the tick first, gives it 1M gas (only gas used is paid) and keeps a
+  failing hour from stopping the minute ticks and reveals; the watcher alerts when ticks pour nothing, when the Safe
+  refuses the brew, and stops repeating "paused" after a rescue; the rescue batch leaves out a contract that is already
+  closed; `verify-launch` counts a missing Kettle as a failure; the site treats an unreadable `claimable()` as "rent to
+  claim" and keeps Claim open; the public copy no longer says the Safe itself sits behind the timelock (only the game's
+  contracts do).
+
+**Residual.** With hourly pours a soul that never claims walks ~13-30k gas per hour of backlog; `claimUpTo` claims in
+bounded steps and the site does that on its own. The Kettle is a new contract holding the steam between the fees and the
+Stream; it has the same pause-and-rescue exit as the Stream.

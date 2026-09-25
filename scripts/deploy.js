@@ -40,6 +40,7 @@ async function main() {
       Keys: await d.keys.getAddress(),
       Souls: await d.souls.getAddress(),
       Stream: await d.stream.getAddress(),
+      Kettle: d.kettle ? await d.kettle.getAddress() : null,
       Mine: await d.mine.getAddress(),
       Furnaces: await d.furnaces.getAddress(),
       Workshop: await d.workshop.getAddress(),

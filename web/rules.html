@@ -45,14 +45,16 @@
     <p>The mine runs in one-minute sessions. Every minute has a <b>challenge</b> and a <b>threshold</b> in bits. You hash
     <code>sha256(address ‖ nonce ‖ challenge)</code> for the whole minute and keep the hash with the most leading zero bits.
     In the next minute you submit that hash together with the submit price in ETH. One address submits once per minute.
-    The ingredient is sealed until the challenge of the minute after your submit exists; your next submit reveals it, or you press Reveal.</p>
+    The hash only has to clear the threshold: how far above it lands does not matter. The ingredient is sealed until the minute
+    after your submit has been ticked with a seed nobody could know when you paid; then its type and tier are rolled, with the same
+    odds for every find whatever the network does. Your next submit reveals it, or you press Reveal.</p>
     <table>
       <tr><th>Rule</th><th>Value</th></tr>
       <tr><td>Threshold corridor</td><td id="r-corridor">30 … 43 bits</td></tr>
       <tr><td>Retarget</td><td id="r-retarget">every window, at most a few bits per step, from the estimated network hashrate and the target of K mints per hour</td></tr>
-      <tr><td>Tier by work above the threshold</td><td>Common at the threshold, <span class="tier-u">Uncommon +2 bits</span>, <span class="tier-r">Rare +4</span>, <span class="tier-e">Epic +7</span>, <span class="tier-l">Legendary +10</span></td></tr>
-      <tr><td>Supply extras</td><td id="r-extras">every N minted pieces of a type at a tier raise that tier's bar for that type by one bit</td></tr>
-      <tr><td>Rarity unlocks</td><td id="r-unlocks">tiers unlock permanently as the estimated network hashrate grows</td></tr>
+      <tr><td>Tier roll at the reveal</td><td>a random roll in bits, each bit half as likely as the one before: <span class="tier-u">Uncommon from 2 bits</span> (1 in 4), <span class="tier-r">Rare from 4</span> (1 in 16), <span class="tier-e">Epic from 7</span> (1 in 128), <span class="tier-l">Legendary from 10</span> (1 in 1,024); after the upgrade roll a find comes out Common 70.3 %, Uncommon 22.3 %, Rare 6.3 %, Epic 0.98 %, Legendary 0.14 %</td></tr>
+      <tr><td>Supply extras</td><td id="r-extras">every N minted pieces of a type at a tier add one bit to the roll that tier needs for that type</td></tr>
+      <tr><td>Rarity unlocks</td><td id="r-unlocks">tiers unlock permanently as the season's finds add up</td></tr>
       <tr><td>Upgrade roll</td><td id="r-upgrade">1 in 16 reveals come out one tier higher</td></tr>
       <tr><td>Mythic key roll on reveal</td><td id="r-key">one in N reveals drops an unclaimed mythic key</td></tr>
       <tr><td>Submit price</td><td id="r-price">price0 × (1 + √(E / D)) × network pressure, where E is mined minus burned; no ceiling</td></tr>
@@ -106,11 +108,14 @@
     </table>
 
     <h2><img class="px" src="img/cauldron.png" alt="">The Cauldron and stage two</h2>
-    <p>Every submit price flows into the Cauldron, a Safe treasury behind a 48-hour timelock. The mine, the workshop and the souls
-    are the opening act. Once a day 60 % of the Cauldron streams to the souls, split by weight: rarity (2 to the power of the average
-    item tier minus one, a named soul 16) times earliness (soul #1 weighs double, the bonus fades to nothing by soul #100). Claims open
-    at the hundredth soul; every pour before that waits and is claimable at once. The other 40 % thickens for the ritual of the
-    Philosopher's Stone. Stage two summons the alchemists from the souls, and the stream moves to them; past pours stay with the souls.
+    <p>Every submit price flows into the Kettle. Once an hour anyone may tick it (the keeper does, at the top of the hour): 40 % of the
+    new ether goes to the Cauldron, a multisig Safe at a public address, and thickens for the ritual of the Philosopher's Stone;
+    60 % becomes steam, and a twenty-fourth of the steam in the Kettle drips into the stream every hour. The mine, the workshop and the
+    souls are the opening act. The stream is split by weight: the soul's rank (Apprentice 1, Adept 4, Master 16, Magister 64, Archmage
+    256, a named soul 512) times its founder mark (No.1 of its rank weighs double, fading to nothing by No.100, from Adept up; Apprentices
+    carry none). Seats: 3,014 Apprentices, 1,111 Adepts, 833 Masters, 555 Magisters, 21 Archmages and up to 21 named souls, one per
+    mythic key: 5,555 in all. Claims open at the hundredth soul; the steam waits in the Kettle until then and drips from that hour on.
+    A soul claims its share any hour it likes. Stage two summons the alchemists from the souls, and the stream moves to them; past pours stay with the souls.
     Every line of the lore leads to that ritual; what it asks for and what the Stone is will only be told when the main act begins.</p>
     <p class="live" id="src"></p>
   </div>

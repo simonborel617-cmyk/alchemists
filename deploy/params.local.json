@@ -20,12 +20,7 @@
     "mCap": 2,
     "price0Wei": "200000000000000",
     "priceD": 50000,
-    "unlockHashrate": [
-      "1",
-      "2",
-      "3",
-      "4"
-    ],
+    "unlockFinds": [0, 0, 0, 0],
     "extraK": [
       1500,
       200,

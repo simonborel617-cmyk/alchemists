@@ -14,7 +14,7 @@
   const dep = await (await fetch("./deployment.json", { cache: "no-cache" })).json();
   const names = await (await fetch("./names.json", { cache: "no-cache" })).json();
   const abi = {};
-  for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Souls", "Stream"]) { try { const r = await fetch(`./abi/${n}.json`, { cache: "no-cache" }); if (r.ok) abi[n] = await r.json(); } catch {} }
+  for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Souls", "Stream", "Kettle"]) { try { const r = await fetch(`./abi/${n}.json`, { cache: "no-cache" }); if (r.ok) abi[n] = await r.json(); } catch {} }
   // the public RPC stalls on big JSON-RPC batches (ethers would pack up to 100 calls into one request); 8 per request is fast
   // rpc.js rotates through the public endpoints in deployment.json on errors, rate limits and timeouts
   const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId);
@@ -23,6 +23,7 @@
   const mine = C("Mine"), materials = C("Materials"), furnaces = C("Furnaces"), workshop = C("Workshop");
   // the soul and the stream came with testnet v11; an older deployment record simply hides the station
   const soulsC = dep.contracts.Souls && abi.Souls ? C("Souls") : null, streamC = dep.contracts.Stream && abi.Stream ? C("Stream") : null;
+  const kettleC = dep.contracts.Kettle && abi.Kettle ? C("Kettle") : null;
   if (!soulsC) { const b = document.querySelector('#wsNav button[data-st="soul"]'); if (b) b.style.display = "none"; }
   const RANKS = ["", "Apprentice", "Adept", "Master", "Magister", "Archmage", "Named"];
   // a deployment without the Keys contract (before v10) still runs: keys are simply never found
@@ -138,11 +139,16 @@
       mineFlags.paused = !!paused; mineFlags.exhausted = oreN === 0;
       await refreshPending(m);
       try { const bal = await provider.getBalance(dep.treasury); $("treasury").textContent = `${fmtEth(bal, 4)} ETH`; } catch {}
+      // the Kettle: the steam waiting to drip, and what the next hourly tick sends to the Safe and pours
+      if (kettleC) try {
+        const [pot, pv] = await Promise.all([kettleC.pot(), kettleC.preview()]);
+        $("kettleLine").textContent = `in the kettle: ${fmtEth(pot, 4)} ETH of steam · next hour: ${fmtEth(pv.pour, 4)} ETH drips to the souls, ${fmtEth(pv.brew, 4)} ETH thickens in the Cauldron`;
+      } catch {}
       refreshBurner();
     } catch (e) { log("mine: " + (e.shortMessage || e.message), "warn"); }
   }
-  // pending finds of `me`: a find submitted in minute s is settled by the challenge of minute s+1, which exists once
-  // that minute has been ticked; until then a reveal transaction would succeed but do nothing
+  // pending finds of `me`: a find settles by the reveal seed of the parent-chain block it was submitted in, which exists
+  // once the chain is four parent blocks further (under a minute); until then a reveal does nothing
   let lastPending = -1;
   async function refreshPending(nowMinute) {
     const n = Number(await mine.pendingCount(me));
@@ -156,12 +162,11 @@
       try {
         const pd = await mine.pendingAt(me, i);
         const rm = Number(pd.revealMinute);
-        const e = await mine.entropy(rm);
+        const e = await mine.revealSeed(pd.l1);
         const ok = BigInt(e) !== 0n;
         if (ok) ready++;
         finds.push({ m: rm - 2, revealMinute: rm, ready: ok, bits: Number(pd.workQ8) / 256 });
-        const wait = Math.max(0, rm * sessionSec - Math.floor(chainNow()));
-        rows.push(`find mined in minute ${rm - 2} · ${(Number(pd.workQ8) / 256).toFixed(2)} bits · ${ok ? "<span style=\"color:var(--verd)\">ready to reveal</span>" : wait > 0 ? `reveals in ${wait} s (minute ${rm} must start and be ticked)` : "waiting for the keeper to tick minute " + rm}`);
+        rows.push(`find mined in minute ${rm - 2} · ${(Number(pd.workQ8) / 256).toFixed(2)} bits · ${ok ? "<span style=\"color:var(--verd)\">ready to reveal</span>" : "sealed · its seed is fixed within a minute of the submit"}`);
       } catch {}
     }
     if (n > 8) rows.push(`… and ${n - 8} more`);
@@ -524,7 +529,7 @@
     const timeOf = await timesOf([...rts, ...subs.slice(-300), ...feed].map((l) => l.blockNumber), latest);
     return {
       now, wsec, ema: Number(ema), bits: (Number(mt) || Number(tQ8)) / 256, winStart: Number(wStart), winMints: Number(wMints), target: Number(kW3) / 1000, sub: Number(sub), unlocked: Number(unlocked),
-      floor: Number(cfg.floorBitsQ8) / 256, ceil: Number(cfg.ceilBitsQ8) / 256, unlock: cfg.unlockHashrate.map(Number),
+      floor: Number(cfg.floorBitsQ8) / 256, ceil: Number(cfg.ceilBitsQ8) / 256, unlock: cfg.unlockFinds.map(Number),
       rts: rts.map((l) => ({ t: timeOf(l.blockNumber), h: Number(l.args.hashrate), bits: Number(l.args.tQ8) / 256, mints: Number(l.args.mints) })),
       subs: subs.map((l) => ({ t: timeOf(l.blockNumber), who: l.args.miner })),
       feed: feed.map((l) => ({ t: timeOf(l.blockNumber), block: l.blockNumber, who: l.args.miner, key: l.eventName === "KeyMined", tier: l.args.tier !== undefined ? Number(l.args.tier) : 6, type: l.args.typeId !== undefined ? Number(l.args.typeId) : -1, up: !!l.args.upgraded, keyIndex: l.args.keyIndex !== undefined ? Number(l.args.keyIndex) : -1 })),
@@ -568,11 +573,11 @@
         series: [{ pts: diffPts, color: "#35c9e8", width: 2, step: true, name: "threshold", fmt: (v) => `${v.toFixed(2)} bits` }] });
       $("cDiffNow").textContent = `${d.bits.toFixed(2)} bits`;
     }
-    // the rarities: each opens for good when the network's hashrate first reaches it
-    const top = d.unlock[3] * 1.25, pct = (v) => Math.min(100, (100 * v) / top);
-    $("uTrack").innerHTML = `<div class="rail"></div><div class="fill" style="width:${pct(d.ema).toFixed(2)}%"></div>` + d.unlock.map((v, k) => `<div class="mk${k % 2 ? " alt" : ""}${d.unlocked >= k + 2 ? " on" : ""}" style="left:${pct(v).toFixed(2)}%;--g:${TC[k + 2]}"><i></i>${TIERS[k + 2]}<small>${fmtHsTxt(v)}</small></div>`).join("") + `<div class="pin" style="left:${pct(d.ema).toFixed(2)}%" title="the network now"></div>`;
+    // the rarities: each opens for good when the season reaches its number of finds
+    const top = d.unlock[3] * 1.25, pct = (v) => Math.min(100, (100 * v) / top), kf = (v) => (v >= 1000 ? `${(v / 1000).toLocaleString("en", { maximumFractionDigits: 1 })}k` : String(v));
+    $("uTrack").innerHTML = `<div class="rail"></div><div class="fill" style="width:${pct(d.sub).toFixed(2)}%"></div>` + d.unlock.map((v, k) => `<div class="mk${k % 2 ? " alt" : ""}${d.unlocked >= k + 2 ? " on" : ""}" style="left:${pct(v).toFixed(2)}%;--g:${TC[k + 2]}"><i></i>${TIERS[k + 2]}<small>${kf(v)} finds</small></div>`).join("") + `<div class="pin" style="left:${pct(d.sub).toFixed(2)}%" title="finds so far"></div>`;
     const next = d.unlock.findIndex((v, k) => d.unlocked < k + 2);
-    $("uNote").textContent = next < 0 ? "Every rarity is open." : `Common${d.unlocked >= 2 ? " to " + TIERS[d.unlocked] : ""} open. ` + (d.ema >= d.unlock[next] ? `The network is past ${fmtHsTxt(d.unlock[next])}: ${TIERS[next + 2]} opens at the next retarget.` : `${TIERS[next + 2]} opens when the network reaches ${fmtHsTxt(d.unlock[next])}${d.ema > 0 ? `, it is at ${Math.round((100 * d.ema) / d.unlock[next])}% of that` : ""}.`);
+    $("uNote").textContent = next < 0 ? "Every rarity is open." : `Common${d.unlocked >= 2 ? " to " + TIERS[d.unlocked] : ""} open. ${TIERS[next + 2]} opens at the ${d.unlock[next].toLocaleString("en")}th find of the season; ${d.sub.toLocaleString("en")} so far (${Math.min(100, Math.floor((100 * d.sub) / Math.max(1, d.unlock[next])))}%).`;
     // the latest finds, newest first
     const mineSet = new Set([me, burner && burner.address, main && main.address].filter(Boolean).map((a) => a.toLowerCase()));
     const items = d.feed.sort((a, b) => b.block - a.block).slice(0, 14);
@@ -746,7 +751,17 @@
   let wsOpen = []; // this wallet's crafts waiting for their reveal: { id, op (1 refine, 2 melt, 3 rite), a, b, furnace, rm }
   const coolUntil = (f) => (f && f.lastFired ? (f.lastFired + WS.cooldown) * 1000 : 0);
   const minuteNow = () => Math.floor(chainNow() / sessionSec);
-  function sealedFor(op, pred) { const l = wsOpen.filter((c) => c.op === op && (!pred || pred(c))); return l.length ? { n: l.length, ready: l.some((c) => minuteNow() >= c.rm) } : null; }
+  const wsReady = (c) => (c.l1 === undefined ? minuteNow() >= c.rm : c.ready === true); // no l1: the ?wsdev made-up list
+  let wsChecking = false;
+  async function recheckCrafts() {
+    const due = wsOpen.filter((c) => c.l1 !== undefined && c.ready !== true);
+    if (wsChecking || !due.length) return;
+    wsChecking = true;
+    try { await Promise.all(due.map((c) => mine.revealSeed(c.l1).then((e) => { c.ready = BigInt(e) !== 0n; }).catch(() => {}))); }
+    finally { wsChecking = false; }
+    renderPending();
+  }
+  function sealedFor(op, pred) { const l = wsOpen.filter((c) => c.op === op && (!pred || pred(c))); return l.length ? { n: l.length, ready: l.some(wsReady) } : null; }
   function pushScenes() {
     if (!WSX || !RC) return;
     const pt = +$("potTier").value || 1; WSX.set("potion", { tier: pt, potions: inv ? have(1000 + pt) : 0 });
@@ -762,10 +777,10 @@
   function renderPending() {
     const m = minuteNow(); let due = 0, sealed = 0;
     for (const [st, op, what] of [["refine", 1, "melt"], ["reroll", 2, "melt"], ["item", 3, "rite"]]) {
-      const el = $(`pd-${st}`), list = wsOpen.filter((c) => c.op === op), ready = list.filter((c) => m >= c.rm);
+      const el = $(`pd-${st}`), list = wsOpen.filter((c) => c.op === op), ready = list.filter(wsReady);
       el.style.display = list.length ? "" : "none";
-      el.innerHTML = list.length ? `<span>${list.length} sealed ${what}${list.length > 1 ? "s" : ""} · ${ready.length ? `${ready.length} ready to reveal` : "reveals after the next minute"}</span><button class="btn gold" data-op="${op}" ${ready.length ? "" : "disabled"}>Reveal here</button>` : "";
-      el.onclick = (e) => { const b = e.target.closest("button"); if (b && !b.disabled) revealCrafts(wsOpen.filter((c) => c.op === op && minuteNow() >= c.rm).map((c) => c.id)); };
+      el.innerHTML = list.length ? `<span>${list.length} sealed ${what}${list.length > 1 ? "s" : ""} · ${ready.length ? `${ready.length} ready to reveal` : "reveals within a minute of the commit"}</span><button class="btn gold" data-op="${op}" ${ready.length ? "" : "disabled"}>Reveal here</button>` : "";
+      el.onclick = (e) => { const b = e.target.closest("button"); if (b && !b.disabled) revealCrafts(wsOpen.filter((c) => c.op === op && wsReady(c)).map((c) => c.id)); };
       // the station's tab says it too, so a reveal waiting on another tab is not missed: sealed (the next minute
       // decides) or ready (only the player's reveal is missing)
       const tab = document.querySelector(`#wsNav button[data-st="${st}"]`);
@@ -901,12 +916,18 @@
     $("altarRing").onclick = (e) => { const p = e.target.closest(".ped"); if (!p) return; soulPick.sealed = null; soulPick.open = soulPick.open === +p.dataset.k ? -1 : +p.dataset.k; renderSoul(); };
     $("altarPick").onclick = (e) => { const o = e.target.closest("button.opt"); if (!o) return; const k = soulPick.open; if (k === 8) soulPick.keyIdx = +o.dataset.v; else { soulPick.tiers[k] = +o.dataset.v; const kk = soulPick.keyIdx !== 255 ? names.keys[soulPick.keyIdx].kind : -1; if (kk === k && soulPick.tiers[k]) soulPick.keyIdx = 255; } soulPick.open = -1; renderSoul(); };
   }
+  // the stream weight of a soul: its rank (1 / 4 / 16 / 64 / 256, named 512) times its founder mark, 2.0 for No.1 of its
+  // rank down to 1.0 for No.100 (Apprentices carry none); seats: 3014 / 1111 / 833 / 555 / 21 and 21 named
+  const RANK_W = [0, 1, 4, 16, 64, 256, 512];
+  let soulSeats = { minted: [0, 0, 0, 0, 0, 0, 0], quota: [0, 3014, 1111, 833, 555, 21, 21] };
+  const founderMark = (rank, ord) => (rank <= 1 || ord >= 100 ? 1 : 2 - (ord - 1) / 99);
   function soulStats() {
     const keySlot = soulPick.keyIdx !== 255 ? names.keys[soulPick.keyIdx].kind : -1;
     let sum = 0; for (let k = 0; k < 8; k++) sum += k === keySlot ? 5 : soulPick.tiers[k] || 1;
-    const avg = sum / 8, rank = keySlot >= 0 ? 6 : Math.floor(avg), rarity = keySlot >= 0 ? 16 : Math.pow(2, avg - 1);
-    const n = Number($("soulCount").dataset.n || 0), nextId = n + 1, early = nextId >= 100 ? 1 : 2 - (nextId - 1) / 99;
-    return { avg, rank, rarity, early, nextId };
+    const avg = sum / 8, rank = keySlot >= 0 ? 6 : Math.max(1, Math.floor(avg)), rarity = RANK_W[rank];
+    const n = Number($("soulCount").dataset.n || 0), nextId = n + 1, ord = soulSeats.minted[rank] + 1, early = founderMark(rank, ord);
+    const left = Math.max(0, soulSeats.quota[rank] - soulSeats.minted[rank]);
+    return { avg, rank, rarity, early, nextId, ord, left };
   }
   function renderSoul() {
     if (!soulsC || !inv) return;
@@ -924,16 +945,15 @@
       ped.querySelector("small").textContent = isKey ? names.keys[soulPick.keyIdx].key : t ? TIERS[t] : k < 5 ? "required" : "empty · Common";
       if (isKey) sum += 5; else if (t) sum += t; else { sum += 1; if (k < 5) ok = false; }
     }
-    const avg = sum / 8, rank = keySlot >= 0 ? 6 : Math.floor(avg);
-    const rarity = keySlot >= 0 ? 16 : Math.pow(2, avg - 1);
-    const n = Number($("soulCount").dataset.n || 0), nextId = n + 1, early = nextId >= 100 ? 1 : 2 - (nextId - 1) / 99;
+    const { avg, rank, rarity, early, nextId, ord, left } = soulStats();
+    if (!left) ok = false;
     const sd = soulPick.sealed && !soulPick.tiers.some(Boolean) && soulPick.keyIdx === 255 ? soulPick.sealed : null; // the soul just sealed stays on the altar until the next pick
     const core = $("altarCore"); core.className = `altar-core t${sd ? sd.rank : rank}`;
     $("altarSoul").src = `metadata/souls/${sd ? sd.rank : rank}.png`; $("soulImg").src = `metadata/souls/${rank}.png`;
     $("altarRank").textContent = sd ? RANKS[sd.rank] : `${RANKS[rank]}${keySlot >= 0 ? " · " + names.keys[soulPick.keyIdx].alchemist : ""}`;
     $("altarNum").textContent = sd ? `soul #${sd.id} sealed` : `soul #${nextId} if sealed now`;
-    const st = sd || { avg, rarity, early, nextId };
-    $("altarStats").innerHTML = `<div><b>average tier</b><span>${st.avg.toFixed(2)}</span></div><div><b>rarity</b><span>×${st.rarity.toFixed(2)}</span></div><div><b>early, #${sd ? sd.id : nextId}</b><span>×${st.early.toFixed(2)}</span></div><div><b>stream weight</b><span class="g">${(st.rarity * st.early).toFixed(2)}</span></div>`;
+    const st = sd || { avg, rank, rarity, early, ord };
+    $("altarStats").innerHTML = `<div><b>average tier</b><span>${st.avg.toFixed(2)}</span></div><div><b>rank weight</b><span>×${st.rarity}</span></div><div><b>${st.rank <= 1 ? "founder mark" : `founder, No.${st.ord} ${st.rank === 6 ? "named" : RANKS[st.rank]}`}</b><span>${st.rank <= 1 ? "none" : "×" + st.early.toFixed(2)}</span></div><div><b>stream weight</b><span class="g">${(st.rarity * st.early).toFixed(2)}</span></div>`;
     // the picker for the open pedestal (or the key)
     const pk = $("altarPick");
     if (soulPick.open < 0) pk.style.display = "none";
@@ -950,7 +970,8 @@
       // a key offered from a pedestal picker
       pk.querySelectorAll('button.opt[data-v^="key"]').forEach((bt) => { bt.onclick = (e) => { e.stopPropagation(); soulPick.keyIdx = +bt.dataset.v.slice(3); soulPick.tiers[k] = 0; soulPick.open = -1; renderSoul(); }; });
     }
-    $("soulHint").textContent = ok ? "the eight items and the key burn · sealing is free" : "fill the five required pedestals: grimoire, candle, chalice, seal, scepter";
+    const seatsTxt = rank === 6 ? `${left} of 21 named seats left` : `${left.toLocaleString("en")} of ${soulSeats.quota[rank].toLocaleString("en")} ${RANKS[rank]} seats left`;
+    $("soulHint").textContent = !left ? `no ${rank === 6 ? "named" : RANKS[rank]} seats left: every seat of this rank is taken` : ok ? `the eight items and the key burn · sealing is free · ${seatsTxt}` : "fill the five required pedestals: grimoire, candle, chalice, seal, scepter";
     $("doSoul").disabled = !ok;
   }
   if (window.AlchRite && AlchRite.dev) AlchRite.dev.fill = (tiers, keyIdx = 255) => { altarInit(); const keySlot = keyIdx !== 255 ? names.keys[keyIdx].kind : -1; for (let k = 0; k < 8; k++) { const ped = $("altarRing").children[k], t = tiers[k], isKey = k === keySlot; ped.className = `ped ${k < 5 ? "req" : ""} ${isKey ? "key on" : t ? "on" : "empty"} t${isKey ? 6 : t}`; ped.querySelector(".slot").innerHTML = isKey ? `<img class="px" src="${keyImg(KEY_ID + keyIdx)}" alt="">` : t ? `<img class="px" src="metadata/${item(k, t)}.png" alt="">` : ""; ped.querySelector("small").textContent = isKey ? names.keys[keyIdx].key : t ? TIERS[t] : k < 5 ? "required" : "empty · Common"; } soulPick.tiers = tiers.slice(); soulPick.keyIdx = keyIdx; return altarSnapshot(); };
@@ -960,25 +981,33 @@
     try {
       const total = Number(await soulsC.total());
       $("soulCount").textContent = `${total} sealed`; $("soulCount").dataset.n = total;
+      try {
+        const [minted, quota] = await Promise.all([Promise.all([1, 2, 3, 4, 5, 6].map((r) => soulsC.mintedByRank(r).then(Number))), Promise.all([1, 2, 3, 4, 5].map((r) => soulsC.quota(r).then(Number)))]);
+        soulSeats = { minted: [0, ...minted], quota: [0, ...quota, 21] };
+      } catch {}
       mySoulIds = [];
       mySoulIds = await mine721(soulsC, "souls", me, total);
       myKeys = []; for (let i = 0; i < 21; i++) if (inv && inv.get(KEY_ID + i)) myKeys.push(i);
       let open = false, openAt = 100, claimable = 0n;
       if (streamC) { try { [open, openAt] = await Promise.all([streamC.isOpen(), streamC.openAt().then(Number)]); } catch {} }
-      const cards = [], rows = await inChunks(mySoulIds, (id) => Promise.all([soulsC.data(id), soulsC.weight(id), streamC ? streamC.claimable(0, id) : 0n]).catch(() => [null, 0n, 0n]), 8);
+      // claimable() walks every hourly epoch the soul has not claimed: after months it can outgrow an RPC's call limit,
+      // and then the amount is unknown, not zero (Claim walks the epochs 300 at a time)
+      let unknown = false;
+      const cards = [], rows = await inChunks(mySoulIds, (id) => Promise.all([soulsC.data(id).catch(() => null), soulsC.weight(id).catch(() => 0n), streamC ? streamC.claimable(0, id).catch(() => null) : 0n]), 8);
       for (const [k, id] of mySoulIds.entries()) {
         const [d, w, c] = rows[k];
-        claimable += c;
+        if (c === null) unknown = true; else claimable += c;
         const rank = d ? Number(d.rank) : 0;
-        cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.png" alt=""><div class="t">${RANKS[rank]} #${id}</div><div class="s">weight ${(Number(w) / 1e6).toFixed(2)}${c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
+        const ord = d && d.ordinal !== undefined ? Number(d.ordinal) : 0;
+        cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.png" alt=""><div class="t">${RANKS[rank]} #${id}</div><div class="s">${rank >= 2 && ord ? `No.${ord} · ` : ""}weight ${(Number(w) / 1e6).toFixed(2)}${c === null ? " · rent to claim" : c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
       }
       $("mySouls").innerHTML = cards.join("") || `<span class="small">no souls in this wallet yet</span>`;
       $("streamCount").innerHTML = `${total}<small>/ ${openAt}</small>`;
       $("streamBar").querySelector("i").style.width = Math.min(100, (100 * total) / openAt).toFixed(1) + "%";
       $("streamState").textContent = open ? "the stream is open" : `opens at the ${openAt === 100 ? "hundredth" : openAt + "th"} soul`;
       $("streamState").className = "tag" + (open ? " on" : "");
-      $("doClaim").disabled = !open || claimable === 0n;
-      $("claimHint").textContent = claimable > 0n ? `${fmtEth(claimable, 6)} ETH claimable` : mySoulIds.length ? "nothing to claim yet" : "";
+      $("doClaim").disabled = !open || (claimable === 0n && !unknown);
+      $("claimHint").textContent = unknown ? `${claimable > 0n ? `${fmtEth(claimable, 6)} ETH and more` : "rent"} to claim: some souls have too many hours to add up here, Claim walks them in steps` : claimable > 0n ? `${fmtEth(claimable, 6)} ETH claimable` : mySoulIds.length ? "nothing to claim yet" : "";
       renderSoul();
     } catch (e) { log("souls: " + (e.shortMessage || e.message), "warn"); }
     finally { soulsBusy = false; }
@@ -1053,8 +1082,11 @@
       try { ids = [...new Set((await eventsOf(`commits:${who}`, workshop, workshop.filters.Committed(null, me))).map((l) => Number(l.args.id)))]; }
       catch { ids = Array.from({ length: Math.min(n, 200) }, (_, i) => n - 1 - i); } // no events from this RPC: the latest 200
       const cs = await inChunks(ids.filter((i) => !done.has(i)), (i) => workshop.commits(i).then((c) => [i, c]).catch(() => null));
-      for (const r of cs) { if (!r) continue; const [i, c] = r; if (c.user.toLowerCase() !== who) continue; if (c.settled) { done.add(i); continue; } open.push(i); det.push({ id: i, op: Number(c.op), a: Number(c.a), b: Number(c.b), furnace: Number(c.furnace), rm: Number(c.revealMinute) }); }
+      for (const r of cs) { if (!r) continue; const [i, c] = r; if (c.user.toLowerCase() !== who) continue; if (c.settled) { done.add(i); continue; } open.push(i); det.push({ id: i, op: Number(c.op), a: Number(c.a), b: Number(c.b), furnace: Number(c.furnace), rm: Number(c.revealMinute), l1: c.l1 }); }
       open.sort((a, b) => a - b); det.sort((a, b) => a.id - b.id);
+      // a craft is ready once the parent-chain block of its commit has a reveal seed (under a minute); recheckCrafts
+      // keeps asking every few seconds after that
+      await Promise.all(det.map((c) => mine.revealSeed(c.l1).then((e) => { c.ready = BigInt(e) !== 0n; }).catch(() => {})));
       wsOpen = det; renderPending();
       $("commits").textContent = `crafts to reveal: ${open.length}`;
       $("commits").className = "pill" + (open.length ? " on" : "");
@@ -1184,6 +1216,7 @@
   $("invWhoAddr").textContent = short(me);
   await refreshMine();
   setInterval(tickClock, 1000); tickClock();
+  setInterval(recheckCrafts, 5000); // sealed crafts turn revealable within a minute of the commit
   setInterval(refreshMine, 30000); // the minute boundary triggers its own refresh; this only catches price and pressure drift
   refreshNetwork(); setInterval(() => { if (!new URLSearchParams(location.search).get("netdev")) refreshNetwork(); }, 60000);
   setInterval(refreshInventory, 90000);

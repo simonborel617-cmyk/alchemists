@@ -2,8 +2,10 @@
 // explorer. Read-only, no key needed.
 //   NET=robinhood node scripts/verify-launch.js
 // Checks: every contract owned by the timelock; the timelock's delay, the Safe as proposer and executor, no admin left
-// with the deployer; guardian and treasury = the Safe; minters = the four game contracts and not the deployer, the Safe,
-// the timelock or the stream; pauses as the profile says (pausedAtLaunch); the mine's constants equal the profile.
+// with the deployer; guardians = the Safe; with a Kettle: Mine.treasury = Stream.pourer = the Kettle, whose Safe, Stream
+// and rates match; without one: treasury and pourer = the Safe; minters = the four game contracts and not the deployer,
+// the Safe, the timelock, the stream or the kettle; pauses as the profile says (pausedAtLaunch); the mine's constants
+// equal the profile.
 const { ethers } = require("ethers");
 const path = require("path");
 const fs = require("fs");
@@ -27,7 +29,7 @@ const TL_ABI = [
 (async () => {
   const p = new ethers.JsonRpcProvider(RPC, dep.chainId, { staticNetwork: true });
   const A = dep.contracts, c = {};
-  for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Alchemists", "Souls", "Stream"]) c[n] = new ethers.Contract(A[n], art(n), p);
+  for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Alchemists", "Souls", "Stream", "Kettle"]) if (A[n]) c[n] = new ethers.Contract(A[n], art(n), p);
   const tlAddr = A.Timelock || A.TimelockController;
   const safe = (P.governance && P.governance.safe) || dep.treasury;
   const guardian = P.governance && P.governance.guardian && P.governance.guardian !== "safe" ? P.governance.guardian : safe;
@@ -36,6 +38,7 @@ const TL_ABI = [
   const eq = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
   console.log(`${NET} (chain ${dep.chainId}), profile ${dep.params}, deployed ${dep.deployedAt} at block ${dep.block}`);
+  check(!!P.kettle === !!A.Kettle, "the deployment record has the Kettle exactly when the profile asks for one", A.Kettle || "none");
   check(!!tlAddr, "the deployment record names the timelock", tlAddr || "missing");
   check(eq(dep.treasury, safe), "the treasury in the record is the Safe", dep.treasury);
   for (const [n, x] of Object.entries(c)) check(eq(await x.owner(), tlAddr), `${n}.owner() = timelock`);
@@ -49,17 +52,26 @@ const TL_ABI = [
     check(!(await tl.hasRole(await tl.DEFAULT_ADMIN_ROLE(), dep.deployer)), "the deployer is not the timelock admin");
     check(!(await tl.hasRole(await tl.PROPOSER_ROLE(), dep.deployer)), "the deployer cannot propose");
   }
-  for (const n of ["Mine", "Workshop", "Alchemists", "Souls", "Stream"]) check(eq(await c[n].guardian(), guardian), `${n}.guardian() = ${guardian === safe ? "the Safe" : guardian}`);
-  check(eq(await c.Mine.treasury(), safe), "Mine.treasury() = the Safe");
+  for (const n of ["Mine", "Workshop", "Alchemists", "Souls", "Stream", "Kettle"]) if (c[n]) check(eq(await c[n].guardian(), guardian), `${n}.guardian() = ${guardian === safe ? "the Safe" : guardian}`);
   let pourer = null; try { pourer = await c.Stream.pourer(); } catch {}
-  check(pourer !== null && eq(pourer, safe), "Stream.pourer() = the Safe", pourer === null ? "no pourer: a Stream from before the review 2 fixes" : pourer);
+  if (c.Kettle) {
+    check(eq(await c.Mine.treasury(), A.Kettle), "Mine.treasury() = the Kettle");
+    check(eq(pourer, A.Kettle), "Stream.pourer() = the Kettle", pourer);
+    check(eq(await c.Kettle.safe(), safe), "Kettle.safe() = the Safe");
+    check(eq(await c.Kettle.stream(), A.Stream), "Kettle.stream() = the Stream");
+    check((await c.Kettle.steamBps()) === BigInt(P.kettle.steamBps) && (await c.Kettle.dripBps()) === BigInt(P.kettle.dripBps), "Kettle rates", `steam ${await c.Kettle.steamBps()} bps, drip ${await c.Kettle.dripBps()} bps`);
+    check(!(await c.Kettle.closed()) && !(await c.Kettle.paused()), "the Kettle is open");
+  } else {
+    check(eq(await c.Mine.treasury(), safe), "Mine.treasury() = the Safe");
+    check(pourer !== null && eq(pourer, safe), "Stream.pourer() = the Safe", pourer === null ? "no pourer: a Stream from before the review 2 fixes" : pourer);
+  }
 
   const game = [A.Mine, A.Workshop, A.Alchemists, A.Souls];
   for (const a of game) {
     check(await c.Materials.minters(a), `Materials minter ${a}`);
     check(await c.Keys.minters(a), `Keys minter ${a}`);
   }
-  for (const [who, a] of [["deployer", dep.deployer], ["Safe", safe], ["timelock", tlAddr], ["Stream", A.Stream]]) {
+  for (const [who, a] of [["deployer", dep.deployer], ["Safe", safe], ["timelock", tlAddr], ["Stream", A.Stream], ["Kettle", A.Kettle]]) {
     if (!a) continue;
     check(!(await c.Materials.minters(a)), `the ${who} is not a Materials minter`);
     check(!(await c.Keys.minters(a)), `the ${who} is not a Keys minter`);
@@ -75,7 +87,7 @@ const TL_ABI = [
   for (const k of ["floorBitsQ8", "ceilBitsQ8", "kPerHour", "oreR0", "refHashrate", "mCapQ8", "price0", "priceD", "keyChance", "upgradeChance", "firstHourSec", "windowSec", "windowSecEarly", "maxStepQ8", "maxStepEarlyQ8", "estCapBits", "estDivX10"])
     check(BigInt(got[k]) === BigInt(want[k]), `Mine.config.${k}`, String(got[k]));
   for (let i = 0; i < 4; i++) {
-    check(BigInt(got.unlockHashrate[i]) === BigInt(want.unlockHashrate[i]), `Mine.config.unlockHashrate[${i}]`, String(got.unlockHashrate[i]));
+    check(BigInt(got.unlockFinds[i]) === BigInt(want.unlockFinds[i]), `Mine.config.unlockFinds[${i}]`, String(got.unlockFinds[i]));
     check(BigInt(got.extraK[i]) === BigInt(want.extraK[i]), `Mine.config.extraK[${i}]`, String(got.extraK[i]));
   }
   check((await c.Mine.sessionSec()) === BigInt(P.mine.sessionSec || 60), "Mine.sessionSec", String(await c.Mine.sessionSec()));

@@ -10,6 +10,7 @@ const P = require("../deploy/params.local.json");
 async function nextMinute() {
   const ts = await time.latest();
   await time.increaseTo((Math.floor(ts / 60) + 1) * 60 + 1);
+  await ethers.provider.send("hardhat_mine", ["0x4"]); // a minute spans ~5 parent-chain blocks on mainnet; reveal seeds need 4
 }
 async function deployFixture() {
   const [owner, alice, bob, treasury] = await ethers.getSigners();
@@ -33,19 +34,40 @@ async function mineOnce(mine, who, extraBitsQ8 = 0) {
 }
 
 describe("Stage 1: mining", function () {
-  it("caps a legendary-quality hash at the unlocked tier before unlocks happen", async function () {
-    const { mine, alice, owner } = await loadFixture(deployFixture);
-    const cfg = mineConfig(P);
-    cfg.unlockHashrate = [10n ** 30n, 10n ** 30n, 10n ** 30n, 10n ** 30n];
-    await mine.connect(owner).setConfig(cfg);
-    await mineOnce(mine, alice, 10 * 256); // +10 bits over the threshold: legendary by bits
+  it("keeps tiers closed until the season reaches their number of finds, and never closes them again", async function () {
+    const [owner, alice, , treasury] = await ethers.getSigners();
+    const P2 = JSON.parse(JSON.stringify(P));
+    P2.mine.unlockFinds = [2, 3, 3, 5]; // Uncommon at the 2nd find, Rare and Epic at the 3rd, Legendary at the 5th
+    const { mine } = await deployAll(ethers, P2, treasury.address);
+    expect(await mine.unlockedTier()).to.equal(1);
+    await mineOnce(mine, alice, 10 * 256); // a monstrous hash buys nothing: the first find can only be Common (or upgraded)
+    expect((await mine.pendingAt(alice.address, 0)).unlockedTier).to.equal(1);
     await nextMinute();
     await mine.tick();
     const rc = await (await mine.reveal(alice.address)).wait();
     const ev = parse(rc, mine, "Mined")[0];
     expect(ev, "Mined").to.exist;
-    expect(Number(ev.args.tier)).to.be.lte(2); // common, or common upgraded by the 1/16 roll
-    expect(await mine.unlockedTier()).to.equal(1);
+    expect(Number(ev.args.tier)).to.be.lte(2);
+    await nextMinute();
+    await mine.tick();
+    const m = await mine.currentMinute();
+    const { nonce } = findNonce(alice.address, await mine.challenge(m), Number(await mine.tQ8()));
+    await nextMinute();
+    await expect(mine.connect(alice).submit(m, nonce, { value: await mine.currentPrice() })).to.emit(mine, "Unlocked").withArgs(2, 2);
+    expect(await mine.unlockedTier()).to.equal(2);
+    const m3 = await mine.currentMinute();
+    const n3 = findNonce(alice.address, await mine.challenge(m3), Number(await mine.tQ8())).nonce;
+    await nextMinute();
+    const rc3 = await (await mine.connect(alice).submit(m3, n3, { value: await mine.currentPrice() })).wait();
+    expect(parse(rc3, mine, "Unlocked").map((e) => Number(e.args.tier))).to.deep.equal([3, 4]); // two tiers at one find
+    const cfg = mineConfig(P2);
+    cfg.unlockFinds = [1000, 1000, 1000, 1000];
+    await mine.connect(owner).setConfig(cfg);
+    expect(await mine.unlockedTier()).to.equal(4); // raising the counts later closes nothing
+    cfg.unlockFinds = [1, 1, 1, 3];
+    await expect(mine.connect(owner).setConfig(cfg)).to.emit(mine, "Unlocked").withArgs(5, 3);
+    cfg.unlockFinds = [5, 4, 4, 4];
+    await expect(mine.connect(owner).setConfig(cfg)).to.be.revertedWith("Mine: unlocks");
   });
 
   it("grows the price with submits and lets burning pull it back", async function () {

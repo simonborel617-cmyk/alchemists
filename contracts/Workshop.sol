@@ -29,6 +29,7 @@ contract Workshop is Guarded, ReentrancyGuard {
         uint8 c; // refine: furnace bonus flag
         bool settled;
         uint64 revealMinute;
+        uint64 l1; // parent-chain block number at the commit: it settles by mine.revealSeed(l1)
         uint256 furnace; // refine: the furnace; craft: how many inputs of each tier, one byte per tier (tier 1 lowest)
     }
 
@@ -218,7 +219,7 @@ contract Workshop is Guarded, ReentrancyGuard {
     // ---------------------------------------------------------------- commit / reveal
     function _commit(address user, uint8 op, uint8 a, uint8 b, uint8 c, uint256 furnace) internal returns (uint256 id) {
         uint64 rm = mine.currentMinute() + 1;
-        commits.push(Commit(user, op, a, b, c, false, rm, furnace));
+        commits.push(Commit(user, op, a, b, c, false, rm, uint64(block.number), furnace));
         id = commits.length - 1;
         emit Committed(id, user, op, a, b, rm);
     }
@@ -235,11 +236,19 @@ contract Workshop is Guarded, ReentrancyGuard {
         Commit storage c = commits[id];
         require(!c.settled, "Workshop: settled");
         mine.tick();
-        bytes32 e = mine.entropy(c.revealMinute);
+        bytes32 e = mine.revealSeed(c.l1);
         require(e != bytes32(0), "Workshop: not yet");
         c.settled = true;
-        uint256 r = uint256(keccak256(abi.encodePacked(e, id, c.user)));
         Commit memory cm = c;
+        if (e == mine.LOST_SEED()) {
+            // lapsed: nobody touched the mine for the whole seed window after the commit; the worst outcome, so letting a
+            // commit lapse never pays (the inputs are already gone)
+            if (cm.op == OP_REFINE) emit Refined(id, cm.user, cm.a, cm.b, false, 0);
+            else if (cm.op == OP_REROLL) emit Rerolled(id, cm.user, cm.a, cm.b, new uint256[](0));
+            else emit Crafted(id, cm.user, cm.a, 0, 0, 255);
+            return;
+        }
+        uint256 r = uint256(keccak256(abi.encodePacked(e, id, c.user)));
         if (cm.op == OP_REFINE) _settleRefine(id, cm, r);
         else if (cm.op == OP_REROLL) _settleReroll(id, cm, r);
         else _settleCraft(id, cm, r);

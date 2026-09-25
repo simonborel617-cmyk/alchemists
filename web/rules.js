@@ -37,8 +37,8 @@
     const floorB = N(cfg.floorBitsQ8) / 256, ceilB = N(cfg.ceilBitsQ8) / 256;
     $("r-corridor").textContent = `${floorB} … ${ceilB} bits`;
     $("r-retarget").textContent = `every ${N(cfg.windowSec)} s (${N(cfg.windowSecEarly)} s in the first hour), at most ${N(cfg.maxStepQ8) / 256} bits per step (${N(cfg.maxStepEarlyQ8) / 256} early), aiming at ${N(cfg.kPerHour).toLocaleString("en")} mints per hour from the estimated network hashrate`;
-    $("r-extras").innerHTML = `every N minted pieces of a type at a tier raise that tier's bar for that type by one bit: N = ${[2, 3, 4, 5].map((t) => `${N(cfg.extraK[t - 2])} for ${T(t)}`).join(", ")}`;
-    $("r-unlocks").innerHTML = [2, 3, 4, 5].map((t) => `${T(t)} at ${fmtHs(N(cfg.unlockHashrate[t - 2]))}`).join(", ") + " of estimated network hashrate, permanently";
+    $("r-extras").innerHTML = `every N minted pieces of a type at a tier add one bit to the roll that tier needs for that type: N = ${[2, 3, 4, 5].map((t) => `${N(cfg.extraK[t - 2])} for ${T(t)}`).join(", ")}`;
+    $("r-unlocks").innerHTML = [2, 3, 4, 5].map((t) => `${T(t)} at the ${N(cfg.unlockFinds[t - 2]).toLocaleString("en")}th find`).join(", ") + " of the season, permanently; until then a find stops at the highest open tier (the 1 in 16 upgrade can still lift it one tier)";
     $("r-upgrade").textContent = `1 in ${N(cfg.upgradeChance)} reveals come out one tier higher`;
     $("r-key").textContent = `1 in ${N(cfg.keyChance).toLocaleString("en")} reveals drops an unclaimed mythic key`;
     $("r-price").textContent = `${ethers.formatEther(cfg.price0)} ETH × (1 + √(E / ${N(cfg.priceD).toLocaleString("en")})) × network pressure, where E is mined minus burned; no ceiling`;

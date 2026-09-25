@@ -41,31 +41,33 @@ describe("Souls", function () {
     expect(await souls.tokenURI(2)).to.equal("https://host/souls/5.json");
   });
 
-  it("weighs rarity by the unrounded average tier and the early multiplier from 2.0 down to 1.0 at the hundredth", async function () {
+  it("weighs by rank (1/4/16/64/256) times the founder mark of its rank; Apprentices carry no mark", async function () {
     const { materials, souls, alice } = await loadFixture(fixture);
     await give(materials, alice.address, five(1));
     await souls.connect(alice).seal(five(1), 255);
-    expect(await souls.rarity(1)).to.equal(E6); // avg 1.0 -> 2^0
-    expect(await souls.early(1)).to.equal(2n * E6);
-    expect(await souls.weight(1)).to.equal(2n * E6);
-    expect(await souls.early(50)).to.equal(2n * E6 - (49n * E6) / 99n);
-    expect(await souls.early(100)).to.equal(E6);
-    expect(await souls.early(101)).to.equal(E6);
-    expect(await souls.early(5555)).to.equal(E6);
+    expect(await souls.rarity(1)).to.equal(E6); // Apprentice
+    expect(await souls.early(1)).to.equal(E6); // no founder mark for Apprentices
+    expect(await souls.weight(1)).to.equal(E6);
     await give(materials, alice.address, full(5));
     await souls.connect(alice).seal(full(5), 255);
-    expect(await souls.rarity(2)).to.equal(16n * E6); // avg 5.0 -> 2^4
-    expect(await souls.weight(2)).to.equal((16n * E6) * (2n * E6 - E6 / 99n) / E6);
+    expect(await souls.rarity(2)).to.equal(256n * E6); // Archmage
+    expect(await souls.early(2)).to.equal(2n * E6); // Archmage No.1
+    expect(await souls.weight(2)).to.equal(512n * E6);
+    await give(materials, alice.address, full(5));
+    await souls.connect(alice).seal(full(5), 255);
+    expect(await souls.early(3)).to.equal(2n * E6 - E6 / 99n); // Archmage No.2
+    expect((await souls.data(3)).ordinal).to.equal(2n);
   });
 
-  it("names a soul with a key of the right kind and weighs it 16", async function () {
+  it("names a soul with a key of the right kind and weighs it 512, times its founder mark among the named", async function () {
     const { materials, keys, souls, alice } = await loadFixture(fixture);
     await keys.claimOfKind(alice.address, 4, 7); // a scepter key
     let key = null;
     for (const i of [11, 12, 13]) if ((await keys.keyClaimed(i)) && (await keys.ownerOf(i)) === alice.address) key = i;
     await give(materials, alice.address, [item(0, 1), item(1, 1), item(2, 1), item(3, 1)]);
     await expect(souls.connect(alice).seal([item(0, 1), item(1, 1), item(2, 1), item(3, 1), 0, 0, 0, 0], key)).to.emit(souls, "Sealed").withArgs(1n, alice.address, 6, 150, key); // 4 x tier 1 + the key as 5 + 3 empty as 1 = 12 / 8
-    expect(await souls.rarity(1)).to.equal(16n * E6);
+    expect(await souls.rarity(1)).to.equal(512n * E6);
+    expect(await souls.weight(1)).to.equal(1024n * E6); // named No.1
     expect(await keys.balanceOf(alice.address)).to.equal(0n);
   });
 

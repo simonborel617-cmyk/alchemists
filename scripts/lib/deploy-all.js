@@ -12,7 +12,7 @@ function mineConfig(P) {
     mCapQ8: Q8(m.mCap),
     price0: BigInt(m.price0Wei),
     priceD: m.priceD,
-    unlockHashrate: m.unlockHashrate.map((x) => BigInt(x)),
+    unlockFinds: m.unlockFinds.map((x) => BigInt(x)),
     extraK: m.extraK,
     keyChance: m.keyChance,
     upgradeChance: m.upgradeChance,
@@ -73,6 +73,17 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   await stream.waitForDeployment();
   log("Stream", `${await stream.getAddress()} (claims open at ${P.streamOpenAt ?? 100} souls)`);
 
+  // the Kettle (decided 2026-09-25): the Mine's fees go to it; every hour it sends the brew to the Safe and drips the
+  // steam into the Stream, which it alone pours into. Without P.kettle the fees go to the treasury and the Safe pours.
+  let kettle = null;
+  if (P.kettle) {
+    kettle = await ethers.deployContract("Kettle", [treasury, await stream.getAddress(), P.kettle.steamBps, P.kettle.dripBps]);
+    await kettle.waitForDeployment();
+    await (await stream.setPourer(await kettle.getAddress())).wait();
+    await (await mine.setTreasury(await kettle.getAddress())).wait();
+    log("Kettle", `${await kettle.getAddress()} (Mine treasury, Stream pourer; steam ${P.kettle.steamBps / 100} %, drip ${P.kettle.dripBps / 100} % an hour, brew to ${treasury})`);
+  }
+
   for (const c of [mine, workshop, alchemists, souls]) {
     await (await materials.setMinter(await c.getAddress(), true)).wait();
     await (await keys.setMinter(await c.getAddress(), true)).wait();
@@ -92,9 +103,9 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
 
   // contracts that start paused: the summoning belongs to the main act, so on mainnet it is deployed but inert until the
   // timelock unpauses it (the deployer is still the owner here and may pause; unpausing is the timelock's alone)
-  const byName = { mine, workshop, alchemists, souls, stream };
+  const byName = { mine, workshop, alchemists, souls, stream, kettle };
   for (const name of P.pausedAtLaunch || []) {
-    if (!byName[name]) throw new Error(`pausedAtLaunch: unknown contract ${name}`);
+    if (!byName[name]) throw new Error(`pausedAtLaunch: unknown or not deployed contract ${name}`);
     await (await byName[name].pause()).wait();
     log("paused", name);
   }
@@ -108,12 +119,14 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
     await timelock.waitForDeployment();
     log("Timelock", `${await timelock.getAddress()} (delay ${g.timelockDelay}s, safe ${safe})`);
     const guardian = g.guardian && g.guardian !== "safe" ? g.guardian : safe;
-    for (const c of [mine, workshop, alchemists, souls, stream]) await (await c.setGuardian(guardian)).wait();
-    for (const c of [materials, keys, mine, furnaces, workshop, alchemists, souls, stream]) await (await c.transferOwnership(await timelock.getAddress())).wait();
-    log("governance", `guardian ${guardian}; ownership of all eight contracts moved to the timelock`);
+    const guarded = [mine, workshop, alchemists, souls, stream, kettle].filter(Boolean);
+    const owned = [materials, keys, mine, furnaces, workshop, alchemists, souls, stream, kettle].filter(Boolean);
+    for (const c of guarded) await (await c.setGuardian(guardian)).wait();
+    for (const c of owned) await (await c.transferOwnership(await timelock.getAddress())).wait();
+    log("governance", `guardian ${guardian}; ownership of all ${owned.length} contracts moved to the timelock`);
   }
 
-  return { materials, keys, mine, furnaces, workshop, alchemists, souls, stream, timelock };
+  return { materials, keys, mine, furnaces, workshop, alchemists, souls, stream, kettle, timelock };
 }
 
 module.exports = { deployAll, mineConfig, Q8 };

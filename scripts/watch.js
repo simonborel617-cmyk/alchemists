@@ -26,7 +26,7 @@ const PUBLIC_RPCS = {
 const RPCS = [...new Set([...(process.env.RPC_URLS || "").split(","), process.env.RPC_URL, ...(PUBLIC_RPCS[NET] || [])].map((u) => (u || "").trim()).filter(Boolean))];
 const KEEPER_KEY = NET === "robinhood" ? process.env.MAINNET_KEY || process.env.KEEPER_KEY : process.env.KEEPER_KEY;
 const KEEPER = process.env.KEEPER_ADDRESS || (KEEPER_KEY ? new ethers.Wallet(KEEPER_KEY).address : null);
-const MIN_BALANCE = ethers.parseEther(process.env.WATCH_MIN_BALANCE || "0.02");
+const MIN_BALANCE = ethers.parseEther(process.env.WATCH_MIN_BALANCE || "0.05");
 const STALE = Number(process.env.WATCH_STALE_MINUTES || 3);
 const INTERVAL = Number(process.env.WATCH_INTERVAL_MS || 60000);
 const REPEAT_MS = 30 * 60000;
@@ -34,6 +34,15 @@ const ABI = [
   "function challenge(uint64) view returns (bytes32)",
   "function sessionSec() view returns (uint32)",
   "function paused() view returns (bool)",
+  "function lastHour() view returns (uint256)",
+  "function closed() view returns (bool)",
+  "function pot() view returns (uint256)",
+  "function brewOwed() view returns (uint256)",
+  "function stream() view returns (address)",
+  "function pourer() view returns (address)",
+  "function isOpen() view returns (bool)",
+  "function epochCount() view returns (uint256)",
+  "function epochs(uint256) view returns (uint128 amount, uint128 totalWeight, uint64 at, uint32 collection, uint32 minted)",
 ];
 const ZERO = "0x" + "0".repeat(64);
 const log = (...a) => console.log(new Date().toISOString().replace("T", " ").slice(0, 19), ...a);
@@ -71,7 +80,27 @@ async function read(url) {
   // the current minute may not be ticked yet in its first seconds; look at the finished ones before it
   const back = await Promise.all(Array.from({ length: STALE }, (_, i) => mine.challenge(m - 1 - i)));
   const missing = back.filter((c) => c === ZERO).length;
-  return { m, minePaused, wsPaused, gasPrice: fee.gasPrice || 0n, bal, missing };
+  // the Kettle: ticked every clock hour; two hours without a tick means the hourly rent has stopped
+  let kettleLate = false, kettlePaused = false, kettleDry = false, brewOwed = 0n;
+  if (dep.contracts.Kettle) {
+    const k = new ethers.Contract(dep.contracts.Kettle, ABI, p);
+    const [last, kp, kc] = await Promise.all([k.lastHour(), k.paused(), k.closed()]);
+    const now = Number(blk.timestamp);
+    kettleLate = !kp && !kc && Math.floor(now / 3600) - Number(last) >= 2;
+    kettlePaused = kp && !kc; // a rescued kettle stays paused and closed for good: nothing to wait for
+    if (!kp && !kc) {
+      const [pot, owed, sAddr] = await Promise.all([k.pot(), k.brewOwed(), k.stream()]);
+      brewOwed = owed;
+      // ticks run but nothing reaches the souls: the stream refuses (paused, closed, not our pourer) or went quiet
+      if (pot >= ethers.parseEther("0.01")) {
+        const s = new ethers.Contract(sAddr, ABI, p);
+        const [open, pourer, sp, sc, n] = await Promise.all([s.isOpen().catch(() => null), s.pourer().catch(() => null), s.paused().catch(() => true), s.closed().catch(() => true), s.epochCount().catch(() => 0n)]);
+        const lastAt = n > 0n ? Number((await s.epochs(n - 1n)).at) : 0;
+        kettleDry = open === null || !pourer || pourer.toLowerCase() !== dep.contracts.Kettle.toLowerCase() || sp || sc || (open && now - lastAt >= 2 * 3600);
+      }
+    }
+  }
+  return { m, minePaused, wsPaused, gasPrice: fee.gasPrice || 0n, bal, missing, kettleLate, kettlePaused, kettleDry, brewOwed };
 }
 
 async function round() {
@@ -84,8 +113,12 @@ async function round() {
   await condition("stale", d.missing === STALE, `the last ${STALE} minutes have no challenge: the keeper is down and nobody submits, the mine stands still (minute ${d.m})`, `minutes are ticking again (minute ${d.m})`);
   await condition("mine-paused", d.minePaused, "the Mine is paused", "the Mine is unpaused");
   await condition("ws-paused", d.wsPaused, "the Workshop is paused", "the Workshop is unpaused");
+  await condition("kettle-late", d.kettleLate, "the Kettle has not been ticked for two hours: no hourly rent and no brew to the Safe (the keeper is down?)", "the Kettle ticks again");
+  await condition("kettle-paused", d.kettlePaused, "the Kettle is paused: fees wait in it until the timelock unpauses or rescues", "the Kettle is unpaused");
+  await condition("kettle-dry", d.kettleDry, "the Kettle ticks but pours nothing into the Stream (stream paused, closed, not pouring from the Kettle, or silent for two hours): the hourly rent has stopped", "the Kettle pours again");
+  await condition("kettle-brew-owed", d.brewOwed > 0n, `the Safe refused the Kettle's brew: ${ethers.formatEther(d.brewOwed)} ETH waits in the Kettle`, "the Safe takes the brew again");
   if (d.bal !== null) {
-    const perTick = 90000n * (d.gasPrice || 1n), days = Number(d.bal / perTick) / 1440;
+    const perTick = 220000n * (d.gasPrice || 1n), days = Number(d.bal / perTick) / 1440;
     await condition("balance", d.bal < MIN_BALANCE, `keeper ${KEEPER} is low: ${ethers.formatEther(d.bal)} ETH, about ${days.toFixed(1)} days of ticks at ${ethers.formatUnits(d.gasPrice, "gwei")} gwei. Top it up.`, `keeper balance is fine again: ${ethers.formatEther(d.bal)} ETH`);
   }
   return d;

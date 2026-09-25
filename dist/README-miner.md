@@ -18,9 +18,11 @@ The card can live on another machine or in the cloud: the orchestrator talks to 
 Every minute the mine issues a new challenge and a threshold in bits. The orchestrator sends the card one line,
 `PARAMS <challenge> <threshold> <addr1,addr2,...>`, and a single miner process hashes `sha256(address ‖ nonce ‖ challenge)`
 for all addresses in turn. When it finds a hash above the threshold for an address it prints
-`FOUND addr=... nonce_dec=... challenge=... bits=N` and keeps looking only for something better for that address.
-In the next minute the orchestrator submits the best hash of every address and pays the current submit price in ETH.
-The type and tier of the ingredient are revealed one minute later; the next submit does the reveal.
+`FOUND addr=... nonce_dec=... challenge=... bits=N`, and the orchestrator takes that address off the card's list for the
+rest of the minute, so the card's full power goes to the addresses that still have nothing. In the next minute the
+orchestrator submits the find of every address and pays the current submit price in ETH. How far above the threshold
+the hash lands does not matter: the type and tier of the ingredient are rolled at the reveal one minute later, with the
+same odds for every find, so a higher hash buys nothing. The next submit does the reveal.
 
 One address can submit one find per minute, so a strong card is split across several addresses. They share one process,
 so the card's power is divided between them without loss. Every 10 seconds the miner prints `STATS ... rate=` in GH/s.
@@ -83,7 +85,9 @@ Keys never leave the machine that runs the orchestrator. Do not run the orchestr
 - `PARAMS <challenge> <floor> [addr1,addr2,...]` starts a session; without an address list the `--addr` address is used.
 - `QUIT` exits.
 - `FOUND addr=0x.. nonce_dec=.. challenge=0x.. bits=N`: a hash with `N` leading zero bits; in multi-address mode the
-  miner raises that address's floor to `N+1` on its own.
+  miner raises that address's floor to `N+1` on its own. Once the find clears the minute's exact threshold, the
+  orchestrator re-sends `PARAMS` for the same challenge and floor without that address (every `PARAMS` restarts from a
+  fresh random nonce base); when no address is left it sends nothing until the next minute.
 - `STATS hashes=.. secs=.. rate=..` every 10 s, exact: a kernel launch never exits early, it returns its best hash.
 
 `orchestrator/fake-hb-miner.py` speaks the same protocol on the CPU for tests without a GPU.

@@ -10,6 +10,7 @@
 
 
   "streamOpenAt": 100,
+  "kettle": { "steamBps": 6000, "dripBps": 417 },
   "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",
   "pausedAtLaunch": ["alchemists"],
@@ -23,12 +24,7 @@
     "mCap": 2,
     "price0Wei": "1000000000000",
     "priceD": 500,
-    "unlockHashrate": [
-      "200000000",
-      "400000000",
-      "600000000",
-      "800000000"
-    ],
+    "unlockFinds": [75, 150, 300, 450],
     "extraK": [
       100,
       30,

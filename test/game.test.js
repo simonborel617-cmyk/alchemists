@@ -11,6 +11,7 @@ const ZERO = "0x" + "0".repeat(64);
 async function nextMinute() {
   const ts = await time.latest();
   await time.increaseTo((Math.floor(ts / 60) + 1) * 60 + 1);
+  await ethers.provider.send("hardhat_mine", ["0x4"]); // a minute spans ~5 parent-chain blocks on mainnet; reveal seeds need 4
 }
 
 async function deployFixture() {
@@ -116,8 +117,11 @@ describe("Mine", function () {
     await nextMinute();
     await mine.connect(alice).submit(m, nonce, { value: await mine.currentPrice() });
     await time.increase(60 * 600); // ten hours of silence
+    await ethers.provider.send("hardhat_mine", ["0x200"]); // ~2 hours of parent blocks with nobody touching the mine
     await mine.tick();
-    expect(await mine.entropy(m + 2n)).to.not.equal(ZERO);
+    const pd = await mine.pendingAt(alice.address, 0);
+    // nobody recorded its seed while it was in the blockhash window: it lapses and settles as a plain Common
+    expect(await mine.revealSeed(pd.l1)).to.equal(await mine.LOST_SEED());
     await expect(mine.reveal(alice.address)).to.emit(mine, "Mined");
   });
 });
@@ -199,10 +203,10 @@ describe("Alchemists", function () {
     const five = [item(0, 5), item(1, 5), item(2, 5), item(3, 5), item(4, 5), 0, 0, 0];
     await give(materials, alice.address, five.filter(Boolean).map((id) => [id, 1]));
     await expect(alchemists.connect(alice).summon(five, 255)).to.emit(alchemists, "Summoned").withArgs(2n, alice.address, 3, 350, 255);
+    await expect(alchemists.reveal(2)).to.be.revertedWith("Alchemists: not yet"); // its parent block has no seed yet
 
     await expect(alchemists.connect(alice).summon([0, item(1, 1), item(2, 1), item(3, 1), item(4, 1), 0, 0, 0], 255)).to.be.revertedWith("Alchemists: required slot empty");
 
-    await expect(alchemists.reveal(1)).to.be.revertedWith("Alchemists: not yet");
     await nextMinute();
     await mine.tick();
     await expect(alchemists.reveal(1)).to.emit(alchemists, "Revealed");
