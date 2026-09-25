@@ -875,7 +875,8 @@
       for (const [kk, n] of need) if (haveCat(Math.floor(kk / 8), kk % 8) < n) { ok = false; lack.add(kk); }
       const o = itOdds(itSlots), top = Math.max(...itSlots), likely = [...o.tiers].sort((a, b) => o.counts[b] - o.counts[a] || b - a)[0];
       $("itImg").src = `metadata/${item(k, top)}.png`; $("navItImg").src = `metadata/${item(k, top)}.png`;
-      const slots = cats.map((c, i) => { const t = itSlots[i]; return `<div class="slot${mixed ? " mix" : ""}" data-slot="${i}"${mixed ? ' title="click: a tier up · right-click: a tier down"' : ""}>${chip(ing(CAT_TYPE[c], t), CAT[c].replace(/s$/, ""), T[t], lack.has(c * 8 + t) ? "bad" : "ok", t)}</div>`; }).join("");
+      // each slot: the ingredient chip and, when this Workshop mixes, its own tier picker right under it
+      const slots = cats.map((c, i) => { const t = itSlots[i]; const pickT = mixed ? `<select class="slot-tier t${t}" data-slot-tier="${i}" aria-label="tier of slot ${i + 1}">${[1, 2, 3, 4, 5].map((x) => `<option value="${x}"${x === t ? " selected" : ""}>${T[x]}</option>`).join("")}</select>` : ""; return `<div class="slot${mixed ? " mix" : ""}" data-slot="${i}"${mixed ? ' title="pick the tier below, or click: a tier up · right-click: a tier down"' : ""}>${chip(ing(CAT_TYPE[c], t), CAT[c].replace(/s$/, ""), mixed ? "" : T[t], lack.has(c * 8 + t) ? "bad" : "ok", t)}${pickT}</div>`; }).join("");
       const lines = o.tiers.slice().sort((a, b) => b - a).map((t) => `<span style="color:${TC[t]}">${T[t]}</span> <b>${o.p(t)} %</b>`);
       if (o.fail) lines.push(`<span class="brk">the rite breaks</span> <b>${o.fail} %</b>`);
       lines.push(`then a tier up <b>${RC.craftUp} %</b>`, `mythic key up to <b>1 in ${RC.keyChance[top - 1].toLocaleString("en")}</b>`);
@@ -1173,8 +1174,9 @@
     $("itHint").textContent = "";
     tx(`craft ${names.kinds[k]} ${many ? "(mixed)" : TIERS[top]}`, () => wsSend("Workshop", "craftItem", mixed ? [k, p.ids, p.amts] : [k, top, p.ids, p.amts]), () => { if (WSX) WSX.play("item", "inscribe", { tier: top, kindName: names.kinds[k], srcs: expand(p.ids, p.amts).map(img).slice(0, 5), seed: Date.now() % 1000 }); }, "itHint");
   };
-  $("rc-item").addEventListener("click", (e) => { const el = e.target.closest("[data-slot]"); if (!el || !mixOn() || !itSlots) return; const i = +el.dataset.slot; itSlots[i] = (itSlots[i] % 5) + 1; renderStations(); });
-  $("rc-item").addEventListener("contextmenu", (e) => { const el = e.target.closest("[data-slot]"); if (!el || !mixOn() || !itSlots) return; e.preventDefault(); const i = +el.dataset.slot; itSlots[i] = ((itSlots[i] + 3) % 5) + 1; renderStations(); });
+  $("rc-item").addEventListener("click", (e) => { if (e.target.closest("select")) return; const el = e.target.closest("[data-slot]"); if (!el || !mixOn() || !itSlots) return; const i = +el.dataset.slot; itSlots[i] = (itSlots[i] % 5) + 1; renderStations(); });
+  $("rc-item").addEventListener("change", (e) => { const sel = e.target.closest("[data-slot-tier]"); if (!sel || !itSlots) return; itSlots[+sel.dataset.slotTier] = +sel.value; renderStations(); });
+  $("rc-item").addEventListener("contextmenu", (e) => { if (e.target.closest("select")) return; const el = e.target.closest("[data-slot]"); if (!el || !mixOn() || !itSlots) return; e.preventDefault(); const i = +el.dataset.slot; itSlots[i] = ((itSlots[i] + 3) % 5) + 1; renderStations(); });
 
   async function refreshAll() { await refreshMine(); await refreshWorkshop(); await refreshInventory(); }
   fillSelects(); renderInventory();

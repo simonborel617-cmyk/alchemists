@@ -468,3 +468,9 @@ body.connected .nowallet { display:none; }
 .recipe .slot.mix:hover .chip img { transform:translateY(-2px); border-color:var(--gold); }
 .recipe .odds .brk { color:#e07a6f; }
 .mixhint { margin:8px 0 0; }
+
+/* the tier picker under each slot of the ritual table, coloured by its tier */
+.recipe .slot { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.recipe .slot-tier { width:82px; padding:3px 4px; font:10px var(--mono); background:var(--bg2); color:var(--ink); border:2px solid var(--bevel-lo); cursor:pointer; }
+.recipe .slot-tier.t1 { border-color:var(--c1); } .recipe .slot-tier.t2 { border-color:var(--c2); } .recipe .slot-tier.t3 { border-color:var(--c3); }
+.recipe .slot-tier.t4 { border-color:var(--c4); } .recipe .slot-tier.t5 { border-color:var(--c5); }
