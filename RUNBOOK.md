@@ -102,7 +102,7 @@ timelock, it is about those records.
 
 - The summoning is not deployed: `Alchemists`, the main act, comes once its contract is final.
 - Pours into the stream come only from the Kettle, once an hour (`Kettle.tick()`, the keeper at the top of the hour,
-  anyone may call it): 40 % of the fees that came in go to the Safe, 60 % join the Kettle's pot, and a twenty-fourth of
+  anyone may call it): 40 % of the fees that came in go to the Safe, 60 % join the Kettle's pot, and a quarter (a twenty-fourth until 2026-09-26) of
   the pot (at least 0.01 ETH) is poured. A transfer from the Safe to the Stream reverts ("Stream: not pourer"); to add
   steam the Safe calls `Kettle.fund()`. Nothing is poured before the hundredth soul; the steam waits in the Kettle and
   drips from that hour on. `Kettle.pot()` and `Kettle.preview()` show what waits and what the next hour does.
@@ -113,7 +113,7 @@ timelock, it is about those records.
 ## Emergency: where the ETH is and how it comes out
 
 - **The Kettle** takes every submit fee. Each hour it sends 40 % (the brew) to the Safe and keeps 60 % (the steam) in its
-  pot, which drips into the Stream at a twenty-fourth an hour; modeled at 84-341 ETH at its peak. Its whole balance is
+  pot, which drips into the Stream at a quarter an hour (a twenty-fourth until 2026-09-26); modeled at 84-341 ETH at its peak. Its whole balance is
   the exposure: `node scripts/emergency.js status` shows it.
 - **The Safe.** It receives the brew every hour. It is a plain Safe: its owners move its ETH anywhere at any time, a
   normal Safe transfer. No game contract holds an allowance on it or can freeze it; a bug in the game

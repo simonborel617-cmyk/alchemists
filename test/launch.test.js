@@ -69,7 +69,7 @@ describe("Launch: the mainnet profile", function () {
     expect(await kettle.safe()).to.equal(safe.address);
     expect(await kettle.stream()).to.equal(await stream.getAddress());
     expect(await kettle.steamBps()).to.equal(6000n);
-    expect(await kettle.dripBps()).to.equal(417n);
+    expect(await kettle.dripBps()).to.equal(2500n); // a quarter of the steam an hour (owner's decision 2026-09-26)
     expect(await stream.closed()).to.equal(false);
     expect(await kettle.closed()).to.equal(false);
     // the four collections: contractURI on the site and 5 % creator earnings to the Safe

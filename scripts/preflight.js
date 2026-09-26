@@ -42,7 +42,7 @@ function preflight(P, env) {
   if (P.collectionsURI !== "https://alchemist-mine.com/metadata/collections/") problems.push("collectionsURI must be https://alchemist-mine.com/metadata/collections/ (the contractURI of each collection)");
   if (P.royaltyBps !== 500) problems.push("royaltyBps must be 500 (5 % creator earnings to the Safe, owner's decision 2026-09-26)");
   const k = P.kettle || {};
-  if (k.steamBps !== 6000 || k.dripBps !== 417) problems.push("kettle must be { steamBps: 6000, dripBps: 417 }: the Mine's fees go to the Kettle, 60 % steam dripping 1/24 an hour, 40 % brew to the Safe (decided 2026-09-25)");
+  if (k.steamBps !== 6000 || k.dripBps !== 2500) problems.push("kettle must be { steamBps: 6000, dripBps: 2500 }: the Mine's fees go to the Kettle, 60 % steam dripping a quarter an hour (a twenty-fourth until 2026-09-26, raised by the Safe through Kettle.set), 40 % brew to the Safe (decided 2026-09-25)");
   if ((P.pausedAtLaunch || []).includes("kettle") || (P.pausedAtLaunch || []).includes("stream")) problems.push("the Kettle and the Stream must not start paused");
   return problems;
 }

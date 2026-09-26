@@ -121,7 +121,7 @@ v4 (2026-09-26): no timelock; see README.
 Owner decisions the same day: soul weights by rank (Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named
 soul 512) times a founder mark (No.1 of each rank from Adept up weighs 2.0, fading to 1.0 at No.100); seats 3014 / 1111 /
 833 / 555 / 21 plus at most 21 named souls (5555); rent every hour through `Kettle`, the Mine's treasury: once per clock
-hour anyone ticks it, 40 % of new fees go to the Safe, 60 % join the pot, and a twenty-fourth of the pot drips into the
+hour anyone ticks it, 40 % of new fees go to the Safe, 60 % join the pot, and a twenty-fourth (a quarter since 2026-09-26) of the pot drips into the
 unchanged `Stream`, whose only pourer is the Kettle. Three reviewers (Kettle funds, Souls and Stream, deployment and
 operations) and a skeptic per finding: 13 findings confirmed, none that loses or freezes ETH.
 

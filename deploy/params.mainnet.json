@@ -9,7 +9,7 @@
   "royaltyBps": 500,
   "kettle": {
     "steamBps": 6000,
-    "dripBps": 417
+    "dripBps": 2500
   },
   "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",

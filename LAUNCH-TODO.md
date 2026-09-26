@@ -37,7 +37,7 @@ what is still open. Mainnet v1-v3 (2026-09-26) ran under a 48-hour timelock; v4 
 - **Owner decisions of 2026-09-25, in the code:** the tier is rolled at reveal, tiers open by finds (25k/50k/100k/150k; ten times sooner, 2.5k/5k/10k/15k, since 2026-09-26);
   reveals take `Mine.revealSeed` of the commit's parent block (the old next-minute challenge was predictable: proven on
   testnet); souls weigh 1/4/16/64/256 by rank, named 512, with founders per rank from Adept; seats 3014/1111/833/555/21 +
-  21 named; the Kettle pays rent every hour (40 % brew to the Safe, 60 % steam, 1/24 of the pot an hour). Third and fourth
+  21 named; the Kettle pays rent every hour (40 % brew to the Safe, 60 % steam, 1/24 of the pot an hour; a quarter since 2026-09-26). Third and fourth
   internal reviews in `SECURITY-REVIEW.md`. 86 tests. Still to do: testnet v13 with the Kettle, keeper box re-push.
 - **The Safe is 2-of-2** (owner's decision 2026-09-26: no third owner). Losing either key loses it: keep both seeds on paper in two places.
 - **v4, owner's decisions of 2026-09-26, in the code:** no timelock. The Safe `0x08Eb68ca02f6fDBCb2b335c67E14EC053166CC41`

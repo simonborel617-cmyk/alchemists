@@ -55,7 +55,7 @@ Ingredients are raw material.
 
 **[image: shots/03-cauldron.png]**
 
-Every submit pays a small price in ETH. It starts low, grows with the square root of everything mined, and falls back as ingredients are burned in the workshop. All of it boils in the Kettle, on chain, readable by anyone at any time. Every hour 40 percent thickens in the Cauldron, a multisig Safe at a public address, and 60 percent rises as steam: a twenty-fourth of the Kettle drips to the holders of souls each hour, weighted by rank (Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named soul 512), and the first hundred of every rank from Adept up weigh up to double. There will never be more than 21 Archmages and 21 named souls. The game's contracts are governed by that same multisig Safe.
+Every submit pays a small price in ETH. It starts low, grows with the square root of everything mined, and falls back as ingredients are burned in the workshop. All of it boils in the Kettle, on chain, readable by anyone at any time. Every hour 40 percent thickens in the Cauldron, a multisig Safe at a public address, and 60 percent rises as steam: a quarter of the Kettle's steam drips to the holders of souls each hour, weighted by rank (Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named soul 512), and the first hundred of every rank from Adept up weigh up to double. There will never be more than 21 Archmages and 21 named souls. The game's contracts are governed by that same multisig Safe.
 
 ## The keys
 
