@@ -54,7 +54,7 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
    the owner pipes `MAINNET_KEY` into box A's `.env` with the one command in that README.
 5. **Alerts.** A Telegram bot token and chat id, or an ntfy topic name, in `.env` of the keeper host.
 6. **Constants, last call** (immutable after the deploy): corridor 30..43 bits; unlocks at 25,000/50,000/100,000/150,000 finds (decided 2026-09-25, with the tier rolled at reveal);
-   `refHashrate` 10 TH/s; `price0` 0.0002 ETH, `priceD` 50,000; prima materia 1,000,000; `keyChance` 1 in 65,536 per
+   `refHashrate` 10 TH/s; `price0` 0.00002 ETH (lowered from 0.0002 on 2026-09-26: about 5 cents), `priceD` 50,000; prima materia 1,000,000; `keyChance` 1 in 65,536 per
    reveal, crafts 1e6..100 by tier; furnace cooldown 10 minutes; stream opens at the 100th soul; summoning paused.
 
 ## Friday, in order

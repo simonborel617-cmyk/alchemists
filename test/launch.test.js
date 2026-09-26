@@ -83,9 +83,9 @@ describe("Launch: the mainnet profile", function () {
     expect(got.floorBitsQ8).to.equal(BigInt(want.floorBitsQ8));
     expect(got.ceilBitsQ8).to.equal(BigInt(want.ceilBitsQ8));
     expect(got.oreR0).to.equal(BigInt(want.oreR0));
-    expect(got.price0).to.equal(ethers.parseEther("0.0002"));
+    expect(got.price0).to.equal(ethers.parseEther("0.00002"));
     expect(got.keyChance).to.equal(65536n);
-    expect(await mine.currentPrice()).to.equal(ethers.parseEther("0.0002"));
+    expect(await mine.currentPrice()).to.equal(ethers.parseEther("0.00002"));
     expect(await mine.sessionSec()).to.equal(60n);
     expect(await workshop.furnaceCooldown()).to.equal(600n);
     expect(await keys.unclaimedCount()).to.equal(21n);

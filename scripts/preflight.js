@@ -18,7 +18,7 @@ function preflight(P, env) {
   if ((m.sessionSec || 60) !== 60) problems.push("mine.sessionSec must be 60 on mainnet");
   if (m.floorBits !== 30 || m.ceilBits !== 43) problems.push("mine corridor must be 30..43 bits");
   if (m.oreR0 !== 1000000) problems.push("mine.oreR0 must be 1000000 for season 1");
-  if (BigInt(m.price0Wei) !== 200000000000000n) problems.push("mine.price0Wei must be 0.0002 ETH");
+  if (BigInt(m.price0Wei) !== 20000000000000n) problems.push("mine.price0Wei must be 0.00002 ETH (about 5 cents; owner's decision 2026-09-26)");
   if (m.mCap !== 2) problems.push("mine.mCap must be 2");
   if (BigInt(m.refHashrate) < 5n * 10n ** 12n) problems.push("mine.refHashrate must be at least 5 TH/s");
   if (JSON.stringify(m.unlockFinds) !== JSON.stringify([25000, 50000, 100000, 150000])) problems.push("mine.unlockFinds must be 25000/50000/100000/150000 finds (owner decision 2026-09-25)");
