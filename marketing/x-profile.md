@@ -156,3 +156,17 @@ scenes/rarities-clean.png without the text] Alt text: "Five glass flasks in ston
 open. The green Uncommon and blue Rare flasks are sealed with wax and iron bands, the violet Epic flask with a padlock,
 the gold Legendary flask with a gold padlock and chains. Below them: Common open, Uncommon 2,500, Rare 5,000, Epic
 10,000, Legendary 15,000. Finds mined, all miners together."
+
+## The rent flows (2026-09-26, the hundredth soul)
+
+"The hundredth soul is sealed. The rent now flows to the souls. / How it flows: / Once an hour, on the hour, the Kettle
+pours a twenty-fourth of its steam into the stream, never less than 0.01 ETH. The rest stays in the Kettle for the
+hours after. / Each pour is split across all sealed souls by weight: Apprentice 1, Adept 4, Master 16, Magister 64,
+Archmage 256, a named soul 512. The first hundred of each rank from Adept up weigh up to double. / A soul shares in every
+pour after it is sealed. Pours add up and wait: claim whenever you like, all at once. / Between pours the claimable
+amount stands still. It moves on the hour. / alchemist-mine.com" (644 characters: a long post). Written so nobody reads
+a zero claimable before the first pour, or the pause between pours, as a fault. [scene: scenes/rent.png, the Kettle
+over its hearth, golden steam arcing across the room and falling as drops onto the six soul ranks with their weights,
+by scripts/post-rent.py; scenes/rent-clean.png without the souls and text] Alt text: "An iron kettle over a hearth
+sends golden steam in an arc across a night workshop; it falls as drops onto six souls on the floor: Apprentice 1,
+Adept 4, Master 16, Magister 64, Archmage 256, Named 512."

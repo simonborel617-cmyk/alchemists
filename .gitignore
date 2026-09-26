@@ -24,3 +24,4 @@ art/pixel*/
 .*-watch.json
 dist/release-*/
 emergency-out/
+__pycache__/
