@@ -39,7 +39,8 @@
     "https://robinhood-rpc.publicnode.com"
   ],
   "logRpcs": [
-    "https://rpc.mainnet.chain.robinhood.com"
+    "https://rpc.mainnet.chain.robinhood.com",
+    "https://rpc.ordofi.network"
   ],
   "explorer": "https://robinhoodchain.blockscout.com",
   "chainName": "Robinhood Chain"

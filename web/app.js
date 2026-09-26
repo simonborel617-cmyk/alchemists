@@ -529,9 +529,12 @@
     return st.logs;
   }
   // ------------------------------------------------------------ the network: its numbers, a day of charts, the latest finds
-  // Retarget events carry every window's measured hashrate, threshold and finds; Submitted events count finds and
-  // miners; Mined and KeyMined events feed the list of finds. Block times come from a sample of blocks, the rest
-  // interpolated between them.
+  // Retarget events (one a window, a few hundred a day) carry every window's measured hashrate, threshold and finds:
+  // they draw the day and count its finds. Submitted events of the last hour count the miners; Mined events of the last
+  // ten minutes and KeyMined events of the day feed the list of finds. A day of Submitted and Mined events would be tens
+  // of thousands of logs a visit at today's pace, which the log node rate-limits. Each scan stands on its own: one that
+  // fails leaves its numbers blank while the contract's own numbers still show. Block times come from a sample of
+  // blocks, the rest interpolated between them.
   const blockTimes = new Map(), net = { rate: null, winEnd: 0, bits: 0, ema: 0, gen: 0 };
   async function blockRate(latest) {
     if (net.rate && Date.now() - net.rate.at < 600e3) return net.rate.v;
@@ -563,18 +566,21 @@
     const wsec = now < netGenesis + Number(cfg.firstHourSec) ? Number(cfg.windowSecEarly) : Number(cfg.windowSec);
     const m = Math.floor(now / sessionSec);
     const [ema, tQ8, wStart, wMints, sub, unlocked, kW3, mt] = await Promise.all([mine.emaHashrate(), mine.tQ8(), mine.windowStart(), mine.windowMints(), mine.submittedTotal(), mine.unlockedTier(), mine.kWindow3(wsec), mine.minuteThreshold(m).catch(() => 0n)]);
-    const rate = await blockRate(latest), from24 = Math.max(dep.block || 0, Math.floor(latest.number - rate * 86400 * 1.05));
-    const [rts, subs, mined, keysM] = await Promise.all([
-      eventsSince("net:retarget", mine, mine.filters.Retarget(), from24), eventsSince("net:submitted", mine, mine.filters.Submitted(), from24),
-      eventsSince("net:mined", mine, mine.filters.Mined(), from24), eventsSince("net:keys", mine, mine.filters.KeyMined(), from24),
+    const rate = await blockRate(latest), back = (sec) => Math.max(dep.block || 0, Math.floor(latest.number - rate * sec * 1.05));
+    const scans = await Promise.allSettled([
+      eventsSince("net:retarget", mine, mine.filters.Retarget(), back(86400)), eventsSince("net:submitted", mine, mine.filters.Submitted(), back(3600)),
+      eventsSince("net:mined", mine, mine.filters.Mined(), back(600)), eventsSince("net:keys", mine, mine.filters.KeyMined(), back(86400)),
     ]);
-    const feed = [...mined.slice(-14), ...keysM.slice(-4)];
-    const timeOf = await timesOf([...rts, ...subs.slice(-300), ...feed].map((l) => l.blockNumber), latest);
+    const [rts, subs, mined, keysM] = scans.map((s) => (s.status === "fulfilled" ? s.value : null));
+    for (const s of scans) if (s.status === "rejected") log("network: a log scan failed, it retries in a minute (" + String((s.reason && (s.reason.shortMessage || s.reason.message)) || s.reason).slice(0, 80) + ")", "warn");
+    const feed = [...(mined || []).slice(-14), ...(keysM || []).slice(-4)];
+    const timeOf = await timesOf([...(rts || []), ...(subs || []).slice(-300), ...feed].map((l) => l.blockNumber), latest);
     return {
+      logs: { rts: !!rts, subs: !!subs, feed: !!mined },
       now, wsec, ema: Number(ema), bits: (Number(mt) || Number(tQ8)) / 256, winStart: Number(wStart), winMints: Number(wMints), target: Number(kW3) / 1000, sub: Number(sub), unlocked: Number(unlocked),
       floor: Number(cfg.floorBitsQ8) / 256, ceil: Number(cfg.ceilBitsQ8) / 256, unlock: cfg.unlockFinds.map(Number),
-      rts: rts.map((l) => ({ t: timeOf(l.blockNumber), h: Number(l.args.hashrate), bits: Number(l.args.tQ8) / 256, mints: Number(l.args.mints) })),
-      subs: subs.map((l) => ({ t: timeOf(l.blockNumber), who: l.args.miner })),
+      rts: (rts || []).map((l) => ({ t: timeOf(l.blockNumber), h: Number(l.args.hashrate), bits: Number(l.args.tQ8) / 256, mints: Number(l.args.mints) })),
+      subs: (subs || []).map((l) => ({ t: timeOf(l.blockNumber), who: l.args.miner })),
       feed: feed.map((l) => ({ t: timeOf(l.blockNumber), block: l.blockNumber, who: l.args.miner, key: l.eventName === "KeyMined", tier: l.args.tier !== undefined ? Number(l.args.tier) : 6, type: l.args.typeId !== undefined ? Number(l.args.typeId) : -1, up: !!l.args.upgraded, keyIndex: l.args.keyIndex !== undefined ? Number(l.args.keyIndex) : -1 })),
     };
   }
@@ -595,9 +601,12 @@
     $("nDiff").innerHTML = `${d.bits.toFixed(2)} <small>bits</small>`;
     $("nDiffSub").textContent = `≈ ${fmtBig(Math.pow(2, d.bits))} hashes a find · corridor ${d.floor}–${d.ceil}`;
     net.winEnd = d.winStart + d.wsec; net.winMints = d.winMints; net.target = d.target; net.bits = d.bits; net.ema = d.ema; net.floor = d.floor; net.ceil = d.ceil;
+    const lg = d.logs || { rts: true, subs: true, feed: true };
     const miners = new Set(d.subs.filter((x) => x.t >= hour).map((x) => x.who.toLowerCase()));
-    $("nMiners").textContent = miners.size; $("nMinersSub").textContent = `${d.subs.filter((x) => x.t >= hour).length} finds submitted in the hour`;
-    $("nFinds").textContent = d.subs.filter((x) => x.t >= day).length.toLocaleString("en"); $("nFindsSub").textContent = `${d.sub.toLocaleString("en")} since mining began`;
+    $("nMiners").textContent = lg.subs ? miners.size : "–"; $("nMinersSub").textContent = lg.subs ? `${d.subs.filter((x) => x.t >= hour).length} finds submitted in the hour` : "reading the chain, a moment";
+    // the day's finds: every closed window of the day plus the open one
+    const dayFinds = d.rts.filter((r) => r.t >= day).reduce((s, r) => s + r.mints, 0) + (d.winMints || 0);
+    $("nFinds").textContent = lg.rts ? dayFinds.toLocaleString("en") : "–"; $("nFindsSub").textContent = `${d.sub.toLocaleString("en")} since mining began`;
     netTick();
     // charts
     if (window.AlchChart) {
@@ -624,7 +633,7 @@
     // the latest finds, newest first
     const mineSet = new Set([me, burner && burner.address, main && main.address].filter(Boolean).map((a) => a.toLowerCase()));
     const items = d.feed.sort((a, b) => b.block - a.block).slice(0, 14);
-    $("nFeed").innerHTML = items.length ? items.map((f) => { const self = mineSet.has(String(f.who).toLowerCase()); return `<li class="${f.key ? "key " : ""}${self ? "me" : ""}" style="--tc:${TC[f.tier]}"><span class="who">${self ? "you" : short(f.who)}</span><span class="what">${f.key ? `MYTHIC KEY · ${names.keys[f.keyIndex] ? names.keys[f.keyIndex].key : ""}` : `${TIERS[f.tier]} ${names.types[f.type] || ""}${f.up ? " · upgraded" : ""}`}</span><span class="ago">${ago(d.now - f.t)}</span></li>`; }).join("") : `<li class="none">No finds in the last 24 hours.</li>`;
+    $("nFeed").innerHTML = items.length ? items.map((f) => { const self = mineSet.has(String(f.who).toLowerCase()); return `<li class="${f.key ? "key " : ""}${self ? "me" : ""}" style="--tc:${TC[f.tier]}"><span class="who">${self ? "you" : short(f.who)}</span><span class="what">${f.key ? `MYTHIC KEY · ${names.keys[f.keyIndex] ? names.keys[f.keyIndex].key : ""}` : `${TIERS[f.tier]} ${names.types[f.type] || ""}${f.up ? " · upgraded" : ""}`}</span><span class="ago">${ago(d.now - f.t)}</span></li>`; }).join("") : `<li class="none">${lg.feed ? "No finds in the last ten minutes." : "Reading the latest finds, a moment."}</li>`;
   }
   // every second: the window countdown and the odds of this browser's miner
   function netTick() {

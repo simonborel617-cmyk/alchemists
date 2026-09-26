@@ -22,9 +22,11 @@ const RPCS = {
 // LOG_RPCS only, in order, and their eth_blockNumber tries LOG_RPCS first; nonces, gas estimates, writes and receipts
 // keep the order of `rpcs`. The official nodes take getLogs over any range. publicnode caps it at 50,000 blocks on
 // testnet (the scan splits its range) and on mainnet serves recent blocks only (older ones need a paid token); ordofi
-// takes ranges of about 100 blocks. So on mainnet the official node is the only log node (checked 2026-09-26).
+// takes ranges of up to 5,000 blocks. On mainnet the official node comes first; ordofi is the fallback while the
+// official node rate-limits a visitor (its 429 carries a CORS header browsers reject, so the page sees a network error
+// and fails over; checked 2026-09-26).
 const READ_RPCS = { robinhood: ["https://robinhood-rpc.publicnode.com"], robinhoodTestnet: ["https://robinhood-sepolia-rpc.publicnode.com"] };
-const LOG_RPCS = { robinhood: ["https://rpc.mainnet.chain.robinhood.com"], robinhoodTestnet: ["https://rpc.testnet.chain.robinhood.com/rpc", "https://robinhood-sepolia-rpc.publicnode.com"] };
+const LOG_RPCS = { robinhood: ["https://rpc.mainnet.chain.robinhood.com", "https://rpc.ordofi.network"], robinhoodTestnet: ["https://rpc.testnet.chain.robinhood.com/rpc", "https://robinhood-sepolia-rpc.publicnode.com"] };
 const rpcs = RPCS[net] || RPCS.robinhoodTestnet, readRpcs = READ_RPCS[net] || [];
 const explorer = net === "robinhood" ? "https://robinhoodchain.blockscout.com" : "https://explorer.testnet.chain.robinhood.com";
 fs.writeFileSync(path.join(root, "web", "deployment.json"), JSON.stringify({ ...dep, rpc: rpcs[0], rpcs, readRpcs, logRpcs: LOG_RPCS[net] || [], explorer, chainName: net === "robinhood" ? "Robinhood Chain" : "Robinhood Chain Testnet" }, null, 2));
