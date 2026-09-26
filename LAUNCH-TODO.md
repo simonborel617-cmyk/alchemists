@@ -16,7 +16,8 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
 - **Keeper.** Rotates RPCs after three failed rounds, logs balance and days left. `scripts/watch.js` alerts (Telegram
   or ntfy) on unticked minutes, low keeper balance, a pause, no RPC. VPS kit in `deploy/vps/`, Windows stopgap
   `scripts/run-keeper.ps1 -Net robinhood` and `scripts/run-watch.ps1 -Net robinhood`.
-- **Site.** Mainnet RPCs answer the browser with CORS (publicnode, the official one, ordofi); explorer links go to
+- **Site.** Mainnet RPCs answer the browser with CORS (publicnode, the official one, ordofi; only the official one serves
+  log scans); explorer links go to
   https://robinhoodchain.blockscout.com; the stream claim estimates gas and splits big racks.
 - **Miner.** Default network is mainnet, README points at `robinhood.json`, `scripts/release-miner.ps1` builds the
   release folder after the deploy.
@@ -33,7 +34,7 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
   testnet); souls weigh 1/4/16/64/256 by rank, named 512, with founders per rank from Adept; seats 3014/1111/833/555/21 +
   21 named; the Kettle pays rent every hour (40 % brew to the Safe, 60 % steam, 1/24 of the pot an hour). Third and fourth
   internal reviews in `SECURITY-REVIEW.md`. 86 tests. Still to do: testnet v13 with the Kettle, keeper box re-push.
-- **The Safe is 2-of-2.** Losing either key loses it: add a third owner before real money lands there.
+- **The Safe is 2-of-2** (owner's decision 2026-09-26: no third owner). Losing either key loses it: keep both seeds on paper in two places.
 
 ## Needed from the owner before the deploy
 
@@ -63,7 +64,8 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
 3. `NET=robinhood node scripts/verify-launch.js`: "all checks passed".
 4. Push `deployments/robinhood.json` to both boxes, start the keeper on box A and the watcher on box B
    (`keeper-box/README.md`), `--test-alert` arrives. The first tick opens the first minute.
-5. `node scripts/build-web.js robinhood`, commit, push: the site switches to mainnet in 1-2 minutes. One submit from
+5. `node scripts/build-web.js robinhood` (it also points the RPC preconnect in `web/index.html` at the mainnet read
+   node), commit, push: the site switches to mainnet in 1-2 minutes. One submit from
    the site with a small session wallet to see a find land.
 6. `scripts/release-miner.ps1 -Version v1.0.0`, review the folder, publish the release.
 7. The launch post.
@@ -73,8 +75,9 @@ Status on 2026-09-24. `RUNBOOK.md` has the order of operations; this file is wha
 
 - `www.alchemist-mine.com` does not resolve: add it as a second custom domain of the Worker in Cloudflare.
 - Contract verification on the explorer after the deploy (owner's decision).
-- A dedicated RPC endpoint later, as the first entry of `RPCS.robinhood` in `scripts/build-web.js` and `RPC_URLS` of
-  the keeper.
+- A dedicated RPC endpoint later: in `scripts/build-web.js` first in `RPCS.robinhood` (writes, nonces, receipts, what
+  wallets are offered) and, to take the reads and the log scans too, first in `READ_RPCS.robinhood` and
+  `LOG_RPCS.robinhood` (log scans go to `LOG_RPCS` only); and in `RPC_URLS` of the keeper.
 - Testnet: the keeper wallet has been empty since 2026-09-23 18:47 UTC; testnet v11 still runs the Stream from before
   the fixes. A v12 testnet deploy of the fixed code is possible any time (it would replace the test kit on wallet 414).
 - The gas subsidy in Robinhood Wallet ends on 2026-09-29.

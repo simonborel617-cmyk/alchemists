@@ -1,5 +1,5 @@
 // Mining stage: a pixel scene of the brew that follows the browser miner. The scene is a sprite sheet cut from a
-// generated clip (img/stage-sprite.png: cell 0 the cold cauldron for idle, cells 1..N the boiling loop, played
+// generated clip (img/stage-sprite.webp, lossless: cell 0 the cold cauldron for idle, cells 1..N the boiling loop, played
 // ping-pong) with the brew tint, embers, vials, smoke and the reveal drawn by code on top; the still (img/stage-1.png)
 // stands in while the sheet loads, and `?stage=hybrid` keeps the older still-plus-code renderer for comparison.
 //
@@ -29,8 +29,8 @@
   g.imageSmoothingEnabled = false;
   const hud = { cap: el.querySelector(".cap"), bits: el.querySelector(".bits"), labels: el.querySelector(".labels") };
   const bg = new Image(); bg.src = cfg.src;
-  const SPRITE_VER = "5"; // bump when the sheet is rebuilt: /img/* is cached for a day
-  const sprite = new Image(); if (mode === "sprite") sprite.src = `img/stage-sprite.png?v=${SPRITE_VER}`;
+  const SPRITE_VER = "6"; // bump when the sheet is rebuilt: /img/* is cached for a day
+  const sprite = new Image(); if (mode === "sprite") sprite.src = `img/stage-sprite.webp?v=${SPRITE_VER}`;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   // drawn sprites for the rack vials and the gauge tube (scripts/stage-ui.py); the code shapes below are the fallback
   const UI_VER = "1";
@@ -200,16 +200,23 @@
     if (hud.labels.innerHTML) hud.labels.innerHTML = "";
   };
 
-  let last = 0;
+  // frames are drawn only while the scene is on screen in a shown tab; the observer and a returning tab restart the loop
+  let last = 0, seen = true, raf = 0;
   const loop = (t) => {
-    requestAnimationFrame(loop);
-    if (document.hidden) return;
+    raf = 0;
+    if (document.hidden || !seen) return;
+    raf = requestAnimationFrame(loop);
     if (t - last < 1000 / FPS) return;
     last = t;
     if (!reduce) update();
     draw();
   };
-  requestAnimationFrame(loop);
+  const wake = () => { if (!raf && seen && !document.hidden) raf = requestAnimationFrame(loop); };
+  // in sight means below the sticky header (fx.js keeps that watch); a plain observer if fx.js is missing
+  if (window.AlchInView) AlchInView(el, (v) => { seen = v; wake(); });
+  else if (window.IntersectionObserver) new IntersectionObserver((es) => { seen = es[es.length - 1].isIntersecting; wake(); }).observe(el);
+  document.addEventListener("visibilitychange", wake);
+  wake();
 
   // ---------------------------------------------------------------- reveal card: the only place a tier is shown
   const showReveal = (d) => {

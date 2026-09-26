@@ -36,7 +36,9 @@ Order of operations and checks. None of this is automated on purpose: every step
    for a draft release of `alchemists-miner`, with the README covering the preimage, the `miners.txt` format, the submit price and the rule
    "one address, one submit per minute". The mainnet `deployments/robinhood.json` ships with the release.
 8. **RPC.** A dedicated RPC endpoint for the dapp: the public one stalls on large batches and its rate-limit page breaks
-   CORS in browsers.
+   CORS in browsers. In `scripts/build-web.js` it goes first in `RPCS.robinhood` (writes, nonces, receipts, and what
+   wallets are offered) and, to take the reads and the log scans too, first in `READ_RPCS.robinhood` and
+   `LOG_RPCS.robinhood` (log scans go to `LOG_RPCS` only).
 
 ## Launch day
 
@@ -51,7 +53,8 @@ Order of operations and checks. None of this is automated on purpose: every step
    and Alchemists paused, constants as in the profile. It must end with "all
    checks passed". The explorer is https://robinhoodchain.blockscout.com (explorer.mainnet.chain.robinhood.com redirects
    there but drops the path).
-3. `node scripts/build-web.js robinhood`, publish `web/`, open it, make sure the mine is read and the session is running.
+3. `node scripts/build-web.js robinhood` (it also points the RPC preconnect in `web/index.html` at the mainnet read
+   node), publish `web/`, open it, make sure the mine is read and the session is running.
 4. Push the bundle (`bash keeper-box/push.sh root@BOX robinhood`: keeper, watcher, four ABIs, the deployment record),
    start the keeper and the watcher on the boxes (`systemctl enable --now alchemists-keeper alchemists-watch`), then
    `node scripts/watch.js --test-alert` to see the alert arrive. The first tick opens the first minute; after that

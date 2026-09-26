@@ -93,7 +93,23 @@
   // the workshop: a steady light while a craft is sealed, a blinking one once it waits only for the player's reveal
   watch($("wsNav"), () => { const w = $("wsNav"), due = +(w.dataset.due || 0), sealed = +(w.dataset.sealed || 0); ws.classList.toggle("show", due + sealed > 0); ws.classList.toggle("pulse", due > 0); ws.parentElement.title = due ? `${due} craft${due > 1 ? "s" : ""} ready to reveal` : sealed ? `${sealed} craft${sealed > 1 ? "s" : ""} sealed, the next minute decides` : ""; });
 
+  // the endless CSS loops (gem glow, cauldron bubbles, the floating soul, blinking marks) pause in a panel off screen:
+  // Chrome keeps ticking and repainting them otherwise, 60 times a second, wherever the reader is. A panel under the
+  // sticky header is off screen too (fx.js keeps that watch; a plain observer if fx.js is missing)
+  const panels = document.querySelectorAll(".hero, main .panel, .band");
+  if (window.AlchInView) panels.forEach((el) => AlchInView(el, (v) => el.classList.toggle("offscreen", !v)));
+  else if (window.IntersectionObserver) {
+    const io = new IntersectionObserver((es) => { for (const e of es) e.target.classList.toggle("offscreen", !e.isIntersecting); });
+    panels.forEach((el) => io.observe(el));
+  }
   setOffset(); spy();
   // a link that opened the page on a section (#ws) lands under the header, not behind it
   if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) setTimeout(() => { setOffset(); t.scrollIntoView({ block: "start" }); spy(); }, 300); }
+
+  // the engine-room band art is far below the first screen: it loads once the band comes within 1200 px
+  const band = document.querySelector(".band .art");
+  if (band) {
+    if (!window.IntersectionObserver) band.classList.add("in");
+    else { const bo = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { band.classList.add("in"); bo.disconnect(); } }, { rootMargin: "1200px 0px" }); bo.observe(band); }
+  }
 })();

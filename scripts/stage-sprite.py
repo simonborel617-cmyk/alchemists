@@ -84,6 +84,12 @@ for k, c in enumerate(cells):
 out = os.path.join(root, a.out)
 sheet.save(out, optimize=True)
 print(f"wrote {out}: {len(cells)} cells of {W}x{H} (cell 0 = the clip's first frame), {os.path.getsize(out)} bytes, sampled {idx}")
+# the page loads the sheet as lossless WebP (about 71 % smaller); it must decode to exactly the same pixels
+webp = os.path.splitext(out)[0] + ".webp"
+rgb = sheet.convert("RGB")
+rgb.save(webp, "WEBP", lossless=True, quality=100, method=6)
+assert Image.open(webp).convert("RGB").tobytes() == rgb.tobytes(), "the WebP sheet differs from the PNG"
+print(f"wrote {webp}: {os.path.getsize(webp)} bytes (lossless; bump SPRITE_VER in web/stage.js)")
 prev = Image.new("RGB", (W * 3 * 3 + 12, H * 3), (0, 0, 0))
 for k, c in enumerate([cells[0], cells[len(cells) // 2], cells[-1]]):
     prev.paste(c.resize((W * 3, H * 3), Image.NEAREST), (k * (W * 3 + 6), 0))

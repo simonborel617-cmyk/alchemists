@@ -17,9 +17,13 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@alchemistmine">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- the read RPC ("readRpcs" in deployment.json): scripts/build-web.js sets this href for the network it builds -->
+<link rel="preconnect" href="https://robinhood-sepolia-rpc.publicnode.com" crossorigin data-rpc>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache">
-<link rel="stylesheet" href="style.css?v=39">
+<link rel="stylesheet" href="style.css?v=40">
+<link rel="preload" href="img/hero-sigil.webp" as="image" fetchpriority="high">
 </head>
 <body data-app="8">
 <header>
@@ -212,12 +216,12 @@
     <p class="small" id="wsWhoNote" style="margin:0 0 12px">The workshop uses the items of the wallet chosen here and that wallet signs every craft. Connect your wallet to work as it; move loot between the two with the button in the inventory.</p>
     <div class="ws">
       <nav class="ws-nav" id="wsNav">
-        <button data-st="potion" class="on"><img class="px" src="img/potion.png" alt=""><span>Potion</span></button>
-        <button data-st="furnace"><img class="px" src="img/furnace-1.png" alt="" id="navFurImg"><span>Furnace</span></button>
-        <button data-st="refine"><img class="px" src="img/furnace-2.png" alt=""><span>Refining</span></button>
-        <button data-st="reroll"><img class="px" src="img/crucible.png" alt=""><span>Crucible</span></button>
-        <button data-st="item"><img class="px" src="metadata/2001.png" alt="" id="navItImg"><span>Ritual table</span></button>
-        <button data-st="soul"><img class="px" src="metadata/souls/5.png" alt=""><span>Soul</span></button>
+        <button data-st="potion" class="on"><img class="px" src="img/potion.png" alt="" loading="lazy" decoding="async"><span>Potion</span></button>
+        <button data-st="furnace"><img class="px" src="img/furnace-1.png" alt="" id="navFurImg" loading="lazy" decoding="async"><span>Furnace</span></button>
+        <button data-st="refine"><img class="px" src="img/furnace-2.png" alt="" loading="lazy" decoding="async"><span>Refining</span></button>
+        <button data-st="reroll"><img class="px" src="img/crucible.png" alt="" loading="lazy" decoding="async"><span>Crucible</span></button>
+        <button data-st="item"><img class="px" src="metadata/2001.png" alt="" id="navItImg" loading="lazy" decoding="async"><span>Ritual table</span></button>
+        <button data-st="soul"><img class="px" src="metadata/souls/5.png?v=2" alt="" loading="lazy" decoding="async"><span>Soul</span></button>
       </nav>
       <div class="ws-body">
         <div class="st on" id="st-potion">
@@ -265,11 +269,11 @@
           <div class="pend" id="pd-item" style="display:none"></div>
         </div>
         <div class="st" id="st-soul">
-          <div class="st-head"><img class="px" src="metadata/souls/5.png" alt="" id="soulImg"><div><h3>The soul <span class="tag" id="soulCount"></span></h3><p>The closing rite of the opening act. Eight ritual items on eight pedestals are sealed into a soul: five required, three enhancers, a mythic key in the slot of its kind. Sealing is free. The soul carries the Cauldron's stream until the alchemist is summoned from it, by the weight of its rank: Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named soul 512; the first hundred of every rank from Adept up weigh up to twice as much. There will never be more than 21 Archmages and 21 named souls.</p></div></div>
+          <div class="st-head"><img class="px" src="metadata/souls/5.png?v=2" alt="" id="soulImg"><div><h3>The soul <span class="tag" id="soulCount"></span></h3><p>The closing rite of the opening act. Eight ritual items on eight pedestals are sealed into a soul: five required, three enhancers, a mythic key in the slot of its kind. Sealing is free. The soul carries the Cauldron's stream until the alchemist is summoned from it, by the weight of its rank: Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named soul 512; the first hundred of every rank from Adept up weigh up to twice as much. There will never be more than 21 Archmages and 21 named souls.</p></div></div>
           <div class="altar" id="altar">
             <div class="altar-ring" id="altarRing"></div>
             <div class="altar-core" id="altarCore">
-              <img class="px" src="metadata/souls/1.png" alt="" id="altarSoul">
+              <img class="px" src="metadata/souls/1.png?v=2" alt="" id="altarSoul">
               <div class="altar-rank" id="altarRank">Apprentice</div>
               <div class="altar-num" id="altarNum">soul #1 if sealed now</div>
             </div>
@@ -307,7 +311,7 @@
     <section class="panel" id="cauldron">
       <h2>The Cauldron <span class="tag">treasury</span></h2>
       <div class="cauldron">
-        <span class="pot"><img class="px" src="img/cauldron.png" alt=""><i style="left:44px;top:42px;animation-delay:0s"></i><i style="left:62px;top:48px;animation-delay:.7s"></i><i style="left:78px;top:40px;animation-delay:1.4s"></i></span>
+        <span class="pot"><img class="px" src="img/cauldron.png" alt="" loading="lazy" decoding="async"><i style="left:44px;top:42px;animation-delay:0s"></i><i style="left:62px;top:48px;animation-delay:.7s"></i><i style="left:78px;top:40px;animation-delay:1.4s"></i></span>
         <div>
           <div class="big" id="treasury">–</div>
           <p>All ether from submits boils in the Kettle. Every hour 40 % of it thickens here, in the Cauldron, for the ritual of the Philosopher's Stone, and 60 % rises as steam: a twenty-fourth of the Kettle drips to the souls each hour, split by weight. The mine, the workshop and the souls are the opening act; every line of it leads to the ritual. What the ritual asks for, and what the Stone is, is not written anywhere yet.</p>
@@ -334,17 +338,17 @@
   </div>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
 <script src="sha256.js?v=13"></script>
 <script src="gpu.js?v=13"></script>
-<script src="fx.js?v=15"></script>
-<script src="rpc.js?v=4"></script>
+<script src="fx.js?v=16"></script>
+<script src="rpc.js?v=5"></script>
 <script src="charts.js?v=1"></script>
-<script src="stage.js?v=12"></script>
+<script src="stage.js?v=13"></script>
 <script src="rite.js?v=2"></script>
 <script src="reveal.js?v=3"></script>
-<script src="workshop.js?v=5"></script>
-<script src="app.js?v=43"></script>
-<script src="nav.js?v=3"></script>
+<script src="workshop.js?v=6"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<script src="app.js?v=44"></script>
+<script src="nav.js?v=4"></script>
 </body>
 </html>

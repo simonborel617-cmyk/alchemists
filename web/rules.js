@@ -1,4 +1,4 @@
-// Rules page: static explanations plus the live tunables read from the contracts (batched small, chunked, cached like the dapp).
+// Rules page: static explanations plus the live tunables read from the contracts (one Multicall3 call, like the dapp).
 (async () => {
   const $ = (id) => document.getElementById(id);
   const TIERS = ["", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"];
@@ -8,31 +8,33 @@
   const fmtHs = (h) => h >= 1e12 ? `${(h / 1e12).toFixed(1)} TH/s` : h >= 1e9 ? `${(h / 1e9).toFixed(1)} GH/s` : h >= 1e6 ? `${(h / 1e6).toFixed(0)} MH/s` : `${h} H/s`;
   let names = null;
   try {
-    names = await (await fetch("./names.json", { cache: "no-cache" })).json();
-    const dep = await (await fetch("./deployment.json", { cache: "no-cache" })).json();
-    const abi = {};
-    for (const n of ["Mine", "Workshop"]) abi[n] = await (await fetch(`./abi/${n}.json`, { cache: "no-cache" })).json();
-    const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId);
+    const get = (u) => fetch(u, { cache: "no-cache" }).then((r) => r.json());
+    const [n0, dep, mineAbi, wsAbi] = await Promise.all([get("./names.json"), get("./deployment.json"), get("./abi/Mine.json"), get("./abi/Workshop.json")]);
+    names = n0;
+    const abi = { Mine: mineAbi, Workshop: wsAbi };
+    const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId, { readUrls: dep.readRpcs || [], logUrls: dep.logRpcs || [] });
     const mine = new ethers.Contract(dep.contracts.Mine, abi.Mine, provider);
     const ws = new ethers.Contract(dep.contracts.Workshop, abi.Workshop, provider);
     $("src").textContent = `Values read live from ${dep.chainName}: Mine ${dep.contracts.Mine}, Workshop ${dep.contracts.Workshop}.`;
 
-    // sequential chunks of 8 reads: the public RPC dislikes bursts
+    // every read in one Multicall3 call (one request: the public RPC dislikes bursts), retried while a read without a
+    // default fails; tasks are [key, [contract, fn, args], default for a read that may revert]
     const N = (x) => Number(x);
     const tasks = [];
-    tasks.push(["cfg", () => mine.config()], ["inputs", () => ws.refineInputs().then(N)], ["cooldown", () => ws.furnaceCooldown().then(N)], ["bonus", () => ws.furnaceBonus().then(N)],
-      ["upPct", () => ws.rerollUpPct().then(N)], ["up2", () => ws.rerollUp2PerMille().then(N)], ["craftUp", () => ws.craftUpgradePct().then(N)], ["outAny", () => ws.rerollOutAny().then(N).catch(() => 5)]);
-    for (let i = 0; i < 4; i++) tasks.push([`refineSuccess.${i}`, () => ws.refineSuccess(i).then(N)]);
-    for (let i = 0; i < 5; i++) { tasks.push([`rerollOut.${i}`, () => ws.rerollOutCategory(i).then(N)], [`rerollDown.${i}`, () => ws.rerollDown(i).then(N)], [`keyChance.${i}`, () => ws.keyChance(i).then(N)], [`F.${i}`, () => ws.furnaceRecipe(i).then(N)]); }
-    for (let k = 0; k < 8; k++) for (let c = 0; c < 5; c++) tasks.push([`R.${k}.${c}`, () => ws.itemRecipe(k, c).then(N)]);
-    const v = {};
-    for (let i = 0; i < tasks.length; i += 8) {
-      const chunk = tasks.slice(i, i + 8);
-      let vals = null;
-      for (let a = 0; a < 4 && !vals; a++) { try { vals = await Promise.all(chunk.map((t) => t[1]())); } catch { await new Promise((r) => setTimeout(r, 1500 * (a + 1))); } }
-      if (!vals) throw new Error("RPC keeps failing");
-      chunk.forEach(([k], j) => { v[k] = vals[j]; });
+    tasks.push(["cfg", [mine, "config", []]], ["inputs", [ws, "refineInputs", []]], ["cooldown", [ws, "furnaceCooldown", []]], ["bonus", [ws, "furnaceBonus", []]],
+      ["upPct", [ws, "rerollUpPct", []]], ["up2", [ws, "rerollUp2PerMille", []]], ["craftUp", [ws, "craftUpgradePct", []]], ["outAny", [ws, "rerollOutAny", []], 5]);
+    for (let i = 0; i < 4; i++) tasks.push([`refineSuccess.${i}`, [ws, "refineSuccess", [i]]]);
+    for (let i = 0; i < 5; i++) { tasks.push([`rerollOut.${i}`, [ws, "rerollOutCategory", [i]]], [`rerollDown.${i}`, [ws, "rerollDown", [i]]], [`keyChance.${i}`, [ws, "keyChance", [i]]], [`F.${i}`, [ws, "furnaceRecipe", [i]]]); }
+    for (let k = 0; k < 8; k++) for (let c = 0; c < 5; c++) tasks.push([`R.${k}.${c}`, [ws, "itemRecipe", [k, c]]]);
+    let got = null;
+    for (let a = 0; a < 4 && !got; a++) {
+      const r = await AlchRpc.multicall(provider, tasks.map((t) => t[1]), { address: dep.multicall3 });
+      if (r.every((x, j) => x !== null || tasks[j][2] !== undefined)) got = r;
+      else await new Promise((res) => setTimeout(res, 1500 * (a + 1)));
     }
+    if (!got) throw new Error("RPC keeps failing");
+    const v = {};
+    tasks.forEach(([k, , d], j) => { const x = got[j]; v[k] = k === "cfg" ? x : Number(x ?? d); });
     const cfg = v.cfg;
     const floorB = N(cfg.floorBitsQ8) / 256, ceilB = N(cfg.ceilBitsQ8) / 256;
     $("r-corridor").textContent = `${floorB} … ${ceilB} bits`;

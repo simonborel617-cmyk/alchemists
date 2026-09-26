@@ -3,6 +3,29 @@
 (() => {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // --- in sight or not, for the loops that pause off screen (here, stage.js, workshop.js, nav.js):
+  //   AlchInView(el, fn) -> fn(inSight) once and on every change
+  // The sticky header covers the top of the window, so the watched area starts under it (a phone scrolls the header
+  // away and the whole window counts); the observer is rebuilt when the header changes height (a wrapped row, the web
+  // font arriving, the phone layout).
+  window.AlchInView = (() => {
+    if (!window.IntersectionObserver) return (el, fn) => setTimeout(() => fn(true));
+    const header = document.querySelector("header"), subs = new Map();
+    let io = null, cover = -1;
+    const build = () => {
+      const c = header && getComputedStyle(header).position === "sticky" ? header.offsetHeight : 0;
+      if (c === cover) return;
+      cover = c;
+      if (io) io.disconnect();
+      io = new IntersectionObserver((es) => { for (const e of es) for (const fn of subs.get(e.target) || []) fn(e.isIntersecting); }, { rootMargin: `${-c}px 0px 0px 0px` });
+      for (const el of subs.keys()) io.observe(el);
+    };
+    build();
+    if (header && window.ResizeObserver) new ResizeObserver(build).observe(header);
+    addEventListener("resize", build);
+    return (el, fn) => { subs.set(el, [...(subs.get(el) || []), fn]); io.unobserve(el); io.observe(el); };
+  })();
+
   // --- embers over the hero art
   const art = document.querySelector(".hero .art");
   if (art && !reduce) {
@@ -31,10 +54,13 @@
     });
     const P = [];
     for (let i = 0; i < 26; i++) { const p = spawn({}); p.life = Math.random(); P.push(p); }
-    let last = 0;
+    // the loop runs only while the hero is on screen and the tab is shown; the observer and a returning tab restart it
+    let last = 0, seen = true, raf = 0;
     const frame = (t) => {
-      requestAnimationFrame(frame);
-      if (document.hidden || t - last < 45) return;
+      raf = 0;
+      if (document.hidden || !seen) return;
+      raf = requestAnimationFrame(frame);
+      if (t - last < 45) return;
       last = t;
       ctx.clearRect(0, 0, W, H);
       // flickering fire glow, drawn here so it always sits on the fire whatever the box size
@@ -54,7 +80,10 @@
       }
       ctx.globalAlpha = 1;
     };
-    requestAnimationFrame(frame);
+    const wake = () => { if (!raf && seen && !document.hidden) raf = requestAnimationFrame(frame); };
+    AlchInView(art, (v) => { seen = v; wake(); });
+    document.addEventListener("visibilitychange", wake);
+    wake();
   }
 
   // --- sparkles on new loot cards

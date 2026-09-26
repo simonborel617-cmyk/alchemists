@@ -157,12 +157,16 @@ names both exist, so the ERC-1155 `{id}` convention and plain decimal clients bo
 
 ## RPC
 
-The dapp talks to the chain through the public endpoints listed in `web/deployment.json` (`rpcs`, written by
-`scripts/build-web.js`; only endpoints that answer browser requests with CORS headers belong there). `web/rpc.js` wraps
-them: requests go to the first endpoint, and a network error, a rate limit, a 5xx or a 12 s timeout demotes it for a
-minute and retries the request on the next one, so a burst of parallel reads survives one outage. Reverts and JSON-RPC
-errors from the node are answers, not outages, and are not retried. Batches stay at 8 calls per request because the
-public nodes stall on large ones. The first endpoint is also what a wallet gets when the site adds the chain.
+The dapp talks to the chain through the public endpoints listed in `web/deployment.json`, written by
+`scripts/build-web.js` (only endpoints that answer browser requests with CORS headers belong there). `web/rpc.js` wraps
+them with an endpoint order per method: plain reads (`eth_call`, balances, blocks) try `readRpcs` first, log scans go to
+`logRpcs` only (the nodes that serve `eth_getLogs` over long ranges) and their `eth_blockNumber` tries `logRpcs` first,
+and nonces, gas estimates, writes and receipts follow `rpcs`. A network error, a rate limit, a 5xx or a 25 s timeout
+demotes an endpoint for a minute and retries the request on the next one of that order, so a burst of parallel reads
+survives one outage. Reverts, a node's JSON-RPC error on a call or an estimate, and a log node refusing a range are
+answers, not outages, and are not retried elsewhere (a log scan asks for smaller ranges instead). Batches stay at 8 calls
+per request because the public nodes stall on large ones. The first entry of `rpcs` is also what a wallet gets when the
+site adds the chain, and `build-web.js` points the RPC preconnect in `web/index.html` at the first read node.
 
 ## Metadata and art
 

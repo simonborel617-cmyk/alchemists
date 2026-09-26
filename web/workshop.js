@@ -1124,7 +1124,9 @@ window.AlchWS = (() => {
       this.cv = document.createElement("canvas"); host.appendChild(this.cv); this.ctx = this.cv.getContext("2d");
       this.cv.addEventListener("click", () => { if (this.E) this.E.skip = true; }); // a click skips what is playing
       if (window.ResizeObserver) new ResizeObserver(() => this.fit()).observe(host);
-      if (window.IntersectionObserver) new IntersectionObserver((es) => { this.seen = es[es.length - 1].isIntersecting; this.wake(); }).observe(host); else this.seen = true;
+      // in sight means below the sticky header (fx.js keeps that watch); a plain observer if fx.js is missing
+      if (window.AlchInView) AlchInView(host, (v) => { this.seen = v; this.wake(); });
+      else if (window.IntersectionObserver) new IntersectionObserver((es) => { this.seen = es[es.length - 1].isIntersecting; this.wake(); }).observe(host); else this.seen = true;
       document.addEventListener("visibilitychange", () => this.wake());
       this.fit();
     }
@@ -1138,7 +1140,7 @@ window.AlchWS = (() => {
     rebuild() { if (!this.W || !this.spr || !Object.keys(this.spr).length) return; this.S = this.scene.init(this.W, this.H, this.props, this.spr, this.memo); if (this.E) return; this.draw(); this.wake(); }
     wake() {
       if (this.running || !this.visible() || !this.S) return; this.running = true; let last = performance.now(), acc = 0;
-      const loop = (now) => { if (!this.visible()) { this.running = false; return; } acc += Math.min(0.1, (now - last) / 1000); last = now; let n = 0; while (acc >= DT && n++ < 8) { this.tick(); acc -= DT; } this.draw(); requestAnimationFrame(loop); };
+      const loop = (now) => { if (!this.visible()) { this.running = false; return; } acc += Math.min(0.1, (now - last) / 1000); last = now; let n = 0; while (acc >= DT && n++ < 8) { this.tick(); acc -= DT; } if (n) this.draw(); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
     }
     tick() {

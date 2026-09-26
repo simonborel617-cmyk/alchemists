@@ -9,21 +9,31 @@
     set: () => true,
   });
   const $ = (id) => document.getElementById(id) || NULL_EL;
-  const log = (m, cls) => { const el = $("log"); const t = new Date().toLocaleTimeString(); el.textContent = `[${t}] ${m}\n` + el.textContent; if (cls === "warn") console.warn(m); };
+  // write markup only when it differs from what was last written there (a rebuild restarts CSS animations and reloads images)
+  const lastHtml = new WeakMap();
+  const setHtml = (el, html) => { if (el === NULL_EL || lastHtml.get(el) === html) return; lastHtml.set(el, html); el.innerHTML = html; };
+  // the newest 300 lines, like the miner log keeps its newest 200
+  const log = (m, cls) => { const el = $("log"); const t = new Date().toLocaleTimeString(); el.textContent = `[${t}] ${m}\n` + el.textContent.split("\n").slice(0, 300).join("\n"); if (cls === "warn") console.warn(m); };
   const mlog = (m) => { const el = $("mlog"); const t = new Date().toLocaleTimeString(); el.textContent = `[${t}] ${m}\n` + el.textContent.split("\n").slice(0, 200).join("\n"); };
-  const dep = await (await fetch("./deployment.json", { cache: "no-cache" })).json();
-  const names = await (await fetch("./names.json", { cache: "no-cache" })).json();
+  // the deployment, the names and the ABIs side by side: a missing deployment.json or names.json stops the app, a missing
+  // ABI only hides what needs it
+  const getJson = (u) => fetch(u, { cache: "no-cache" }).then((r) => { if (!r.ok) throw new Error(`${u}: ${r.status}`); return r.json(); });
+  const ABI_NAMES = ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Souls", "Stream", "Kettle"];
+  const [dep, names, ...abiList] = await Promise.all([getJson("./deployment.json"), getJson("./names.json"), ...ABI_NAMES.map((n) => getJson(`./abi/${n}.json`).catch(() => null))]);
   const abi = {};
-  for (const n of ["Materials", "Keys", "Mine", "Furnaces", "Workshop", "Souls", "Stream", "Kettle"]) { try { const r = await fetch(`./abi/${n}.json`, { cache: "no-cache" }); if (r.ok) abi[n] = await r.json(); } catch {} }
+  ABI_NAMES.forEach((n, i) => { if (abiList[i]) abi[n] = abiList[i]; });
   // the public RPC stalls on big JSON-RPC batches (ethers would pack up to 100 calls into one request); 8 per request is fast
-  // rpc.js rotates through the public endpoints in deployment.json on errors, rate limits and timeouts
-  const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId);
+  // rpc.js rotates through the public endpoints in deployment.json on errors, rate limits and timeouts; plain reads try
+  // the fast node first, log scans the official one
+  const provider = AlchRpc.create(dep.rpcs || [dep.rpc], dep.chainId, { readUrls: dep.readRpcs || [], logUrls: dep.logRpcs || [] });
   provider.onSwitch((url, why) => log(`rpc: switched to ${url.replace(/^https?:\/\//, "")} (${why})`, "warn"));
   const C = (n, p) => new ethers.Contract(dep.contracts[n], abi[n], p || provider);
   const mine = C("Mine"), materials = C("Materials"), furnaces = C("Furnaces"), workshop = C("Workshop");
   // the soul and the stream came with testnet v11; an older deployment record simply hides the station
   const soulsC = dep.contracts.Souls && abi.Souls ? C("Souls") : null, streamC = dep.contracts.Stream && abi.Stream ? C("Stream") : null;
   const kettleC = dep.contracts.Kettle && abi.Kettle ? C("Kettle") : null;
+  // view calls [contract, fn, args] in one Multicall3 eth_call (rpc.js); a call that reverts yields null
+  const multi = (calls) => AlchRpc.multicall(provider, calls, { address: dep.multicall3 });
   if (!soulsC) { const b = document.querySelector('#wsNav button[data-st="soul"]'); if (b) b.style.display = "none"; }
   const RANKS = ["", "Apprentice", "Adept", "Master", "Magister", "Archmage", "Named"];
   // a deployment without the Keys contract (before v10) still runs: keys are simply never found
@@ -57,6 +67,7 @@
   }
   loadBurner();
   let main = null; // { signer, address }
+  let booting = true; // the first load refreshes every panel once, for whichever wallet it ends up showing
   let mode = "miner"; // whose inventory/workshop: "miner" (session wallet) or "main"
   let me = burner.address, signer = burner;
   function setMode(m) {
@@ -66,7 +77,7 @@
     $("invWho").value = mode; $("wsWho").value = mode;
     $("invWhoAddr").textContent = short(me);
     $("wsWhoNote").textContent = mode === "main" ? `Working as your wallet ${short(me)}: every craft asks for a confirmation in MetaMask, and the items shown are its.` : `Working as the session wallet ${short(me)}: it signs every craft itself, no pop-ups. Switch to your wallet above to craft with the items it holds.`;
-    refreshAll();
+    if (!booting) refreshAll();
   }
   $("invWho").onchange = () => setMode($("invWho").value);
   $("wsWho").onchange = () => setMode($("wsWho").value);
@@ -92,6 +103,7 @@
 
   // ------------------------------------------------------------ clock
   let sessionSec = 60, chainOffset = 0, curMinute = 0;
+  let missedMinute = false; // a minute went by in a hidden tab without a refresh: the tab catches up when it shows again
   function chainNow() { return Date.now() / 1000 + chainOffset; }
   function tickClock() {
     const now = chainNow();
@@ -100,7 +112,7 @@
     $("clock").textContent = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
     const ck = document.querySelector(".clock"); if (ck) ck.classList.toggle("soon", left <= 5);
     $("session").textContent = `minute ${m} · until the next challenge`;
-    if (m !== curMinute) { curMinute = m; refreshMine(); miner.onMinute(m); renderPending(); }
+    if (m !== curMinute) { curMinute = m; if (!document.hidden || miner.running) refreshMine(); else missedMinute = true; miner.onMinute(m); renderPending(); }
     coolTick(); netTick();
     miner.tickUi();
   }
@@ -109,13 +121,20 @@
   let cfgCache = null;
   async function refreshMine() {
     try {
-      const [tQ8, unlocked, ore, sub, ema, np, mQ8, price, paused, cfg, blk] = await Promise.all([
+      // one wave for everything that does not need the chain's minute (the pending count, the treasury, the kettle, the
+      // session wallet too), then the minute's threshold with the pending finds, then their seeds
+      const who = me;
+      refreshBurner();
+      const [tQ8, unlocked, ore, sub, ema, np, mQ8, price, paused, cfg, blk, ss, pc, tBal, kPot, kPv] = await Promise.all([
         mine.tQ8(), mine.unlockedTier(), mine.oreRemaining(), mine.submittedTotal(), mine.emaHashrate(), mine.netPressure(), mine.mQ8(), mine.currentPrice(), mine.paused(), mine.config(), provider.getBlock("latest"),
+        mine.sessionSec().catch(() => null), mine.pendingCount(who).catch(() => null), provider.getBalance(dep.treasury).catch(() => null),
+        kettleC ? kettleC.pot().catch(() => null) : null, kettleC ? kettleC.preview().catch(() => null) : null,
       ]);
       cfgCache = cfg;
-      try { sessionSec = Number(await mine.sessionSec()); } catch {}
+      if (ss !== null) sessionSec = Number(ss);
       chainOffset = Number(blk.timestamp) - Date.now() / 1000;
       const m = Math.floor(Number(blk.timestamp) / sessionSec);
+      const pendP = pc === null ? null : pendingRows(who, Number(pc)); // its first reads go out with the threshold's
       let mt = Number(tQ8); try { const x = Number(await mine.minuteThreshold(m)); if (x) mt = x; } catch {}
       const floorB = Number(cfg.floorBitsQ8) / 256, ceilB = Number(cfg.ceilBitsQ8) / 256, thr = mt / 256;
       $("thr").innerHTML = `${thr.toFixed(2)} <small>bits</small>`;
@@ -134,35 +153,36 @@
       $("mult").textContent = "×" + (Number(mQ8) / 256).toFixed(2);
       $("press").textContent = "×" + (Number(np) / 1e6).toFixed(3);
       const u = Number(unlocked);
-      $("gems").innerHTML = [1, 2, 3, 4, 5].map((t) => `<span class="gem ${t <= u ? "on" : ""}" style="--g:${TC[t]}">${TIERS[t]}</span>`).join("");
+      setHtml($("gems"), [1, 2, 3, 4, 5].map((t) => `<span class="gem ${t <= u ? "on" : ""}" style="--g:${TC[t]}">${TIERS[t]}</span>`).join(""));
       $("pauseFlag").innerHTML = paused ? `<span class="tag warn">MINE PAUSED</span>` : "";
       mineFlags.paused = !!paused; mineFlags.exhausted = oreN === 0;
-      await refreshPending(m);
-      try { const bal = await provider.getBalance(dep.treasury); $("treasury").textContent = `${fmtEth(bal, 4)} ETH`; } catch {}
+      if (pendP) renderPendingFinds(await pendP);
+      if (tBal !== null) $("treasury").textContent = `${fmtEth(tBal, 4)} ETH`;
       // the Kettle: the steam waiting to drip, and what the next hourly tick sends to the Safe and pours
-      if (kettleC) try {
-        const [pot, pv] = await Promise.all([kettleC.pot(), kettleC.preview()]);
-        $("kettleLine").textContent = `in the kettle: ${fmtEth(pot, 4)} ETH of steam · next hour: ${fmtEth(pv.pour, 4)} ETH drips to the souls, ${fmtEth(pv.brew, 4)} ETH thickens in the Cauldron`;
-      } catch {}
-      refreshBurner();
+      if (kPot !== null && kPv !== null) $("kettleLine").textContent = `in the kettle: ${fmtEth(kPot, 4)} ETH of steam · next hour: ${fmtEth(kPv.pour, 4)} ETH drips to the souls, ${fmtEth(kPv.brew, 4)} ETH thickens in the Cauldron`;
     } catch (e) { log("mine: " + (e.shortMessage || e.message), "warn"); }
   }
-  // pending finds of `me`: a find settles by the reveal seed of the parent-chain block it was submitted in, which exists
+  // pending finds: a find settles by the reveal seed of the parent-chain block it was submitted in, which exists
   // once the chain is four parent blocks further (under a minute); until then a reveal does nothing
   let lastPending = -1;
-  async function refreshPending(nowMinute) {
-    const n = Number(await mine.pendingCount(me));
+  // the pending finds of `who`: their records in one wave, their reveal seeds in the next
+  async function pendingRows(who, n) {
+    const pds = await Promise.all(Array.from({ length: Math.min(n, 8) }, (_, i) => mine.pendingAt(who, i).catch(() => null)));
+    const seeds = await Promise.all(pds.map((pd) => (pd ? mine.revealSeed(pd.l1).catch(() => null) : null)));
+    return { who, n, pds, seeds };
+  }
+  function renderPendingFinds({ who, n, pds, seeds }) {
     if (lastPending >= 0 && n < lastPending) refreshInventory(); // somebody (the keeper, our next submit) revealed a find
     lastPending = n;
     $("pending").textContent = `to reveal: ${n}`;
     $("pending").className = "tag" + (n > 0 ? " on" : "");
     let ready = 0;
     const rows = [], finds = [];
-    for (let i = 0; i < Math.min(n, 8); i++) {
+    for (let i = 0; i < pds.length; i++) {
       try {
-        const pd = await mine.pendingAt(me, i);
+        const pd = pds[i], e = seeds[i];
+        if (!pd || e === null) continue;
         const rm = Number(pd.revealMinute);
-        const e = await mine.revealSeed(pd.l1);
         const ok = BigInt(e) !== 0n;
         if (ok) ready++;
         finds.push({ m: rm - 2, revealMinute: rm, ready: ok, bits: Number(pd.workQ8) / 256 });
@@ -170,7 +190,7 @@
       } catch {}
     }
     if (n > 8) rows.push(`… and ${n - 8} more`);
-    stage("pending", { who: me, finds }); // the rack in the scene mirrors the chain, also after a reload
+    stage("pending", { who, finds }); // the rack in the scene mirrors the chain, also after a reload
     $("pendList").innerHTML = rows.join("<br>");
     $("revealMine").disabled = ready === 0;
     $("revealMine").textContent = n > 0 ? `Reveal finds (${ready} ready)` : "Reveal finds";
@@ -424,12 +444,12 @@
       const all = allIds();
       const bal = await materials.balanceOfBatch(all.map(() => burner.address), all);
       all.forEach((id, i) => { if (bal[i] > 0n) { ids.push(id); amts.push(bal[i]); } });
-      if (ids.length) { mlog(`moving ${ids.length} kinds of loot to ${short(main.address)}…`); const tx = await C("Materials", burner).safeBatchTransferFrom(burner.address, main.address, ids, amts, "0x", { gasLimit: 200_000n + 60_000n * BigInt(ids.length) }); await tx.wait(); mlog("loot moved"); }
+      if (ids.length) { mlog(`moving ${ids.length} kinds of loot to ${short(main.address)}…`); const tx = await C("Materials", burner).safeBatchTransferFrom(burner.address, main.address, ids, amts, "0x", { gasLimit: 200_000n + 60_000n * BigInt(ids.length) }); noteTx(await tx.wait()); mlog("loot moved"); }
       const mf = await myFurnaceIds(burner.address);
-      for (const id of mf) { const tx = await C("Furnaces", burner).transferFrom(burner.address, main.address, id, { gasLimit: GAS.transfer }); await tx.wait(); mlog(`furnace #${id} moved`); }
+      for (const id of mf) { const tx = await C("Furnaces", burner).transferFrom(burner.address, main.address, id, { gasLimit: GAS.transfer }); noteTx(await tx.wait()); mlog(`furnace #${id} moved`); }
       const mk = [];
       for (let i = 0; i < 21; i++) { try { if ((await keysC.ownerOf(i)).toLowerCase() === burner.address.toLowerCase()) mk.push(i); } catch {} }
-      for (const i of mk) { const tx = await C("Keys", burner).transferFrom(burner.address, main.address, i, { gasLimit: GAS.transfer }); await tx.wait(); mlog(`mythic key ${names.keys[i].key} moved`); }
+      for (const i of mk) { const tx = await C("Keys", burner).transferFrom(burner.address, main.address, i, { gasLimit: GAS.transfer }); noteTx(await tx.wait()); mlog(`mythic key ${names.keys[i].key} moved`); }
       if (!ids.length && !mf.length && !mk.length) mlog("nothing to move");
       refreshAll();
     } catch (e) { mlog("withdraw: " + (e.reason || e.shortMessage || e.message)); }
@@ -468,21 +488,37 @@
     for (let k = 0; k < 8; k++) for (let tier = 1; tier <= 5; tier++) ids.push(item(k, tier));
     return ids;
   }
-  // Events of this wallet since the deployment: scanned once from the deployment block and then only from where the
-  // last scan ended. The official RPC takes the whole range at once; a capped one gets smaller and smaller chunks.
+  // Events of this wallet since the deployment: scanned once from the deployment block and then only from a little
+  // before where the last scan ended. The official RPC takes the whole range at once; a capped one gets smaller and
+  // smaller chunks.
   const logScans = {};
   async function eventsOf(key, contract, filter) { const st = logScans[key] || (logScans[key] = { from: dep.block || 0, logs: [] }); return scanInto(st, contract, filter); }
   // the same, kept to a recent window: starts at `start` and drops what falls behind it
   async function eventsSince(key, contract, filter, start) { const st = logScans[key] || (logScans[key] = { from: start, logs: [] }); await scanInto(st, contract, filter); st.logs = st.logs.filter((l) => l.blockNumber >= start); return st.logs; }
+  // The head and the logs of one scan can come from two nodes a few blocks apart (a failover between the two requests),
+  // and a node asked past its own head answers for the blocks it has, without an error: every scan starts SCAN_BACK
+  // blocks before the end of the last one and keeps each log once. Right after a transaction of this page the log node
+  // may not have its block yet (and ethers hands back the head it read just before the send for 250 ms): the scan waits
+  // for that block, 8 s at most.
+  const SCAN_BACK = 300, logKey = (l) => `${l.transactionHash}:${l.index}`;
+  let lastTx = { block: 0, at: 0 };
+  const noteTx = (rc) => { if (rc && rc.blockNumber > lastTx.block) lastTx = { block: rc.blockNumber, at: Date.now() }; return rc; };
+  // a node that answered (a range over its cap) or ran out of time gets a smaller range; one that cannot be reached does not
+  const smaller = (e) => !!e && ((e.error && typeof e.error.code === "number") || /timeout/i.test(String(e.shortMessage || e.message)));
   async function scanInto(st, contract, filter) {
-    const latest = await provider.getBlockNumber();
-    let from = st.from, span = Math.max(1, latest - from + 1);
+    let latest = await provider.getBlockNumber();
+    for (let i = 0; latest < lastTx.block && Date.now() - lastTx.at < 20000 && i < 16; i++) { await new Promise((r) => setTimeout(r, 500)); latest = await provider.getBlockNumber(); }
+    const start = st.from, got = [];
+    let from = start, span = Math.max(1, latest - from + 1);
     while (from <= latest) {
       const to = Math.min(latest, from + span - 1);
-      try { st.logs.push(...(await contract.queryFilter(filter, from, to))); from = to + 1; }
-      catch (e) { if (span <= 5000) throw e; span = Math.ceil(span / 4); }
+      try { got.push(...(await contract.queryFilter(filter, from, to))); from = to + 1; }
+      catch (e) { if (span <= 5000 || !smaller(e)) throw e; span = Math.ceil(span / 4); }
     }
-    st.from = latest + 1;
+    // the logs join the list once the whole range is in: a scan that fails halfway leaves nothing behind to repeat
+    const have = new Set(st.logs.filter((l) => l.blockNumber >= start).map(logKey));
+    for (const l of got) { const k = logKey(l); if (!have.has(k)) { have.add(k); st.logs.push(l); } }
+    st.from = Math.max(st.from, latest + 1 - SCAN_BACK);
     return st.logs;
   }
   // ------------------------------------------------------------ the network: its numbers, a day of charts, the latest finds
@@ -599,11 +635,14 @@
   const mine721 = async (c, key, addr, total) => { // the tokens of an ERC-721 this wallet holds now: its incoming transfers, checked against ownerOf
     let ids;
     try { ids = [...new Set((await eventsOf(`${key}:${addr.toLowerCase()}`, c, c.filters.Transfer(null, addr))).map((l) => Number(l.args.tokenId)))]; }
-    catch { ids = Array.from({ length: Math.max(0, total) }, (_, i) => i + 1); } // no events from this RPC: every token, in parallel
-    const own = await inChunks(ids, (id) => c.ownerOf(id).then((o) => o.toLowerCase() === addr.toLowerCase()).catch(() => false));
+    catch { // no events from this RPC: every token, in parallel (`total` is a number, a promise or a function, read only here)
+      const n = typeof total === "function" ? await total() : await total;
+      ids = Array.from({ length: Math.max(0, Number(n)) }, (_, i) => i + 1);
+    }
+    const own = (await multi(ids.map((id) => [c, "ownerOf", [id]]))).map((o) => !!o && o.toLowerCase() === addr.toLowerCase());
     return ids.filter((_, i) => own[i]).sort((a, b) => a - b);
   };
-  async function myFurnaceIds(addr) { try { return await mine721(furnaces, "furnaces", addr, Number(await furnaces.nextId()) - 1); } catch { return []; } }
+  async function myFurnaceIds(addr) { try { return await mine721(furnaces, "furnaces", addr, async () => Number(await furnaces.nextId()) - 1); } catch { return []; } }
   const compact = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}m` : n >= 1e4 ? `${Math.round(n / 1e3)}k` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n));
   function renderInventory() {
     const q = ($("invFind").value || "").trim().toLowerCase(), sort = $("invSort").value;
@@ -614,20 +653,20 @@
     invPer = invPageSize();
     const pages = Math.max(1, Math.ceil(list.length / invPer)); invPage = Math.max(0, Math.min(invPage, pages - 1));
     const from = invPage * invPer, view = list.slice(from, from + invPer);
-    $("invPager").innerHTML = pagerHtml(invPage, pages, from + 1, from + view.length, list.length);
+    setHtml($("invPager"), pagerHtml(invPage, pages, from + 1, from + view.length, list.length));
     // the tabs show how many stacks each one holds
     for (const b of $("tabs").children) { const k = b.dataset.k, n = k === "all" ? cards.length : cards.filter((c) => c.cat === k).length, label = TABS.find((t) => t[0] === k)[1]; b.innerHTML = n ? `${label}<small>${n}</small>` : label; }
-    $("invGrid").innerHTML = view.map((c) => `<div class="card t${c.tier}" title="${c.title}"><img class="px" src="${c.img}" alt=""><span class="n">×${compact(c.n)}</span><div class="t">${c.name}</div><div class="s">${c.sub}</div></div>`).join("");
+    setHtml($("invGrid"), view.map((c) => `<div class="card t${c.tier}" title="${c.title}"><img class="px" src="${c.img}" alt="" loading="lazy" decoding="async"><span class="n">×${compact(c.n)}</span><div class="t">${c.name}</div><div class="s">${c.sub}</div></div>`).join(""));
     $("invEmpty").style.display = list.length ? "none" : "";
     $("invEmpty").textContent = q && cards.length ? `Nothing here matches "${q}".` : "Nothing here yet. Mined ingredients land in the miner wallet a minute after the submit that reveals them.";
   }
   if (new URLSearchParams(location.search).get("invdev")) window.alchInvDev = (n = 150) => { cards = Array.from({ length: n }, (_, i) => { const t = i % 40, tier = 1 + (i % 5); return { cat: String(Math.floor(t / 8)), tier, n: 1 + ((i * 37) % 2400), img: `metadata/${ing(t, tier)}.png`, name: names.types[t], sub: TIERS[tier], title: "" }; }); invPage = 0; renderInventory(); };
   async function refreshInventory() {
     const ids = allIds();
-    const bal = await materials.balanceOfBatch(ids.map(() => me), ids);
+    // the balances and the keys side by side: 21 ownerOf reads in one Multicall3 call (an unclaimed key reverts: not mine)
+    const [bal, owners] = await Promise.all([materials.balanceOfBatch(ids.map(() => me), ids), keysC.target ? multi(Array.from({ length: 21 }, (_, i) => [keysC, "ownerOf", [i]])) : Array(21).fill(null)]);
     inv = new Map(); ids.forEach((id, i) => { if (bal[i] > 0n) inv.set(id, Number(bal[i])); });
-    // the keys: 21 ownerOf reads in chunks of 8 (an unclaimed key reverts, which means "not mine")
-    for (let i = 0; i < 21; i += 8) { const rs = await Promise.all(Array.from({ length: Math.min(8, 21 - i) }, (_, j) => keysC.ownerOf(i + j).catch(() => null))); rs.forEach((o, j) => { if (o && o.toLowerCase() === me.toLowerCase()) inv.set(KEY_ID + i + j, 1); }); }
+    owners.forEach((o, i) => { if (o && o.toLowerCase() === me.toLowerCase()) inv.set(KEY_ID + i, 1); });
     // keys this wallet holds that this browser has not seen it hold before; the first look at a wallet stays quiet
     try {
       const held = []; for (let i = 0; i < 21; i++) if (inv.get(KEY_ID + i)) held.push(i);
@@ -643,7 +682,8 @@
     for (let i = 0; i < 21; i++) if (inv.get(KEY_ID + i)) cards.push({ cat: "key", tier: 6, n: 1, img: keyImg(KEY_ID + i), name: names.keys[i].key, sub: names.keys[i].alchemist, title: `${names.keys[i].key} — ${names.keys[i].alchemist}` });
     myFurnaces = [];
     const fids = await myFurnaceIds(me);
-    (await inChunks(fids, (id) => Promise.all([furnaces.tier(id), furnaces.lastFired(id).catch(() => 0n)]).then(([tier, lastFired]) => ({ id, tier: Number(tier), lastFired: Number(lastFired) })).catch(() => null))).forEach((f) => f && myFurnaces.push(f));
+    const fr = await multi(fids.flatMap((id) => [[furnaces, "tier", [id]], [furnaces, "lastFired", [id]]]));
+    fids.forEach((id, k) => { if (fr[2 * k] !== null) myFurnaces.push({ id, tier: Number(fr[2 * k]), lastFired: Number(fr[2 * k + 1] ?? 0n) }); });
     for (const f of myFurnaces) cards.push({ cat: "furnace", tier: f.tier, n: 1, img: `img/furnace-${f.tier}.png`, name: `Furnace #${f.id}`, sub: FURNACE[f.tier], title: `Furnace #${f.id}, tier ${f.tier}` });
     $("invHint").textContent = cards.length ? `${cards.length} entries` : "empty";
     // loot in the session wallet can be moved to the main wallet in one click
@@ -663,7 +703,7 @@
     $("refFurnace").innerHTML = ""; for (const f of myFurnaces) $("refFurnace").add(new Option(`#${f.id} · ${FURNACE[f.tier]} (${TIERS[f.tier]}, tier ${f.tier})`, f.id));
     if (!myFurnaces.length) $("refFurnace").add(new Option("no furnace yet", ""));
     renderStations();
-    refreshSouls();
+    if (inv) refreshSouls(); // the altar and the keys need the inventory: the first run comes with it
   }
 
   function pick(recipe, tier) {
@@ -680,28 +720,31 @@
     return { ids, amts };
   }
   // recipes and odds are tunables that change only through the timelock: fetched in parallel once, then cached per deployment
-  async function recipes() {
+  let rcLoad = null; // the load and a wallet's refresh both ask at once: one fetch serves both
+  function recipes() { return rcLoad || (rcLoad = loadRecipes().finally(() => { rcLoad = null; })); }
+  async function loadRecipes() {
     const key = "alch.recipes." + dep.contracts.Workshop;
     try { const c = JSON.parse(localStorage.getItem(key) || "null"); if (c && c.v === 3 && Date.now() - c.at < 6 * 3600e3) return c.rc; } catch {}
-    // the public RPC rate-limits bursts (and its 429 page carries a broken CORS header the browser rejects), so the
-    // ~65 reads go out in sequential batches of 8, one HTTP request each, with a retry
+    // the ~70 reads go out as one Multicall3 call (one HTTP request, so the public RPC's burst limit never bites), retried
+    // while any read without a default fails
     const N = (x) => Number(x);
-    const tasks = [];
-    for (let k = 0; k < 8; k++) for (let c = 0; c < 5; c++) tasks.push(["R", k, c, () => workshop.itemRecipe(k, c)]);
-    for (let c = 0; c < 5; c++) tasks.push(["F", c, 0, () => workshop.furnaceRecipe(c)]);
-    for (let i = 0; i < 4; i++) tasks.push(["refineSuccess", i, 0, () => workshop.refineSuccess(i)]);
-    for (let i = 0; i < 5; i++) { tasks.push(["rerollOut", i, 0, () => workshop.rerollOutCategory(i)]); tasks.push(["rerollDown", i, 0, () => workshop.rerollDown(i)]); tasks.push(["keyChance", i, 0, () => workshop.keyChance(i)]); }
-    tasks.push(["rerollUpPct", 0, 0, () => workshop.rerollUpPct()], ["rerollUp2", 0, 0, () => workshop.rerollUp2PerMille()], ["craftUp", 0, 0, () => workshop.craftUpgradePct()], ["furnaceBonus", 0, 0, () => workshop.furnaceBonus()], ["rerollOutAny", 0, 0, () => workshop.rerollOutAny().catch(() => 5n)], ["mixFail", 0, 0, () => (workshop.mixFailStep ? workshop.mixFailStep().catch(() => -1n) : Promise.resolve(-1n))]);
-    const rc = { R: Array.from({ length: 8 }, () => [0, 0, 0, 0, 0]), F: [0, 0, 0, 0, 0], refineSuccess: [0, 0, 0, 0], rerollOut: [0, 0, 0, 0, 0], rerollDown: [0, 0, 0, 0, 0], keyChance: [0, 0, 0, 0, 0] };
-    for (let i = 0; i < tasks.length; i += 8) {
-      const chunk = tasks.slice(i, i + 8);
-      let vals = null;
-      for (let attempt = 0; attempt < 4 && !vals; attempt++) {
-        try { vals = await Promise.all(chunk.map((t) => t[3]().then(N))); } catch (e) { await new Promise((r) => setTimeout(r, 1500 * (attempt + 1))); }
-      }
-      if (!vals) throw new Error("recipes: the RPC keeps failing");
-      chunk.forEach(([key, a, b], j) => { if (key === "R") rc.R[a][b] = vals[j]; else if (Array.isArray(rc[key])) rc[key][a] = vals[j]; else rc[key] = vals[j]; });
+    const W = (fn, ...args) => [workshop, fn, args];
+    const tasks = []; // [key, a, b, call, default for a read that may revert]
+    for (let k = 0; k < 8; k++) for (let c = 0; c < 5; c++) tasks.push(["R", k, c, W("itemRecipe", k, c)]);
+    for (let c = 0; c < 5; c++) tasks.push(["F", c, 0, W("furnaceRecipe", c)]);
+    for (let i = 0; i < 4; i++) tasks.push(["refineSuccess", i, 0, W("refineSuccess", i)]);
+    for (let i = 0; i < 5; i++) { tasks.push(["rerollOut", i, 0, W("rerollOutCategory", i)]); tasks.push(["rerollDown", i, 0, W("rerollDown", i)]); tasks.push(["keyChance", i, 0, W("keyChance", i)]); }
+    tasks.push(["rerollUpPct", 0, 0, W("rerollUpPct")], ["rerollUp2", 0, 0, W("rerollUp2PerMille")], ["craftUp", 0, 0, W("craftUpgradePct")], ["furnaceBonus", 0, 0, W("furnaceBonus")], ["rerollOutAny", 0, 0, W("rerollOutAny"), 5n]);
+    if (workshop.interface.hasFunction("mixFailStep")) tasks.push(["mixFail", 0, 0, W("mixFailStep"), -1n]);
+    const rc = { R: Array.from({ length: 8 }, () => [0, 0, 0, 0, 0]), F: [0, 0, 0, 0, 0], refineSuccess: [0, 0, 0, 0], rerollOut: [0, 0, 0, 0, 0], rerollDown: [0, 0, 0, 0, 0], keyChance: [0, 0, 0, 0, 0], mixFail: -1 };
+    let vals = null;
+    for (let attempt = 0; attempt < 4 && !vals; attempt++) {
+      const got = await multi(tasks.map((t) => t[3]));
+      if (got.every((v, j) => v !== null || tasks[j][4] !== undefined)) vals = got.map((v, j) => N(v ?? tasks[j][4]));
+      else await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
     }
+    if (!vals) throw new Error("recipes: the RPC keeps failing");
+    tasks.forEach(([key, a, b], j) => { if (key === "R") rc.R[a][b] = vals[j]; else if (Array.isArray(rc[key])) rc[key][a] = vals[j]; else rc[key] = vals[j]; });
     try { localStorage.setItem(key, JSON.stringify({ v: 3, at: Date.now(), rc })); } catch {}
     return rc;
   }
@@ -949,7 +992,7 @@
     if (!left) ok = false;
     const sd = soulPick.sealed && !soulPick.tiers.some(Boolean) && soulPick.keyIdx === 255 ? soulPick.sealed : null; // the soul just sealed stays on the altar until the next pick
     const core = $("altarCore"); core.className = `altar-core t${sd ? sd.rank : rank}`;
-    $("altarSoul").src = `metadata/souls/${sd ? sd.rank : rank}.png`; $("soulImg").src = `metadata/souls/${rank}.png`;
+    $("altarSoul").src = `metadata/souls/${sd ? sd.rank : rank}.png?v=2`; $("soulImg").src = `metadata/souls/${rank}.png?v=2`;
     $("altarRank").textContent = sd ? RANKS[sd.rank] : `${RANKS[rank]}${keySlot >= 0 ? " · " + names.keys[soulPick.keyIdx].alchemist : ""}`;
     $("altarNum").textContent = sd ? `soul #${sd.id} sealed` : `soul #${nextId} if sealed now`;
     const st = sd || { avg, rank, rarity, early, ord };
@@ -979,27 +1022,28 @@
     if (!soulsC || soulsBusy) return;
     soulsBusy = true;
     try {
-      const total = Number(await soulsC.total());
+      // one round: the total, the seats per rank and the stream's state (one Multicall3 call), and the souls of this wallet
+      const totalP = soulsC.total().then(Number);
+      const seatCalls = [1, 2, 3, 4, 5, 6].map((r) => [soulsC, "mintedByRank", [r]]).concat([1, 2, 3, 4, 5].map((r) => [soulsC, "quota", [r]]), streamC ? [[streamC, "isOpen", []], [streamC, "openAt", []]] : []);
+      const [total, seats, ids] = await Promise.all([totalP, multi(seatCalls), mine721(soulsC, "souls", me, totalP)]);
       $("soulCount").textContent = `${total} sealed`; $("soulCount").dataset.n = total;
-      try {
-        const [minted, quota] = await Promise.all([Promise.all([1, 2, 3, 4, 5, 6].map((r) => soulsC.mintedByRank(r).then(Number))), Promise.all([1, 2, 3, 4, 5].map((r) => soulsC.quota(r).then(Number)))]);
-        soulSeats = { minted: [0, ...minted], quota: [0, ...quota, 21] };
-      } catch {}
-      mySoulIds = [];
-      mySoulIds = await mine721(soulsC, "souls", me, total);
+      if (seats.slice(0, 11).every((x) => x !== null)) soulSeats = { minted: [0, ...seats.slice(0, 6).map(Number)], quota: [0, ...seats.slice(6, 11).map(Number), 21] };
+      mySoulIds = ids;
       myKeys = []; for (let i = 0; i < 21; i++) if (inv && inv.get(KEY_ID + i)) myKeys.push(i);
       let open = false, openAt = 100, claimable = 0n;
-      if (streamC) { try { [open, openAt] = await Promise.all([streamC.isOpen(), streamC.openAt().then(Number)]); } catch {} }
+      if (streamC && seats[11] !== null && seats[12] !== null) { open = !!seats[11]; openAt = Number(seats[12]); }
       // claimable() walks every hourly epoch the soul has not claimed: after months it can outgrow an RPC's call limit,
       // and then the amount is unknown, not zero (Claim walks the epochs 300 at a time)
       let unknown = false;
-      const cards = [], rows = await inChunks(mySoulIds, (id) => Promise.all([soulsC.data(id).catch(() => null), soulsC.weight(id).catch(() => 0n), streamC ? streamC.claimable(0, id).catch(() => null) : 0n]), 8);
+      // data and weight through Multicall3; claimable stays one call per soul, since it can come near the eth_call gas cap
+      const [dw, cl] = await Promise.all([multi(mySoulIds.flatMap((id) => [[soulsC, "data", [id]], [soulsC, "weight", [id]]])), inChunks(mySoulIds, (id) => (streamC ? streamC.claimable(0, id).catch(() => null) : 0n), 16)]);
+      const cards = [], rows = mySoulIds.map((id, k) => [dw[2 * k], dw[2 * k + 1] ?? 0n, cl[k]]);
       for (const [k, id] of mySoulIds.entries()) {
         const [d, w, c] = rows[k];
         if (c === null) unknown = true; else claimable += c;
         const rank = d ? Number(d.rank) : 0;
         const ord = d && d.ordinal !== undefined ? Number(d.ordinal) : 0;
-        cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.png" alt=""><div class="t">${RANKS[rank]} #${id}</div><div class="s">${rank >= 2 && ord ? `No.${ord} · ` : ""}weight ${(Number(w) / 1e6).toFixed(2)}${c === null ? " · rent to claim" : c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
+        cards.push(`<div class="card t${rank}"><img class="px" src="metadata/souls/${rank}.png?v=2" alt="" loading="lazy" decoding="async"><div class="t">${RANKS[rank]} #${id}</div><div class="s">${rank >= 2 && ord ? `No.${ord} · ` : ""}weight ${(Number(w) / 1e6).toFixed(2)}${c === null ? " · rent to claim" : c > 0n ? ` · ${fmtEth(c, 6)} ETH` : ""}</div></div>`);
       }
       $("mySouls").innerHTML = cards.join("") || `<span class="small">no souls in this wallet yet</span>`;
       $("streamCount").innerHTML = `${total}<small>/ ${openAt}</small>`;
@@ -1021,7 +1065,7 @@
   function sealingRite(snap, id, rank) {
     if (!window.AlchRite || matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve();
     const cs = getComputedStyle(document.documentElement), colors = {}; for (let i = 1; i <= 6; i++) colors[i] = cs.getPropertyValue(`--c${i}`).trim();
-    return AlchRite.play({ altar: $("altar"), items: snap.items, soul: snap.soul, rank, soulSrc: `metadata/souls/${rank}.png`, colors, id, rankName: RANKS[rank], seed: id, onBurst: () => renderSoul() }).catch((e) => log("rite: " + e.message, "warn"));
+    return AlchRite.play({ altar: $("altar"), items: snap.items, soul: snap.soul, rank, soulSrc: `metadata/souls/${rank}.png?v=2`, colors, id, rankName: RANKS[rank], seed: id, onBurst: () => renderSoul() }).catch((e) => log("rite: " + e.message, "warn"));
   }
   $("doSoul").onclick = async () => {
     if (!soulsC || !inv) return;
@@ -1032,7 +1076,7 @@
       log("seal a soul: sending…");
       const t = await C("Souls", signer).seal(p.ids, p.keyIdx, { gasLimit: GAS.ws });
       log(`seal a soul: tx ${t.hash}`);
-      rc = await t.wait();
+      rc = noteTx(await t.wait());
       log(`seal a soul: ${rc.status === 1 ? "done" : "REVERTED"} (gas ${rc.gasUsed})`);
     } catch (e) { log(`seal a soul: ${e.reason || e.shortMessage || e.message}`, "warn"); }
     let ev = null;
@@ -1076,11 +1120,10 @@
       $("wsStatus").textContent = paused ? "PAUSED" : `running · ${inputs} inputs per refine`;
       $("wsStatus").className = "tag" + (paused ? " warn" : " on");
       renderStations();
-      const n = Number(await workshop.commitCount());
       let open = []; const det = [], who = me.toLowerCase(), done = settledCrafts[who] || (settledCrafts[who] = new Set());
       let ids;
       try { ids = [...new Set((await eventsOf(`commits:${who}`, workshop, workshop.filters.Committed(null, me))).map((l) => Number(l.args.id)))]; }
-      catch { ids = Array.from({ length: Math.min(n, 200) }, (_, i) => n - 1 - i); } // no events from this RPC: the latest 200
+      catch { const n = Number(await workshop.commitCount()); ids = Array.from({ length: Math.min(n, 200) }, (_, i) => n - 1 - i); } // no events from this RPC: the latest 200
       const cs = await inChunks(ids.filter((i) => !done.has(i)), (i) => workshop.commits(i).then((c) => [i, c]).catch(() => null));
       for (const r of cs) { if (!r) continue; const [i, c] = r; if (c.user.toLowerCase() !== who) continue; if (c.settled) { done.add(i); continue; } open.push(i); det.push({ id: i, op: Number(c.op), a: Number(c.a), b: Number(c.b), furnace: Number(c.furnace), rm: Number(c.revealMinute), l1: c.l1 }); }
       open.sort((a, b) => a - b); det.sort((a, b) => a.id - b.id);
@@ -1127,7 +1170,7 @@
       log(`${label}: sending…`);
       const t = await fn();
       log(`${label}: tx ${t.hash}`);
-      const rc = await t.wait();
+      const rc = noteTx(await t.wait());
       log(`${label}: ${rc.status === 1 ? "done" : "REVERTED"} (gas ${rc.gasUsed})`);
       if (onReceipt && rc.status === 1) { try { onReceipt(rc); } catch (e) { log(`${label}: ${e.message}`, "warn"); } }
       await refreshAll();
@@ -1178,7 +1221,7 @@
     if (rc.status !== 1) { revealStatus("The reveal transaction reverted.", "warn"); return; }
     const got = minedFrom(rc);
     for (const f of minedFinds(rc)) miner.addResult(f.id, "reveal", f);
-    revealStatus(got.length ? `Revealed: ${got.join(", ")}. It is in the inventory below.` : "Nothing was ready yet: the find needs the next minute's challenge before it can be revealed. Wait for the timer and try again.", got.length ? "on" : "warn");
+    revealStatus(got.length ? `Revealed: ${got.join(", ")}. It is in the inventory below.` : "Nothing was ready yet: a find's seed is fixed within a minute of its submit. Try again in a moment.", got.length ? "on" : "warn");
   };
   $("revealWs").onclick = () => revealCrafts(JSON.parse($("revealWs").dataset.ids || "[]"));
   $("doPotion").onclick = () => {
@@ -1211,16 +1254,32 @@
   $("rc-item").addEventListener("change", (e) => { const sel = e.target.closest("[data-slot-tier]"); if (!sel || !itSlots) return; itSlots[+sel.dataset.slotTier] = +sel.value; renderStations(); });
   $("rc-item").addEventListener("contextmenu", (e) => { if (e.target.closest("select")) return; const el = e.target.closest("[data-slot]"); if (!el || !mixOn() || !itSlots) return; e.preventDefault(); const i = +el.dataset.slot; itSlots[i] = ((itSlots[i] + 3) % 5) + 1; renderStations(); });
 
-  async function refreshAll() { await refreshMine(); await refreshWorkshop(); await refreshInventory(); }
+  async function refreshAll() { await Promise.all([refreshMine(), refreshWorkshop(), refreshInventory()]); }
   fillSelects(); renderInventory();
   $("invWhoAddr").textContent = short(me);
+  booting = false;
+  // a failed inventory read is logged and the next one tries again; at load the souls panel then fills without it
+  const invWarn = (e) => log("inventory: " + (e.shortMessage || e.message), "warn");
+  const boot = Promise.all([refreshInventory().catch((e) => { invWarn(e); refreshSouls(); }), refreshWorkshop()]); // they do not need the mine panel: all three load side by side
   await refreshMine();
+  curMinute = Math.floor(chainNow() / sessionSec); // refreshMine just read this minute: the first tick must not read it again
   setInterval(tickClock, 1000); tickClock();
   setInterval(recheckCrafts, 5000); // sealed crafts turn revealable within a minute of the commit
-  setInterval(refreshMine, 30000); // the minute boundary triggers its own refresh; this only catches price and pressure drift
-  refreshNetwork(); setInterval(() => { if (!new URLSearchParams(location.search).get("netdev")) refreshNetwork(); }, 60000);
-  setInterval(refreshInventory, 90000);
-  await refreshInventory();
-  await refreshWorkshop();
+  // a hidden tab stops polling unless the miner runs in it; it catches up when it shows again
+  const shown = (fn) => () => { if (!document.hidden || miner.running) fn(); };
+  setInterval(shown(refreshMine), 30000); // the minute boundary triggers its own refresh; this only catches price and pressure drift
+  const netDev = !!new URLSearchParams(location.search).get("netdev"); // ?netdev keeps the charts it was handed
+  refreshNetwork(); setInterval(shown(() => { if (!netDev) refreshNetwork(); }), 60000);
+  // the workshop as well: a commit that a log scan missed right after its transaction shows up within 90 s
+  setInterval(shown(() => { refreshInventory().catch(invWarn); refreshWorkshop(); }), 90000);
+  let hiddenAt = document.hidden ? Date.now() : 0; // a page opened in a background tab is as old as its load
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    const long = hiddenAt && Date.now() - hiddenAt > 30000;
+    if (long || missedMinute) refreshMine();
+    if (long) { if (!netDev) refreshNetwork(); refreshInventory().catch(invWarn); refreshWorkshop(); }
+    missedMinute = false;
+  });
+  await boot;
   log(`loaded: Mine ${dep.contracts.Mine}; miner wallet ${burner.address}`);
 })();

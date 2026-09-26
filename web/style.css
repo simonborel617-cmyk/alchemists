@@ -144,7 +144,8 @@ header .sp { flex:1; }
 
 /* miner band */
 .band .panel { padding:0; overflow:hidden; }
-.band .art { position:relative; min-height:230px; background:#0b0d0f center/cover no-repeat; background-image:url(img/hero-engine.webp); }
+.band .art { position:relative; min-height:230px; background:#0b0d0f center/cover no-repeat; }
+.band .art.in { background-image:url(img/hero-engine.webp); } /* nav.js adds .in when the band comes near */
 .band .art::after { content:""; position:absolute; inset:0; background:linear-gradient(270deg, rgba(16,19,22,.94) 0%, rgba(16,19,22,.78) 45%, rgba(16,19,22,.15) 100%); }
 .band .txt { position:relative; z-index:1; display:flex; flex-direction:column; justify-content:center; align-items:flex-end; text-align:right; gap:12px; padding:26px 32px; min-height:230px; }
 .band .txt h2 { font-size:15px; color:var(--ink); text-shadow:3px 3px 0 var(--line); }
@@ -475,3 +476,6 @@ body.connected .nowallet { display:none; }
 .recipe .slot-tier.t1 { border-color:var(--c1); } .recipe .slot-tier.t2 { border-color:var(--c2); } .recipe .slot-tier.t3 { border-color:var(--c3); }
 .recipe .slot-tier.t4 { border-color:var(--c4); } .recipe .slot-tier.t5 { border-color:var(--c5); }
 .recipe .odds .kc { color:var(--muted); }
+
+/* endless animations pause while their section is off screen (nav.js marks it) */
+.offscreen, .offscreen *, .offscreen *::before, .offscreen *::after { animation-play-state:paused !important; }
