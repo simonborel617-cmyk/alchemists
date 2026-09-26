@@ -25,7 +25,7 @@ function preflight(P, env) {
   if (BigInt(m.price0Wei) !== 20000000000000n) problems.push("mine.price0Wei must be 0.00002 ETH (about 5 cents; owner's decision 2026-09-26)");
   if (m.mCap !== 2) problems.push("mine.mCap must be 2");
   if (BigInt(m.refHashrate) < 5n * 10n ** 12n) problems.push("mine.refHashrate must be at least 5 TH/s");
-  if (JSON.stringify(m.unlockFinds) !== JSON.stringify([25000, 50000, 100000, 150000])) problems.push("mine.unlockFinds must be 25000/50000/100000/150000 finds (owner decision 2026-09-25)");
+  if (JSON.stringify(m.unlockFinds) !== JSON.stringify([2500, 5000, 10000, 15000])) problems.push("mine.unlockFinds must be 2500/5000/10000/15000 finds (owner decision 2026-09-26: ten times sooner than the 25k/50k/100k/150k of 2026-09-25; set on v4 by the Safe through Mine.setConfig)");
   if (m.keyChance < 10000) problems.push("mine.keyChance must be mainnet-scale (65536)");
   if (m.windowSecEarly !== 60 || m.windowSec !== 120 || m.firstHourSec !== 3600) problems.push("mine windows must be 60/120 with a 3600s first hour");
   if (!P.materialsURI || P.materialsURI.includes("example")) problems.push("materialsURI still points at the placeholder host");

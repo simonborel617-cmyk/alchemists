@@ -34,7 +34,7 @@ what is still open. Mainnet v1-v3 (2026-09-26) ran under a 48-hour timelock; v4 
   the inputs, 5 % break chance per extra tier (20 % at most); chance preview and slot picker on the site, a broken-rite
   scene; checked end to end on a local chain through the site. 70 tests.
 
-- **Owner decisions of 2026-09-25, in the code:** the tier is rolled at reveal, tiers open by finds (25k/50k/100k/150k);
+- **Owner decisions of 2026-09-25, in the code:** the tier is rolled at reveal, tiers open by finds (25k/50k/100k/150k; ten times sooner, 2.5k/5k/10k/15k, since 2026-09-26);
   reveals take `Mine.revealSeed` of the commit's parent block (the old next-minute challenge was predictable: proven on
   testnet); souls weigh 1/4/16/64/256 by rank, named 512, with founders per rank from Adept; seats 3014/1111/833/555/21 +
   21 named; the Kettle pays rent every hour (40 % brew to the Safe, 60 % steam, 1/24 of the pot an hour). Third and fourth
@@ -68,7 +68,7 @@ what is still open. Mainnet v1-v3 (2026-09-26) ran under a 48-hour timelock; v4 
    both installed and rehearsed on testnet 2026-09-24 (the keeper ticked every minute ~2-3 s after the boundary). Left:
    the owner pipes `MAINNET_KEY` into box A's `.env` with the one command in that README.
 5. **Alerts.** A Telegram bot token and chat id, or an ntfy topic name, in `.env` of the keeper host.
-6. **Constants, last call** (immutable after the deploy): corridor 30..43 bits; unlocks at 25,000/50,000/100,000/150,000 finds (decided 2026-09-25, with the tier rolled at reveal);
+6. **Constants, last call** (immutable after the deploy): corridor 30..43 bits; unlocks at 25,000/50,000/100,000/150,000 finds (decided 2026-09-25, with the tier rolled at reveal; lowered to 2,500/5,000/10,000/15,000 on v4 by the Safe on 2026-09-26);
    `refHashrate` 10 TH/s; `price0` 0.00002 ETH (lowered from 0.0002 on 2026-09-26: about 5 cents), `priceD` 50,000; prima materia 1,000,000; `keyChance` 1 in 65,536 per
    reveal, crafts 1e6..100 by tier; furnace cooldown 10 minutes; stream opens at the 100th soul; the summoning left out (v4; paused in v1-v3).
 

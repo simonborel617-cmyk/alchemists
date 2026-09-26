@@ -92,7 +92,7 @@ timelock, it is about those records.
    submits tick as well. The keeper also ticks the Kettle at the top of every hour; its log shows the brew and the pour.
 6. First hour: 60-second windows and steps up to 3 bits, the threshold leaves 30 bits for its equilibrium within 3–5
    minutes. Watch `status.js`: threshold, unlocks, EMA, pressure, price. Expected: Uncommon…Legendary unlock at the season's
-   25,000th / 50,000th / 100,000th / 150,000th find (`submittedTotal`, `Unlocked` events), pressure near 1 while the rate
+   2,500th / 5,000th / 10,000th / 15,000th find (`submittedTotal`, `Unlocked` events), pressure near 1 while the rate
    stays near K.
 7. If something is wrong: `NET=robinhood node scripts/emergency.js pause` (see Emergency below) pauses Mine, Workshop,
    Souls, Stream and Kettle at once. Reveals and minute ticks keep working; a paused Kettle neither sends the brew nor

@@ -27,7 +27,7 @@ Then a 1-in-16 roll lifts a find one tier. One submit per address per minute, no
 
 The ingredient stays sealed until the chain has moved on a few blocks past your submit. Then it is revealed: type, tier and the upgrade roll all come from a seed that did not exist when you paid. There is no way to mine for a specific ingredient, and no way to know what you are getting before you pay.
 
-Rarities open as the season goes on: Uncommon at the 25,000th find, Rare at the 50,000th, Epic at the 100,000th, Legendary at the 150,000th, permanently. Until then a find stops at the highest open tier.
+Rarities open as the season goes on: Uncommon at the 2,500th find, Rare at the 5,000th, Epic at the 10,000th, Legendary at the 15,000th, permanently. Until then a find stops at the highest open tier.
 
 You can mine three ways:
 

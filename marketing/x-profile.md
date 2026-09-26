@@ -117,7 +117,7 @@ deploy they still read the testnet.
    sunrise and a path into the shaft, the first of twelve vials filled with green liquid and sealed with red wax."
    Pin it in place of the announcement.
 
-After the launch: live beats from the chain only (first find, first Uncommon at the season's 25,000th find, the first
+After the launch: live beats from the chain only (first find, first Uncommon at the season's 2,500th find, the first
 key when it falls, "hour one" with the network panel as the one interface shot). Numbers read from the chain, never
 estimated.
 

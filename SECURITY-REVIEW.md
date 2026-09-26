@@ -98,7 +98,7 @@ let a commit lapse, and could even be ground by the choice of nonce or block. Th
 
 **Tier at reveal and unlocks by finds** (owner decisions the same day): a hash only has to clear the threshold; the tier
 is `FixedMath.workQ8(keccak(r))` against 2/4/7/10 bits plus the pair's supply extra, so P(tier >= k) = 2^-step for every
-find whatever the load; tiers open at 25,000/50,000/100,000/150,000 finds, permanently. `test/reveal-seed.test.js`
+find whatever the load; tiers open at 25,000/50,000/100,000/150,000 finds, permanently (2,500/5,000/10,000/15,000 since 2026-09-26, set by the Safe on v4). `test/reveal-seed.test.js`
 replays type, tier, upgrade and key off-chain for 36 finds (half of them with a hash 8 bits over the bar) and checks the
 seed formula, the four-block wait, the recording and the fallback.
 
