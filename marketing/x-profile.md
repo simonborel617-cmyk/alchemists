@@ -144,3 +144,15 @@ passed and one submit from the site landed. Pin it above the article.
 - Screenshots with a wallet balance, a private key prompt or the session wallet's export dialog.
 - Predictions of price, floor or "rarity value".
 - Any description of the ritual, the Stone, the main act, or its date.
+
+## When each rarity opens (2026-09-26)
+
+"When each rarity opens: / Common: from the first find / Uncommon: at find 2,500 / Rare: at 5,000 / Epic: at 10,000 /
+Legendary: at 15,000 / Every find counts, all miners together. Until a rarity opens, finds stop at the highest open
+one. Once open, it stays open. / alchemist-mine.com" (273 characters, 278 as X counts the link). About the thresholds
+as they are, not about any change. [scene: scenes/rarities.png, five flasks in their niches, Common open, the others
+sealed ever more heavily in the tier colours, names and counts set on the ledge by scripts/post-rarities.py;
+scenes/rarities-clean.png without the text] Alt text: "Five glass flasks in stone niches. The grey Common flask is
+open. The green Uncommon and blue Rare flasks are sealed with wax and iron bands, the violet Epic flask with a padlock,
+the gold Legendary flask with a gold padlock and chains. Below them: Common open, Uncommon 2,500, Rare 5,000, Epic
+10,000, Legendary 15,000. Finds mined, all miners together."
