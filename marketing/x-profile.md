@@ -170,3 +170,13 @@ over its hearth, golden steam arcing across the room and falling as drops onto t
 by scripts/post-rent.py; scenes/rent-clean.png without the souls and text] Alt text: "An iron kettle over a hearth
 sends golden steam in an arc across a night workshop; it falls as drops onto six souls on the floor: Apprentice 1,
 Adept 4, Master 16, Magister 64, Archmage 256, Named 512."
+
+## The first quarter-hour pour (2026-09-26, 14:00 UTC)
+
+"The Kettle now drips a quarter of its steam every hour. / The 14:00 UTC pour: 0.1588 ETH, split across 248 souls held
+by 83 wallets. / From that one pour: Magister: 0.0275 ETH / Master: about 0.0068 ETH / Adept: 0.0014 to 0.0017 ETH /
+Apprentice: 0.0002 ETH / The first hundred souls of each rank from Adept up weigh up to double. The next pour lands on
+the hour. Unclaimed pours add up and wait. / alchemist-mine.com" Numbers from Stream epoch 2 (0.158755 ETH, total weight
+738.05, 248 souls: 209 Apprentice, 33 Adept, 5 Master, 1 Magister; 83 holders). [scene: scenes/pour.png, the Kettle
+tipped over a basin, the light running out along channels to many points, the pour's numbers on the wall, by
+scripts/post-pour.py; scenes/pour-clean.png without the text]
