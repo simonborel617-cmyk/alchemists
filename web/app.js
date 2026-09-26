@@ -125,10 +125,10 @@
       // session wallet too), then the minute's threshold with the pending finds, then their seeds
       const who = me;
       refreshBurner();
-      const [tQ8, unlocked, ore, sub, ema, np, mQ8, price, paused, cfg, blk, ss, pc, tBal, kPot, kPv] = await Promise.all([
+      const [tQ8, unlocked, ore, sub, ema, np, mQ8, price, paused, cfg, blk, ss, pc, tBal, kPv] = await Promise.all([
         mine.tQ8(), mine.unlockedTier(), mine.oreRemaining(), mine.submittedTotal(), mine.emaHashrate(), mine.netPressure(), mine.mQ8(), mine.currentPrice(), mine.paused(), mine.config(), provider.getBlock("latest"),
         mine.sessionSec().catch(() => null), mine.pendingCount(who).catch(() => null), provider.getBalance(dep.treasury).catch(() => null),
-        kettleC ? kettleC.pot().catch(() => null) : null, kettleC ? kettleC.preview().catch(() => null) : null,
+        kettleC ? kettleC.preview().catch(() => null) : null,
       ]);
       cfgCache = cfg;
       if (ss !== null) sessionSec = Number(ss);
@@ -157,9 +157,16 @@
       $("pauseFlag").innerHTML = paused ? `<span class="tag warn">MINE PAUSED</span>` : "";
       mineFlags.paused = !!paused; mineFlags.exhausted = oreN === 0;
       if (pendP) renderPendingFinds(await pendP);
-      if (tBal !== null) $("treasury").textContent = `${fmtEth(tBal, 4)} ETH`;
-      // the Kettle: the steam waiting to drip, and what the next hourly tick sends to the Safe and pours
-      if (kPot !== null && kPv !== null) $("kettleLine").textContent = `in the kettle: ${fmtEth(kPot, 4)} ETH of steam · next hour: ${fmtEth(kPv.pour, 4)} ETH drips to the souls, ${fmtEth(kPv.brew, 4)} ETH thickens in the Cauldron`;
+      // The Cauldron counts live: what the Safe holds plus the brew the Kettle already owes it. The Kettle settles once
+      // an hour, so the Safe alone would stand still for the hour while the fees pour in; the line says when it lands.
+      // The steam likewise: the pot plus the share of the fees since the last tick.
+      if (tBal !== null && kPv !== null) {
+        const next = new Date((Math.floor(Number(blk.timestamp) / 3600) + 1) * 3600e3).toISOString().slice(11, 16);
+        $("treasury").textContent = `${fmtEth(tBal + kPv.brew, 4)} ETH`;
+        const steam = kPv.potAfter + kPv.pour;
+        $("kettleLine").textContent = `${fmtEth(tBal, 4)} ETH in the Cauldron, ${fmtEth(kPv.brew, 4)} ETH more joins it at ${next} UTC · steam for the souls: ${fmtEth(steam, 4)} ETH, ` +
+          (kPv.pour > 0n ? `${fmtEth(kPv.pour, 4)} ETH of it drips to them at ${next} UTC` : "it drips to them once the hundredth soul is sealed");
+      } else if (tBal !== null) $("treasury").textContent = `${fmtEth(tBal, 4)} ETH`;
     } catch (e) { log("mine: " + (e.shortMessage || e.message), "warn"); }
   }
   // pending finds: a find settles by the reveal seed of the parent-chain block it was submitted in, which exists
