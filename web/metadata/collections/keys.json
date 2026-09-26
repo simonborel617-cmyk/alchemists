@@ -1,0 +1,11 @@
+{
+  "name": "Alchemists Mythic Keys",
+  "description": "The twenty-one mythic keys of Alchemists. Each belongs to a named alchemist and drops from a lucky reveal in the mine or a lucky rite at the ritual table. A key in the slot of its kind seals a named soul, the rarest soul there is.",
+  "image": "https://alchemist-mine.com/img/collections/keys-logo.png",
+  "banner_image": "https://alchemist-mine.com/img/collections/keys-banner.jpg",
+  "featured_image": "https://alchemist-mine.com/img/collections/keys-featured.jpg",
+  "external_link": "https://alchemist-mine.com",
+  "collaborators": [
+    "0x4e6c530F812c642ece620425AF7A37f5E5055c7a"
+  ]
+}

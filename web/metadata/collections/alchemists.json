@@ -1,0 +1,11 @@
+{
+  "name": "Alchemists",
+  "description": "The alchemists of the main act, summoned from the souls of the opening act. The summoning opens with the main act.",
+  "image": "https://alchemist-mine.com/img/collections/alchemists-logo.png",
+  "banner_image": "https://alchemist-mine.com/img/collections/alchemists-banner.jpg",
+  "featured_image": "https://alchemist-mine.com/img/collections/alchemists-featured.jpg",
+  "external_link": "https://alchemist-mine.com",
+  "collaborators": [
+    "0x4e6c530F812c642ece620425AF7A37f5E5055c7a"
+  ]
+}

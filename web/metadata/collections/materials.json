@@ -1,0 +1,11 @@
+{
+  "name": "Alchemists Materials",
+  "description": "Ingredients, potions and ritual items of Alchemists, a proof-of-work mining and crafting game on Robinhood Chain. Every ingredient is mined with real proof of work: forty types, five tiers, rolled when the find is revealed. The workshop refines them, melts them down in the crucible and seals them into ritual items for the souls.",
+  "image": "https://alchemist-mine.com/img/collections/materials-logo.png",
+  "banner_image": "https://alchemist-mine.com/img/collections/materials-banner.jpg",
+  "featured_image": "https://alchemist-mine.com/img/collections/materials-featured.jpg",
+  "external_link": "https://alchemist-mine.com",
+  "collaborators": [
+    "0x4e6c530F812c642ece620425AF7A37f5E5055c7a"
+  ]
+}

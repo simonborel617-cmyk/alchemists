@@ -1,0 +1,11 @@
+{
+  "name": "Alchemists Furnaces",
+  "description": "The furnaces of the Alchemists workshop. Built from ingredients of their own tier, they refine ingredients one tier up, and a furnace hotter than the ingredient adds to the odds.",
+  "image": "https://alchemist-mine.com/img/collections/furnaces-logo.png",
+  "banner_image": "https://alchemist-mine.com/img/collections/furnaces-banner.jpg",
+  "featured_image": "https://alchemist-mine.com/img/collections/furnaces-featured.jpg",
+  "external_link": "https://alchemist-mine.com",
+  "collaborators": [
+    "0x4e6c530F812c642ece620425AF7A37f5E5055c7a"
+  ]
+}
