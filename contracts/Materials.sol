@@ -3,10 +3,13 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./CollectionMeta.sol";
 
 /// @notice Ingredients (40 types x 5 tiers), purification potions and sealed ritual items (8 kinds x 5 tiers) in one
 ///         ERC-1155. The 21 mythic keys live in the Keys ERC-721. Game contracts are whitelisted minters.
-contract Materials is ERC1155, Ownable {
+contract Materials is ERC1155, CollectionMeta {
+    string public constant name = "Alchemists Materials";
+    string public constant symbol = "AMAT";
     uint256 public constant TYPES = 40;
     uint256 public constant KINDS = 8;
 
@@ -130,5 +133,9 @@ contract Materials is ERC1155, Ownable {
         circulating[id] -= amt;
         if (isIngredient(id)) burnedIngredients += amt;
         _burn(from, id, amt);
+    }
+
+    function supportsInterface(bytes4 id) public view override(ERC1155, ERC2981) returns (bool) {
+        return super.supportsInterface(id);
     }
 }

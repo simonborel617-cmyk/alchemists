@@ -26,24 +26,27 @@ function mineConfig(P) {
   };
 }
 
-async function deployAll(ethers, P, treasury, log = () => {}) {
-  const materials = await ethers.deployContract("Materials", [P.materialsURI]);
+async function deployAll(ethers, P, treasury, log = () => {}, signer) {
+  // signer: optional (scripts/deploy.js passes one); the contracts come back connected to it, so every transaction
+  // below goes through it
+  const deploy = (name, args) => ethers.deployContract(name, args, signer);
+  const materials = await deploy("Materials", [P.materialsURI]);
   await materials.waitForDeployment();
   log("Materials", await materials.getAddress());
 
-  const keys = await ethers.deployContract("Keys", [P.keyKinds]);
+  const keys = await deploy("Keys", [P.keyKinds]);
   await keys.waitForDeployment();
   log("Keys", await keys.getAddress());
 
-  const mine = await ethers.deployContract("Mine", [await materials.getAddress(), await keys.getAddress(), treasury, mineConfig(P), P.mine.sessionSec || 60]);
+  const mine = await deploy("Mine", [await materials.getAddress(), await keys.getAddress(), treasury, mineConfig(P), P.mine.sessionSec || 60]);
   await mine.waitForDeployment();
   log("Mine", await mine.getAddress());
 
-  const furnaces = await ethers.deployContract("Furnaces", []);
+  const furnaces = await deploy("Furnaces", []);
   await furnaces.waitForDeployment();
   log("Furnaces", await furnaces.getAddress());
 
-  const workshop = await ethers.deployContract("Workshop", [
+  const workshop = await deploy("Workshop", [
     await mine.getAddress(),
     await materials.getAddress(),
     await keys.getAddress(),
@@ -54,7 +57,7 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   await workshop.waitForDeployment();
   log("Workshop", await workshop.getAddress());
 
-  const alchemists = await ethers.deployContract("Alchemists", [
+  const alchemists = await deploy("Alchemists", [
     await mine.getAddress(),
     await materials.getAddress(),
     await keys.getAddress(),
@@ -65,11 +68,11 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   await alchemists.waitForDeployment();
   log("Alchemists", await alchemists.getAddress());
 
-  const souls = await ethers.deployContract("Souls", [await mine.getAddress(), await materials.getAddress(), await keys.getAddress(), P.soulsURI || ""]);
+  const souls = await deploy("Souls", [await mine.getAddress(), await materials.getAddress(), await keys.getAddress(), P.soulsURI || ""]);
   await souls.waitForDeployment();
   log("Souls", await souls.getAddress());
 
-  const stream = await ethers.deployContract("Stream", [await souls.getAddress(), P.streamOpenAt ?? 100, treasury]); // the treasury Safe pours
+  const stream = await deploy("Stream", [await souls.getAddress(), P.streamOpenAt ?? 100, treasury]); // the treasury Safe pours
   await stream.waitForDeployment();
   log("Stream", `${await stream.getAddress()} (claims open at ${P.streamOpenAt ?? 100} souls)`);
 
@@ -77,7 +80,7 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   // steam into the Stream, which it alone pours into. Without P.kettle the fees go to the treasury and the Safe pours.
   let kettle = null;
   if (P.kettle) {
-    kettle = await ethers.deployContract("Kettle", [treasury, await stream.getAddress(), P.kettle.steamBps, P.kettle.dripBps]);
+    kettle = await deploy("Kettle", [treasury, await stream.getAddress(), P.kettle.steamBps, P.kettle.dripBps]);
     await kettle.waitForDeployment();
     await (await stream.setPourer(await kettle.getAddress())).wait();
     await (await mine.setTreasury(await kettle.getAddress())).wait();
@@ -92,6 +95,16 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   await (await furnaces.setWorkshop(await workshop.getAddress())).wait();
   if (P.furnacesURI) await (await furnaces.setBaseURI(P.furnacesURI)).wait(); // per-tier metadata: <base><tier>.json
   log("wired", "minters + workshop set");
+
+  // the collections as marketplaces show them: contractURI (ERC-7572) and 5 % creator earnings to the treasury (ERC-2981)
+  if (P.collectionsURI) {
+    const cols = { materials, keys, furnaces, souls, alchemists };
+    for (const [name, c] of Object.entries(cols)) {
+      await (await c.setContractURI(`${P.collectionsURI}${name}.json`)).wait();
+      if (P.royaltyBps) await (await c.setDefaultRoyalty(treasury, P.royaltyBps)).wait();
+    }
+    log("collections", `contractURI ${P.collectionsURI}<name>.json; royalty ${(P.royaltyBps || 0) / 100} % to ${treasury}`);
+  }
 
   if (P.workshop) {
     const w = P.workshop;
@@ -113,9 +126,9 @@ async function deployAll(ethers, P, treasury, log = () => {}) {
   let timelock = null;
   if (P.governance) {
     const g = P.governance;
-    const safe = g.safe && g.safe !== "deployer" ? g.safe : (await ethers.getSigners())[0].address;
+    const safe = g.safe && g.safe !== "deployer" ? g.safe : signer ? await signer.getAddress() : (await ethers.getSigners())[0].address;
     // proposer + executor = Safe; admin = none (the timelock administers itself after deployment)
-    timelock = await ethers.deployContract("TimelockController", [g.timelockDelay, [safe], [safe], ethers.ZeroAddress]);
+    timelock = await deploy("TimelockController", [g.timelockDelay, [safe], [safe], ethers.ZeroAddress]);
     await timelock.waitForDeployment();
     log("Timelock", `${await timelock.getAddress()} (delay ${g.timelockDelay}s, safe ${safe})`);
     const guardian = g.guardian && g.guardian !== "safe" ? g.guardian : safe;

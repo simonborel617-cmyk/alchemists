@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./Guarded.sol";
+import "./CollectionMeta.sol";
 import "./Mine.sol";
 import "./Materials.sol";
 import "./Keys.sol";
@@ -16,7 +17,7 @@ import "./Keys.sol";
 ///         512 for a named soul; founder mark 2.0 for No.1 of its rank down to 1.0 for No.100, 1.0 after, from Adept
 ///         up (named souls numbered among the named); Apprentices carry no mark. The main act burns a soul and
 ///         inherits its data.
-contract Souls is ERC721, Guarded {
+contract Souls is ERC721, Guarded, CollectionMeta {
     Mine public immutable mine;
     Materials public immutable materials;
     Keys public immutable keys;
@@ -155,5 +156,9 @@ contract Souls is ERC721, Guarded {
         _requireOwned(id);
         if (bytes(baseURI).length == 0) return "";
         return string.concat(baseURI, Strings.toString(data[id].rank), ".json");
+    }
+
+    function supportsInterface(bytes4 id) public view override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(id);
     }
 }

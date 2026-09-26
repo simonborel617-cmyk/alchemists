@@ -9,6 +9,8 @@
 
 
   "streamOpenAt": 100,
+  "collectionsURI": "https://alchemist-mine.com/metadata/collections/",
+  "royaltyBps": 500,
   "alchemistsBaseURI": "http://localhost/alchemists/",
   "summonFeeWei": "0",
   "mine": {

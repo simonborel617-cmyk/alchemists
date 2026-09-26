@@ -3,13 +3,14 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./CollectionMeta.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 /// @notice The 21 mythic keys, one ERC-721 each (token id = key index 0..20). Every key is bound to one ritual item
 ///         kind and belongs to one named alchemist. Keys are never minted directly: the Mine claims a random unclaimed
 ///         key on a lucky reveal, the Workshop claims one of the crafted kind on a lucky craft. The summoning burns
 ///         the key offered in its slot. Metadata is per key: `<baseURI><id>.json`.
-contract Keys is ERC721, Ownable {
+contract Keys is ERC721, CollectionMeta {
     uint8 public constant KEYS = 21;
     uint8 public constant KINDS = 8;
 
@@ -98,5 +99,9 @@ contract Keys is ERC721, Ownable {
         // a plain mint: a contract miner without an ERC-721 hook must not jam its own reveal queue with a key it rolled
         _mint(to, idx);
         emit KeyClaimed(idx, to, msg.sender);
+    }
+
+    function supportsInterface(bytes4 id) public view override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(id);
     }
 }

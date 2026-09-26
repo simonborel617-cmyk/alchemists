@@ -42,6 +42,13 @@ describe("Launch: the mainnet profile", function () {
     expect(await stream.closed()).to.equal(false); // the emergency exit has not been used
     expect(await kettle.closed()).to.equal(false);
     expect(await alchemists.treasury()).to.equal(safe.address); // the summoning fee stays the team's
+    // the collections: contractURI on the site and 5 % creator earnings to the Safe
+    for (const [file, c] of [["materials", materials], ["keys", keys], ["furnaces", furnaces], ["souls", souls], ["alchemists", alchemists]]) {
+      expect(await c.contractURI()).to.equal(`https://alchemist-mine.com/metadata/collections/${file}.json`);
+      const [to, amt] = await c.royaltyInfo(1, 10000n);
+      expect(to).to.equal(safe.address);
+      expect(amt).to.equal(500n);
+    }
 
     // the timelock: the Safe proposes and executes, 48 hours, no admin left with the deployer
     expect(await timelock.getMinDelay()).to.equal(172800n);

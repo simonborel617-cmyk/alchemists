@@ -10,6 +10,8 @@
 
 
   "streamOpenAt": 100,
+  "collectionsURI": "https://alchemist-mine.com/metadata/collections/",
+  "royaltyBps": 500,
   "kettle": { "steamBps": 6000, "dripBps": 417 },
   "alchemistsBaseURI": "https://alchemist-mine.com/metadata/alchemists/",
   "summonFeeWei": "0",

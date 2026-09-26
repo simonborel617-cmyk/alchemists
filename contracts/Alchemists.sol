@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./Guarded.sol";
+import "./CollectionMeta.sol";
 import "./FixedMath.sol";
 import "./Mine.sol";
 import "./Materials.sol";
@@ -11,7 +12,7 @@ import "./Keys.sol";
 
 /// @notice Summoning. Burns eight ritual items (five required, three enhancers), rank = floor(average tier),
 ///         appearance seed settled with the next minute's challenge. Hard quotas per rank, cap 5555.
-contract Alchemists is ERC721, Guarded {
+contract Alchemists is ERC721, Guarded, CollectionMeta {
     Mine public immutable mine;
     Materials public immutable materials;
     Keys public immutable keys;
@@ -158,5 +159,9 @@ contract Alchemists is ERC721, Guarded {
     function tokenURI(uint256 id) public view override returns (string memory) {
         _requireOwned(id);
         return string(abi.encodePacked(baseURI, Strings.toString(id)));
+    }
+
+    function supportsInterface(bytes4 id) public view override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(id);
     }
 }

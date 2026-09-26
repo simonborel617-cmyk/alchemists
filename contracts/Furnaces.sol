@@ -3,10 +3,11 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./CollectionMeta.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 /// @notice Multi-use furnaces. Tier 1..4 = clay / iron / brass / athanor; a tier-t furnace refines up to tier t+1.
-contract Furnaces is ERC721, Ownable {
+contract Furnaces is ERC721, CollectionMeta {
     address public workshop;
     uint256 public nextId = 1;
     mapping(uint256 => uint8) public tier;
@@ -49,5 +50,9 @@ contract Furnaces is ERC721, Ownable {
         _requireOwned(id);
         if (bytes(baseURI).length == 0) return "";
         return string.concat(baseURI, Strings.toString(tier[id]), ".json");
+    }
+
+    function supportsInterface(bytes4 id) public view override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(id);
     }
 }

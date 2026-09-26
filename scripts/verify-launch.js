@@ -66,6 +66,16 @@ const TL_ABI = [
     check(pourer !== null && eq(pourer, safe), "Stream.pourer() = the Safe", pourer === null ? "no pourer: a Stream from before the review 2 fixes" : pourer);
   }
 
+  if (P.collectionsURI) {
+    const cols = { materials: "Materials", keys: "Keys", furnaces: "Furnaces", souls: "Souls", alchemists: "Alchemists" };
+    for (const [file, n] of Object.entries(cols)) {
+      const uri = await c[n].contractURI().catch(() => "");
+      check(uri === `${P.collectionsURI}${file}.json`, `${n}.contractURI`, uri || "none");
+      const [to, amt] = await c[n].royaltyInfo(1, 10000n).catch(() => [ethers.ZeroAddress, 0n]);
+      check(eq(to, safe) && amt === BigInt(P.royaltyBps || 0), `${n} royalty ${(P.royaltyBps || 0) / 100} % to the Safe`, `${amt} bps to ${to}`);
+    }
+  }
+
   const game = [A.Mine, A.Workshop, A.Alchemists, A.Souls];
   for (const a of game) {
     check(await c.Materials.minters(a), `Materials minter ${a}`);

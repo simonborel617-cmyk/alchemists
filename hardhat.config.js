@@ -16,7 +16,7 @@ module.exports = {
     },
     // mainnet signs only with MAINNET_KEY (the mainnet deployer and keeper), never with the testnet DEPLOYER_KEY
     robinhood: {
-      url: process.env.ROBINHOOD_RPC || "https://robinhood-rpc.publicnode.com",
+      url: process.env.ROBINHOOD_RPC || "https://rpc.mainnet.chain.robinhood.com", // not publicnode: its lagging nodes broke the first deploy
       chainId: 4663,
       accounts: process.env.MAINNET_KEY ? [process.env.MAINNET_KEY] : [],
     },

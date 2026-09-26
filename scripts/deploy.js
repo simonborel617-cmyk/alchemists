@@ -22,10 +22,21 @@ async function main() {
     console.log("mainnet preflight: ok");
   }
   const bal = await hre.ethers.provider.getBalance(deployer.address);
-  console.log(`network ${net} deployer ${deployer.address} balance ${hre.ethers.formatEther(bal)} ETH treasury ${treasury}`);
+  console.log(`network ${net} rpc ${hre.network.config.url || "in-process"} deployer ${deployer.address} balance ${hre.ethers.formatEther(bal)} ETH treasury ${treasury}`);
   console.log(`params ${pfile}`);
 
-  const d = await deployAll(hre.ethers, P, treasury, (k, v) => console.log(`  ${k}: ${v}`));
+  // A load-balanced RPC answers from nodes that can be a block or two behind. One of them handed the first mainnet
+  // deploy a used nonce; one would also estimate the Stream.setPourer call against a state without the Stream (a plain
+  // transfer's gas, so the call runs out of gas) or revert the Kettle's "Stream has code" check. So the nonce is read
+  // once and counted here (NonceManager), and every transaction carries a fixed gas limit instead of an estimate:
+  // nothing a lagging node says reaches a transaction. Unused gas is refunded; the largest deploy (Workshop) uses 4.1M.
+  class DeploySigner extends hre.ethers.NonceManager {
+    sendTransaction(tx) {
+      if (tx.gasLimit == null) tx = { ...tx, gasLimit: tx.to ? 500_000n : 8_000_000n };
+      return super.sendTransaction(tx);
+    }
+  }
+  const d = await deployAll(hre.ethers, P, treasury, (k, v) => console.log(`  ${k}: ${v}`), new DeploySigner(deployer));
 
   const out = {
     network: net,
