@@ -55,21 +55,21 @@ contract Alchemists is ERC721, Guarded, CollectionMeta {
         treasury = treasury_;
     }
 
-    function setBaseURI(string calldata u) external onlyOwner {
+    function setBaseURI(string calldata u) external onlyAdmin {
         baseURI = u;
     }
 
-    function setSummonFee(uint256 fee) external onlyOwner {
+    function setSummonFee(uint256 fee) external onlyAdmin {
         summonFee = fee;
     }
 
-    function setTreasury(address t) external onlyOwner {
+    function setTreasury(address t) external onlyAdmin {
         require(t != address(0), "Alchemists: treasury");
         treasury = t;
     }
 
     /// @notice Sweep fees the treasury refused and any other ETH that reached the contract: it holds nothing of its own.
-    function sweepEscrow(address to) external onlyOwner {
+    function sweepEscrow(address to) external onlyAdmin {
         uint256 amt = address(this).balance;
         escrowed = 0;
         (bool ok, ) = to.call{value: amt}("");
@@ -159,6 +159,12 @@ contract Alchemists is ERC721, Guarded, CollectionMeta {
     function tokenURI(uint256 id) public view override returns (string memory) {
         _requireOwned(id);
         return string(abi.encodePacked(baseURI, Strings.toString(id)));
+    }
+
+    /// @dev The brake (guardian, unpause) belongs to the admin (the Safe), not to the owner, which is only the
+    ///      collection's marketplace face.
+    function _isGovernor(address a) internal view override returns (bool) {
+        return a == admin;
     }
 
     function supportsInterface(bytes4 id) public view override(ERC721, ERC2981) returns (bool) {

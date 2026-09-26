@@ -40,7 +40,7 @@ function connect(i) {
   wallet = new ethers.Wallet(key, provider);
   mine = new ethers.Contract(dep.contracts.Mine, art("Mine"), wallet);
   workshop = new ethers.Contract(dep.contracts.Workshop, art("Workshop"), wallet);
-  alchemists = new ethers.Contract(dep.contracts.Alchemists, art("Alchemists"), wallet);
+  alchemists = dep.contracts.Alchemists ? new ethers.Contract(dep.contracts.Alchemists, art("Alchemists"), wallet) : null; // v4 has none yet
   kettle = dep.contracts.Kettle ? new ethers.Contract(dep.contracts.Kettle, KETTLE_ABI, wallet) : null;
 }
 connect(0);
@@ -158,6 +158,7 @@ async function revealWorkshop() {
 }
 
 async function revealAlchemists() {
+  if (!alchemists) return;
   const total = Number(await alchemists.total());
   for (let id = alchemistHead; id <= total; id++) {
     const d = await alchemists.data(id);

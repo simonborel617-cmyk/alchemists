@@ -13,7 +13,9 @@ const rpc =
 const provider = new ethers.JsonRpcProvider(rpc, undefined, { staticNetwork: true });
 const mine = new ethers.Contract(dep.contracts.Mine, art("Mine"), provider);
 const materials = new ethers.Contract(dep.contracts.Materials, art("Materials"), provider);
-const alchemists = new ethers.Contract(dep.contracts.Alchemists, art("Alchemists"), provider);
+// the keys came with testnet v10; the Alchemists are left out of mainnet v4 until the main act
+const keysC = dep.contracts.Keys ? new ethers.Contract(dep.contracts.Keys, art("Keys"), provider) : null;
+const alchemists = dep.contracts.Alchemists ? new ethers.Contract(dep.contracts.Alchemists, art("Alchemists"), provider) : null;
 const workshop = new ethers.Contract(dep.contracts.Workshop, art("Workshop"), provider);
 
 async function main() {
@@ -21,7 +23,7 @@ async function main() {
   const [tQ8, unlocked, ore, sub, ema, net, mQ8, price, lastM, heat, mined, burned, keys, total, commits] = await Promise.all([
     mine.tQ8(), mine.unlockedTier(), mine.oreRemaining(), mine.submittedTotal(), mine.emaHashrate(), mine.netPressure(), mine.mQ8(),
     mine.currentPrice(), mine.lastChallengeMinute(), mine.heatQ8(), materials.minedTotal(), materials.burnedIngredients(),
-    materials.unclaimedCount(), alchemists.total(), workshop.commitCount(),
+    keysC ? keysC.unclaimedCount() : "n/a", alchemists ? alchemists.total() : "not deployed", workshop.commitCount(),
   ]);
   let sessionSec = 60;
   try { sessionSec = Number(await mine.sessionSec()); } catch {} // older deployments have no sessionSec()

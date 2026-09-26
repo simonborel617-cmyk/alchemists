@@ -17,10 +17,15 @@ Hardhat 2, Solidity 0.8.26, OpenZeppelin 5, EVM target Cancun.
 | `Mine` | One-minute sessions, a challenge per minute; a hash that clears the minute's threshold is submitted in the next minute and settles with `revealSeed` of its parent-chain block (the hashes of the last L2 blocks of that parent block and the next three: unknown at the submit, fixed afterwards); the tier is rolled at reveal (2/4/7/10 bits, the same odds for every find), threshold corridor 30…43 bits, retarget from a hashrate estimate, rarity unlocks by the season's find count (`unlockFinds`), supply extras per type×tier, a prima materia reserve with halvings, price without a ceiling. |
 | `Furnaces` | ERC-721 furnaces with a tier and a cooldown. |
 | `Workshop` | Refining (inputs follow the heat of the network), reroll (5/5/5/4/3 out with a category), item crafting (5 % tier up, key roll), potions and furnaces. Commit on send, reveal with `Mine.revealSeed` of the commit's parent-chain block (under a minute later). |
-| `Alchemists` | Summoning from eight items, rank = floor of the average tier, empty enhancer = Common, quotas by rank, cap 5555, named 1/1s through keys, appearance seed, Cauldron weights. Stage two, not part of the first mainnet release. |
-| `Guarded` | Guardian pause for submits and crafting; only the owner (the timelock) can unpause. |
+| `Alchemists` | Summoning from eight items, rank = floor of the average tier, empty enhancer = Common, quotas by rank, cap 5555, named 1/1s through keys, appearance seed, Cauldron weights. The main act: mainnet v4 leaves it out until its contract is final (`withAlchemists: false`). |
+| `Guarded` | Guardian pause for submits and crafting; setting the guardian and unpausing belong to the governor: the owner (the Safe) on the game contracts, the admin (the Safe) on `Souls` and `Alchemists`. |
+| `CollectionMeta` | Shared by the NFT collections (`Materials`, `Keys`, `Furnaces`, `Souls`, `Alchemists`): `owner()` is only the marketplace face and may only call `setContractURI` (ERC-7572); the `admin` holds the minters, metadata URIs, the workshop, the summoner and royalties (ERC-2981), and can move the face with `reassignOwner`. |
 
-Ownership of all five contracts belongs to an OpenZeppelin `TimelockController` whose proposer and executor is the Safe.
+Governance, v4 (owner's decisions of 2026-09-26): no timelock. The Safe owns the game contracts (`Mine`, `Workshop`,
+`Stream`, `Kettle`), administers the collections and is the guardian, directly and with no delay. A collection's
+`owner()` is its marketplace face, the wallet `0x5Ce8fb583fD3583E4cd7BF89f881e011B6ECfcD2`, which deploys the
+collections itself from a fresh wallet and can only move `contractURI`; the Safe can reassign the face. `Alchemists`
+(the main act) is not deployed yet. Details under "Safe and governance".
 
 ## Scope of the first release
 
@@ -54,7 +59,7 @@ A mainnet deploy runs `scripts/preflight.js` first and refuses on any problem.
 Keeper (fixes each minute's challenge; players reveal their own finds, or their next submit does):
 
 ```bash
-NET=robinhoodTestnet node scripts/keeper.js          # KEEPER_REVEAL=none (default) | stale (the boxes) | all | 0xaddr,0xaddr
+NET=robinhoodTestnet node scripts/keeper.js          # KEEPER_REVEAL=none (default, the boxes) | stale | all | 0xaddr,0xaddr
 ```
 
 CPU miner for tests (`MINER_KEY`, `THREADS`): `NET=robinhoodTestnet node scripts/miner.js`.
@@ -64,6 +69,17 @@ Windows helpers that run things detached: `scripts/run-testnet.ps1` / `stop-test
 `scripts/run-keeper.ps1 -Reveal none`, `scripts/run-fleet.ps1 -Boxes host:port,... -MinersFile .env.miners`
 (GPU orchestrator across several cards), `scripts/stop-gpu.ps1`, `scripts/fleet-cap.ps1 -DeadlineUtc <ISO>`
 (stops the orchestrator and destroys rented boxes at a deadline), `scripts/run-web.ps1` / `stop-web.ps1` (static server for `web/`).
+
+## Mainnet
+
+Robinhood Chain, chainId 4663, explorer `https://robinhoodchain.blockscout.com`. v4 (owner's decisions of 2026-09-26:
+no timelock, the collections deployed by their marketplace face, no `Alchemists`, the `Materials` balances of v3
+carried over) is deployed as `RUNBOOK.md` describes; until then `deployments/robinhood.json` and `web/deployment.json`
+hold v3, and the v4 deploy and `build-web.js` replace them with the v4 addresses.
+
+History: v1, v2 and v3 (all 2026-09-26) are governed by a 48-hour `TimelockController`. v1 and v2 are paused and archived as
+`deployments/robinhood.v1-paused.json` and `deployments/robinhood.v2-paused.json`; the v4 deploy archives the v3 record
+next to them and mints its balances again from `deploy/migration.v3.json` (`scripts/snapshot-materials.js`).
 
 ## Testnet
 
@@ -117,16 +133,37 @@ the deployer pays the gas): `NET=robinhoodTestnet node scripts/create-safe.js --
 the result lands in `deployments/safe.<net>.<name>.json`. The address then goes into `governance.safe` of the parameter
 profile and into `TREASURY` at deploy time.
 
-Any parameter change goes through the timelock: `node scripts/govern.js print <Contract> <fn> <args>` prints `{to, data}`
-to paste into Safe → Transaction Builder (timelock address, value 0, custom data); after the delay `print-execute` gives
-the second transaction. `schedule` / `execute` / `status` do the same with a local proposer key. A guardian pause is a direct
-`pause()` call on the contract from the Safe (no timelock); unpausing goes through the timelock. For rehearsals and
-multisigs whose keys live in `.env`: `node scripts/safe-exec.js --safe 0x… --tx '<json from print>'` signs the Safe
-transaction hash with the required number of owners and executes it. The full cycle (schedule, guardian pause, unpause,
-execute) was rehearsed on the testnet with the ninth deployment.
+v4 (owner's decisions of 2026-09-26): no timelock. The mainnet Safe `0x08Eb68ca02f6fDBCb2b335c67E14EC053166CC41` is the
+treasury and the guardian, the `owner()` of `Mine`, `Workshop`, `Stream` and `Kettle`, and the `admin` of `Materials`,
+`Keys`, `Furnaces` and `Souls` (minters, metadata URIs, the workshop, the summoner, royalties; on `Souls` also the
+guardian and unpausing). Every parameter change, pause and unpause is one Safe transaction straight to the contract,
+in force as soon as the owners have signed and executed it: `node scripts/govern.js print <Contract> <fn> <args>`
+prints `{to, value, data}` to paste into Safe → Transaction Builder (it warns when the call belongs to the collections'
+face instead), and `scripts/emergency.js` writes the pause, rescue and unpause batches (`RUNBOOK.md`). For rehearsals
+and multisigs whose keys live in `.env`: `node scripts/safe-exec.js --safe 0x… --tx '<json from print>'` signs the Safe
+transaction hash with the required number of owners and executes it.
 
-The `governance` block of a parameter profile: `safe` (address, or `"deployer"` on test networks), `guardian` (address or
-`"safe"`), `timelockDelay` (mainnet 172800). `deploy/params.mainnet.json` must get the real Safe address before deploying.
+A collection's `owner()` is its marketplace face, the wallet OpenSea hands the collection page to:
+`0x5Ce8fb583fD3583E4cd7BF89f881e011B6ECfcD2`. It deploys the whole v4 set itself from a fresh wallet (`scripts/deploy.js`
+refuses it after any earlier transaction; `RESUME=1` finishes an interrupted run from
+`deployments/<net>.progress.json` and never deploys a contract twice) and afterwards may only call `setContractURI`
+and hand over or renounce its own role. The Safe can give the face to another wallet with `reassignOwner(address)`, for
+a lost or leaked key. `Alchemists` (the main act) is not deployed yet; its contract takes the same roles as `Souls`.
+
+The `governance` block of a parameter profile: `mode` (`"safe"`: the Safe governs directly, v4; `"timelock"`, the
+default when absent: a `TimelockController` with `timelockDelay`, as in the older profiles), `safe` (address, or
+`"deployer"` on test networks), `guardian` (address or `"safe"`), `collectionsOwner` (the collections' face; absent or
+`"deployer"`: the deployer; under a timelock the face is the timelock). `withAlchemists: false` leaves the summoning contract out. The mainnet preflight accepts
+only `mode: "safe"`, the collections owner above, no `Alchemists` and an empty `pausedAtLaunch`. A v4 deployment
+record carries `governance: {mode: "safe", safe, collectionsOwner}` and `Alchemists: null`, `Timelock: null`; older
+records have no `governance` field and name their `Timelock`.
+
+History: mainnet v1-v3 and the testnet rehearsals ran under an OpenZeppelin `TimelockController` whose proposer and
+executor was the Safe (48 hours on mainnet, 300 s on the testnet). For those records `scripts/govern.js` gives the
+timelock's two transactions (`print` schedules, `print-execute` executes after the delay; `schedule` / `execute` /
+`status` do the same with a local proposer key) and `scripts/emergency.js` writes rescue and unpause as two batches.
+The full timelock cycle (schedule, guardian pause, unpause, execute) was rehearsed on the testnet with the ninth
+deployment.
 
 ## Dapp
 
@@ -172,7 +209,7 @@ site adds the chain, and `build-web.js` points the RPC preconnect in `web/index.
 
 `node scripts/metadata.js` (base `https://alchemist-mine.com/metadata/` by default) writes `{id}.json` for all 266 `Materials`
 ids and copies the real icons from `art/final` (`<slug>-t<tier-1>.png`, `key-<i>.png`), falling back to a placeholder
-SVG where an icon is missing. `Materials.setURI("https://alchemist-mine.com/metadata/{id}.json")` goes through the timelock.
+SVG where an icon is missing. `Materials.setURI("https://alchemist-mine.com/metadata/{id}.json")` is a Safe transaction (the admin).
 Icons are pixel art generated per `ART-BRIEF.md` and normalised by `scripts/pixelize.py` (grid detection or `--grid 64`,
 32-colour quantisation, tier auras, `--mythic` for the white key aura).
 

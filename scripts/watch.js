@@ -30,6 +30,8 @@ const MIN_BALANCE = ethers.parseEther(process.env.WATCH_MIN_BALANCE || "0.05");
 const STALE = Number(process.env.WATCH_STALE_MINUTES || 3);
 const INTERVAL = Number(process.env.WATCH_INTERVAL_MS || 60000);
 const REPEAT_MS = 30 * 60000;
+// who unpauses and rescues: the Safe itself in v4 records (no timelock), the timelock in older ones
+const GOVERNOR = dep.governance && dep.governance.mode === "safe" ? "the Safe" : "the timelock";
 const ABI = [
   "function challenge(uint64) view returns (bytes32)",
   "function sessionSec() view returns (uint32)",
@@ -114,7 +116,7 @@ async function round() {
   await condition("mine-paused", d.minePaused, "the Mine is paused", "the Mine is unpaused");
   await condition("ws-paused", d.wsPaused, "the Workshop is paused", "the Workshop is unpaused");
   await condition("kettle-late", d.kettleLate, "the Kettle has not been ticked for two hours: no hourly rent and no brew to the Safe (the keeper is down?)", "the Kettle ticks again");
-  await condition("kettle-paused", d.kettlePaused, "the Kettle is paused: fees wait in it until the timelock unpauses or rescues", "the Kettle is unpaused");
+  await condition("kettle-paused", d.kettlePaused, `the Kettle is paused: fees wait in it until ${GOVERNOR} unpauses or rescues it`, "the Kettle is unpaused");
   await condition("kettle-dry", d.kettleDry, "the Kettle ticks but pours nothing into the Stream (stream paused, closed, not pouring from the Kettle, or silent for two hours): the hourly rent has stopped", "the Kettle pours again");
   await condition("kettle-brew-owed", d.brewOwed > 0n, `the Safe refused the Kettle's brew: ${ethers.formatEther(d.brewOwed)} ETH waits in the Kettle`, "the Safe takes the brew again");
   if (d.bal !== null) {

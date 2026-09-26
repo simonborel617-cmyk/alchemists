@@ -32,12 +32,12 @@ contract Materials is ERC1155, CollectionMeta {
 
     constructor(string memory uri_) ERC1155(uri_) Ownable(msg.sender) {}
 
-    function setMinter(address who, bool on) external onlyOwner {
+    function setMinter(address who, bool on) external onlyAdmin {
         minters[who] = on;
         emit MinterSet(who, on);
     }
 
-    function setURI(string calldata u) external onlyOwner {
+    function setURI(string calldata u) external onlyAdmin {
         _setURI(u);
     }
 

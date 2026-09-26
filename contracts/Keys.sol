@@ -36,12 +36,12 @@ contract Keys is ERC721, CollectionMeta {
         }
     }
 
-    function setMinter(address who, bool on) external onlyOwner {
+    function setMinter(address who, bool on) external onlyAdmin {
         minters[who] = on;
         emit MinterSet(who, on);
     }
 
-    function setBaseURI(string calldata u) external onlyOwner {
+    function setBaseURI(string calldata u) external onlyAdmin {
         baseURI = u;
     }
 

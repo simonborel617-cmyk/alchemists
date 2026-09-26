@@ -18,7 +18,7 @@ interface IWeighted {
 ///         collection claims its share of that epoch by weight: share = pour x weight / sum of weights at the pour.
 ///         Claims open once the collection has at least `openAt` tokens (the hundredth soul); until then the pours
 ///         accumulate and are all claimable at once when the gate opens. A token claims an epoch once; a burned
-///         token (a soul that became an alchemist) can no longer claim. The owner (the timelock) can point the stream
+///         token (a soul that became an alchemist) can no longer claim. The owner (the Safe) can point the stream
 ///         at a new collection for the main act and can drain unclaimed ETH after a long grace period.
 ///         Only the pourer (the treasury Safe) or the owner may pour: an open pour let anyone flood the epoch list with
 ///         dust until claims ran out of gas. Claims can also advance in bounded steps (`claimUpTo`), so a token is
@@ -70,10 +70,10 @@ contract Stream is Guarded, ReentrancyGuard {
         emit PourerSet(p);
     }
 
-    /// @notice The emergency exit. While the guardian (the Safe) holds the stream paused, the owner (the timelock, so
-    ///         only after its public delay) sends everything the stream holds to `to` and closes it for good. For a bug
-    ///         in the stream itself: the Safe pauses at once, the ETH comes back when the delay has passed. After a fix
-    ///         a new stream can be deployed and pointed at the same collection.
+    /// @notice The emergency exit. While the guardian (the Safe) holds the stream paused, the owner (the Safe)
+    ///         sends everything the stream holds to `to` and closes it for good. For a bug in the stream itself: the
+    ///         Safe pauses, then takes the ETH back. After a fix a new stream can be deployed and pointed at the same
+    ///         collection.
     function rescue(address to) external onlyOwner nonReentrant notClosed {
         require(paused, "Stream: pause first");
         require(to != address(0), "Stream: to");
@@ -84,7 +84,7 @@ contract Stream is Guarded, ReentrancyGuard {
         emit Rescued(to, amount);
     }
 
-    // ---------------------------------------------------------------- admin (the timelock)
+    // ---------------------------------------------------------------- admin (the owner, the Safe)
     function addCollection(IWeighted c) external onlyOwner returns (uint32 idx) {
         collections.push(c);
         idx = uint32(collections.length - 1);

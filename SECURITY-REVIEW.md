@@ -1,5 +1,7 @@
 # Internal security review, 2026-09-16
 
+v4 (2026-09-26): no timelock; see README.
+
 First pass before the external audit: an independent agent read every contract, the deploy scripts and the tests, looking
 for reentrancy, denial of service, overflows, randomness manipulation, MEV, access-control holes, economic exploits and
 stuck states. Findings and what was done about them:
@@ -19,6 +21,8 @@ stuck states. Findings and what was done about them:
 The external audit of `Mine`, `Workshop`, `Materials` and `Guarded` remains before mainnet. Tests: 37, `npx hardhat test`.
 
 # Second internal review, 2026-09-24
+
+v4 (2026-09-26): no timelock; see README.
 
 Scope: everything that changed after the first review: the mythic keys moved into their own ERC-721 (`Keys`, touching
 `Mine`, `Workshop`, `Materials`, `Alchemists`), and the new `Souls` and `Stream`, plus the deploy wiring. An independent
@@ -64,6 +68,9 @@ The furnace recipe still demands one tier.
 
 # Third internal review: reveal randomness, 2026-09-25
 
+v4 (2026-09-26): the boxes run `KEEPER_REVEAL=none`, not `stale` (owner's decision: the keeper pays for no one's
+reveals), so a find left behind settles when its miner, or anyone calling `Mine.reveal`, reveals it.
+
 **Finding (critical, fixed).** Every reveal (mined finds, refining, rerolls, rites, summons) used the challenge of the
 next minute, `keccak(blockhash(block.number - 1), minute, previous challenge, findAcc)`, fixed by the first tick of that
 minute. On Robinhood Chain `block.number` is the parent-chain block number and `blockhash(block.number - 1)` is the hash
@@ -108,6 +115,8 @@ data behind the design: 901 consecutive parent transitions (237 jumps of two, an
 headers) matched the ArbOS blockhash model with no mismatch.
 
 # Fourth internal review: the Kettle and the soul ladder, 2026-09-25
+
+v4 (2026-09-26): no timelock; see README.
 
 Owner decisions the same day: soul weights by rank (Apprentice 1, Adept 4, Master 16, Magister 64, Archmage 256, a named
 soul 512) times a founder mark (No.1 of each rank from Adept up weighs 2.0, fading to 1.0 at No.100); seats 3014 / 1111 /

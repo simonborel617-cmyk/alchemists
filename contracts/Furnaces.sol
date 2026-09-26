@@ -21,11 +21,11 @@ contract Furnaces is ERC721, CollectionMeta {
 
     constructor() ERC721("Alchemists Furnace", "FURNACE") Ownable(msg.sender) {}
 
-    function setWorkshop(address w) external onlyOwner {
+    function setWorkshop(address w) external onlyAdmin {
         workshop = w;
     }
 
-    function setBaseURI(string calldata u) external onlyOwner {
+    function setBaseURI(string calldata u) external onlyAdmin {
         baseURI = u;
     }
 

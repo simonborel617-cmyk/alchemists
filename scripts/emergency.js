@@ -1,18 +1,22 @@
 // The emergency kit. Where the ETH is and how it comes out when something goes wrong:
 //   - Submit fees go to the Kettle (with the Kettle deployed; otherwise straight into the Safe). Every hour the Kettle
-//     sends 40 % to the Safe and drips steam into the Stream. Exit: the Safe pauses it at once, the timelock runs
-//     Kettle.rescue() after its delay: its whole balance returns to the Safe and it closes for good; the same batch points
-//     the Mine's treasury back at the Safe. The Safe itself is a plain Safe: its owners move its ETH at any time.
-//   - The Stream holds only what was poured into it. Exit: the Safe pauses it at once (it is the guardian), the
-//     timelock runs Stream.rescue(Safe) after its delay: the whole balance returns and the stream closes for good.
-//   - Mine and Alchemists hold nothing of their own; sweepEscrow(Safe) through the timelock takes any balance they have.
+//     sends 40 % to the Safe and drips steam into the Stream. Exit: the Safe pauses it, then the owner runs
+//     Kettle.rescue(): its whole balance returns to the Safe and it closes for good; the same batch points the Mine's
+//     treasury back at the Safe. The Safe itself is a plain Safe: its owners move its ETH at any time.
+//   - The Stream holds only what was poured into it. Exit: the Safe pauses it (it is the guardian), then the owner runs
+//     Stream.rescue(Safe): the whole balance returns and the stream closes for good.
+//   - Mine and Alchemists hold nothing of their own; sweepEscrow(Safe) by the owner takes any balance they have.
+// The owner: in v4 (the record's governance.mode "safe", owner's decision 2026-09-26) the Safe itself, so every step is
+// one plain Safe batch that runs at once (a contract left out of the deployment, like the Alchemists, is skipped); in
+// older records the timelock, so rescue and unpause are scheduled now and executed after its delay.
 // This script writes those steps as Safe{Wallet} Transaction Builder batches: app.safe.global > Apps > Transaction
 // Builder > drop the file > Create batch > Send batch > the second owner signs > Execute.
 //
 //   NET=robinhood node scripts/emergency.js status     read-only: pauses, balances, owners
 //   NET=robinhood node scripts/emergency.js pause      1 file: pause Mine, Workshop, Souls, Stream, Kettle, Alchemists (instant)
-//   NET=robinhood node scripts/emergency.js rescue     2 files: schedule now, execute after the delay (48 h on mainnet)
-//   NET=robinhood node scripts/emergency.js unpause    2 files: schedule now, execute after the delay (the summoning
+//   NET=robinhood node scripts/emergency.js rescue     v4: 1 file, runs at once (it pauses the stream and the kettle
+//                                                      first); timelock: 2 files, schedule now, execute after the delay
+//   NET=robinhood node scripts/emergency.js unpause    v4: 1 file, at once; timelock: 2 files as above (the summoning
 //                                                      stays paused; a rescued stream stays closed)
 // Files land in emergency-out/ (not committed). Every transaction is also printed, to check against the builder.
 const { ethers } = require("ethers");
@@ -48,21 +52,35 @@ const build = {
   pause(A) {
     return ["Mine", "Workshop", "Souls", "Stream", "Kettle", "Alchemists"].filter((n) => A[n]).map((n) => ({ to: A[n], value: "0", data: I.encodeFunctionData("pause"), what: `${n}.pause()` }));
   },
-  // everything the game contracts hold goes back to the Safe; the stream must be paused first and closes for good
-  rescue(A, safe, delay, salt, { streamClosed = false, kettleClosed = false } = {}) {
+  // everything the game contracts hold goes back to the Safe; the stream and the kettle must be paused first and close
+  // for good. The owner's calls: the timelock runs them after its delay (rescue), the Safe sends them itself in v4
+  rescueCalls(A, safe, { streamClosed = false, kettleClosed = false } = {}) {
     const calls = [];
-    if (A.Stream && !streamClosed) calls.push({ to: A.Stream, data: I.encodeFunctionData("rescue(address)", [safe]), what: `Stream.rescue(${safe})` });
+    if (A.Stream && !streamClosed) calls.push({ to: A.Stream, value: "0", data: I.encodeFunctionData("rescue(address)", [safe]), what: `Stream.rescue(${safe})` });
     if (A.Kettle) {
-      if (!kettleClosed) calls.push({ to: A.Kettle, data: I.encodeFunctionData("rescue()"), what: "Kettle.rescue() (everything to its Safe)" });
-      calls.push({ to: A.Mine, data: I.encodeFunctionData("setTreasury", [safe]), what: `Mine.setTreasury(${safe})` });
+      if (!kettleClosed) calls.push({ to: A.Kettle, value: "0", data: I.encodeFunctionData("rescue()"), what: "Kettle.rescue() (everything to its Safe)" });
+      calls.push({ to: A.Mine, value: "0", data: I.encodeFunctionData("setTreasury", [safe]), what: `Mine.setTreasury(${safe})` });
     }
-    for (const n of ["Mine", "Alchemists"]) if (A[n]) calls.push({ to: A[n], data: I.encodeFunctionData("sweepEscrow", [safe]), what: `${n}.sweepEscrow(${safe})` });
-    return timelocked(A, calls, delay, salt);
+    for (const n of ["Mine", "Alchemists"]) if (A[n]) calls.push({ to: A[n], value: "0", data: I.encodeFunctionData("sweepEscrow", [safe]), what: `${n}.sweepEscrow(${safe})` });
+    return calls;
+  },
+  rescue(A, safe, delay, salt, opts = {}) {
+    return timelocked(A, build.rescueCalls(A, safe, opts), delay, salt);
+  },
+  // v4: one Safe batch, at once. It pauses the stream and the kettle itself (pausing twice is harmless), so the batch
+  // cannot fail on a pause the owners forgot
+  rescueDirect(A, safe, opts = {}) {
+    const pauses = [["Stream", opts.streamClosed], ["Kettle", opts.kettleClosed]].filter(([n, shut]) => A[n] && !shut)
+      .map(([n]) => ({ to: A[n], value: "0", data: I.encodeFunctionData("pause"), what: `${n}.pause()` }));
+    return pauses.concat(build.rescueCalls(A, safe, opts));
   },
   // back to normal after a fix; the summoning stays paused, a rescued (closed) stream is left alone
-  unpause(A, delay, salt, { streamClosed = false, kettleClosed = false } = {}) {
+  unpauseCalls(A, { streamClosed = false, kettleClosed = false } = {}) {
     const names = ["Mine", "Workshop", "Souls"].concat(streamClosed ? [] : ["Stream"], kettleClosed ? [] : ["Kettle"]).filter((n) => A[n]);
-    return timelocked(A, names.map((n) => ({ to: A[n], data: I.encodeFunctionData("unpause"), what: `${n}.unpause()` })), delay, salt);
+    return names.map((n) => ({ to: A[n], value: "0", data: I.encodeFunctionData("unpause"), what: `${n}.unpause()` }));
+  },
+  unpause(A, delay, salt, opts = {}) {
+    return timelocked(A, build.unpauseCalls(A, opts), delay, salt);
   },
 };
 
@@ -99,7 +117,8 @@ if (require.main === module) {
   const dep = require(path.join(root, "deployments", `${NET}.json`));
   const P = JSON.parse(fs.readFileSync(path.join(root, "deploy", dep.params), "utf8"));
   const A = dep.contracts;
-  const safe = (P.governance && P.governance.safe) || dep.treasury;
+  const v4 = !!dep.governance && dep.governance.mode === "safe"; // no timelock: the Safe owns and calls directly
+  const safe = (v4 && dep.governance.safe) || (P.governance && P.governance.safe) || dep.treasury;
   const RPC = process.env.RPC_URL || { robinhood: "https://rpc.mainnet.chain.robinhood.com", robinhoodTestnet: "https://rpc.testnet.chain.robinhood.com/rpc", localhost: "http://127.0.0.1:8545" }[NET];
   const p = new ethers.JsonRpcProvider(RPC, dep.chainId, { staticNetwork: true });
   const view = (a, abi) => new ethers.Contract(a, abi, p);
@@ -108,8 +127,8 @@ if (require.main === module) {
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 
   (async () => {
-    if (!A.Timelock) throw new Error("this deployment has no timelock");
-    const delay = await view(A.Timelock, ["function getMinDelay() view returns (uint256)"]).getMinDelay();
+    if (!v4 && !A.Timelock) throw new Error("this deployment has no timelock");
+    const delay = v4 ? 0n : await view(A.Timelock, ["function getMinDelay() view returns (uint256)"]).getMinDelay();
     const closed = A.Stream ? await view(A.Stream, ["function closed() view returns (bool)"]).closed().catch(() => false) : false;
     const kClosed = A.Kettle ? await view(A.Kettle, ["function closed() view returns (bool)"]).closed().catch(() => false) : false;
     if (kind === "status") {
@@ -117,7 +136,7 @@ if (require.main === module) {
       const sv = view(safe, ["function getOwners() view returns (address[])", "function getThreshold() view returns (uint256)"]);
       const [owners, threshold] = await Promise.all([sv.getOwners().catch(() => []), sv.getThreshold().catch(() => 0n)]);
       console.log(`${NET} Safe ${safe}: ${await eth(safe)} ETH, ${threshold} of ${owners.length} owners ${owners.join(", ")}`);
-      console.log(`timelock ${A.Timelock}: delay ${delay}s, ${await eth(A.Timelock)} ETH`);
+      console.log(v4 ? "no timelock (v4): the Safe owns the game contracts and administers the collections, every step runs at once" : `timelock ${A.Timelock}: delay ${delay}s, ${await eth(A.Timelock)} ETH`);
       for (const n of ["Mine", "Workshop", "Souls", "Stream", "Kettle", "Alchemists"]) {
         if (!A[n]) continue;
         const paused = await view(A[n], ["function paused() view returns (bool)"]).paused();
@@ -134,6 +153,13 @@ if (require.main === module) {
     };
     if (kind === "pause") {
       write(`${stamp}-pause.json`, "Alchemists: pause everything", "Guardian pause, no delay. Ticks and reveals keep working; the Safe's own ETH is untouched.", build.pause(A));
+    } else if (v4 && kind === "rescue") {
+      const held = ["the stream", A.Kettle && "the kettle", "the mine", A.Alchemists && "the summoning"].filter(Boolean);
+      const holders = `${held.slice(0, -1).join(", ")} and ${held[held.length - 1]}`;
+      write(`${stamp}-rescue.json`, "Alchemists: rescue", `One batch, no delay: pauses the stream${A.Kettle ? " and the kettle" : ""} if still open, returns everything ${holders} hold to the Safe and closes the stream${A.Kettle ? " and the kettle" : ""} for good.`, build.rescueDirect(A, safe, { streamClosed: closed, kettleClosed: kClosed }));
+      console.log(`\nOne Safe transaction: everything ${holders} hold returns to the Safe ${safe}; the stream${A.Kettle ? " and the kettle" : ""} then stay closed${A.Kettle ? ", and the mine's fees go straight to the Safe" : ""}.`);
+    } else if (v4 && kind === "unpause") {
+      write(`${stamp}-unpause.json`, "Alchemists: unpause", "One batch, no delay: unpauses the game (the summoning stays paused, a rescued stream or kettle stays closed).", build.unpauseCalls(A, { streamClosed: closed, kettleClosed: kClosed }));
     } else if (kind === "rescue" || kind === "unpause") {
       const salt = ethers.id(`${kind}-${stamp}`);
       const b = kind === "rescue" ? build.rescue(A, safe, delay, salt, { streamClosed: closed, kettleClosed: kClosed }) : build.unpause(A, delay, salt, { streamClosed: closed, kettleClosed: kClosed });

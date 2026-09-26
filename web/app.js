@@ -719,7 +719,7 @@
     }
     return { ids, amts };
   }
-  // recipes and odds are tunables that change only through the timelock: fetched in parallel once, then cached per deployment
+  // recipes and odds are tunables that change only by the Safe: fetched in parallel once, then cached per deployment
   let rcLoad = null; // the load and a wallet's refresh both ask at once: one fetch serves both
   function recipes() { return rcLoad || (rcLoad = loadRecipes().finally(() => { rcLoad = null; })); }
   async function loadRecipes() {

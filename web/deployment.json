@@ -1,22 +1,33 @@
 {
   "network": "robinhood",
   "chainId": 4663,
-  "deployer": "0x4AC3c2F8A2472f1f0E9EDc6d3EAA7C4C8eCeC95f",
+  "deployer": "0x5Ce8fb583fD3583E4cd7BF89f881e011B6ECfcD2",
   "treasury": "0x08Eb68ca02f6fDBCb2b335c67E14EC053166CC41",
   "params": "params.mainnet.json",
-  "deployedAt": "2026-09-26T02:15:57.482Z",
-  "block": 72719990,
+  "deployedAt": "2026-09-26T04:59:24.598Z",
+  "startBlock": 72813688,
+  "block": 72816767,
+  "governance": {
+    "mode": "safe",
+    "safe": "0x08Eb68ca02f6fDBCb2b335c67E14EC053166CC41",
+    "collectionsOwner": "0x5Ce8fb583fD3583E4cd7BF89f881e011B6ECfcD2"
+  },
   "contracts": {
-    "Materials": "0x0322AbB137F969A7c561ba47Bcc67D6E554B8c01",
-    "Keys": "0x51fecBa135e415Ae9a27bE6C274248E171232d32",
-    "Souls": "0x30f5C04bbe83293D3390B792E5AA062AB1Fbd04a",
-    "Stream": "0x957E1B5f9d2fF7e593Be59B81476684A9Fbbb832",
-    "Kettle": "0xcE135AcC4afeE0C46f85171444f5370491aF80DC",
-    "Mine": "0x4EFb6f475059A86660C3cA3872aBe99382750166",
-    "Furnaces": "0x6181e49520a69A0d9a243c39C3D3A4eE8e8C1b33",
-    "Workshop": "0x68081FFF0670F72C709d6860D0f2314F6F3C2d03",
-    "Alchemists": "0xaf2aaae77BB637379D6EdE8cDdc54c5E0155d534",
-    "Timelock": "0xBf876A4E1b87DA844d7e92bE318939a04Dd667C3"
+    "Materials": "0xf7a0D261d43ff2633eEb0d5b1cDD7B7A167b7285",
+    "Keys": "0x560c97151984E719B6030DEAB9C4Fb1701e754e3",
+    "Souls": "0x0AE508Db2798d17FD2B7cf1Fb90B210730A3b99D",
+    "Stream": "0x13d0794A63933e0e00A2b20e59DF44dC7ab67e36",
+    "Kettle": "0x06c3DcEec2152bFB40D40636bf138764b9074626",
+    "Mine": "0x16de1dD77E741a80a9AF586dCB4D429A2b65B6f6",
+    "Furnaces": "0xa1467f8B363F152120d5b418f443CC93c144E237",
+    "Workshop": "0xB07453De23a6731021725Bc82092c81BFeB6328d",
+    "Alchemists": null,
+    "Timelock": null
+  },
+  "migration": {
+    "file": "migration.v3.json",
+    "sha256": "45d678b68e211d88630e990064dbe46501b47446f4e9a2ee68442eff3b828ecc",
+    "balances": 88
   },
   "rpc": "https://robinhood-rpc.publicnode.com",
   "rpcs": [

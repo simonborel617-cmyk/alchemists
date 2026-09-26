@@ -56,11 +56,11 @@ contract Souls is ERC721, Guarded, CollectionMeta {
         baseURI = baseURI_;
     }
 
-    function setBaseURI(string calldata u) external onlyOwner {
+    function setBaseURI(string calldata u) external onlyAdmin {
         baseURI = u;
     }
 
-    function setSummoner(address s) external onlyOwner {
+    function setSummoner(address s) external onlyAdmin {
         summoner = s;
         emit SummonerSet(s);
     }
@@ -156,6 +156,12 @@ contract Souls is ERC721, Guarded, CollectionMeta {
         _requireOwned(id);
         if (bytes(baseURI).length == 0) return "";
         return string.concat(baseURI, Strings.toString(data[id].rank), ".json");
+    }
+
+    /// @dev The brake (guardian, unpause) belongs to the admin (the Safe), not to the owner, which is only the
+    ///      collection's marketplace face.
+    function _isGovernor(address a) internal view override returns (bool) {
+        return a == admin;
     }
 
     function supportsInterface(bytes4 id) public view override(ERC721, ERC2981) returns (bool) {

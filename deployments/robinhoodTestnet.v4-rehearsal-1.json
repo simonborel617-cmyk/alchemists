@@ -1,0 +1,30 @@
+{
+  "network": "robinhoodTestnet",
+  "chainId": 46630,
+  "deployer": "0xf364A774c8cCff4006200F16da7cDf4E949A0943",
+  "treasury": "0xEd809549fFff5D7d79c27dfcad459389a8722a56",
+  "params": "params.rehearsal-v4.json",
+  "deployedAt": "2026-09-26T04:21:37.074Z",
+  "block": 124410790,
+  "governance": {
+    "mode": "safe",
+    "safe": "0xEd809549fFff5D7d79c27dfcad459389a8722a56",
+    "collectionsOwner": "0xf364A774c8cCff4006200F16da7cDf4E949A0943"
+  },
+  "contracts": {
+    "Materials": "0x01bAAb925FfB455cf9946721D0286B069b9CB6Ce",
+    "Keys": "0x2De16d2434acB99E9D235F83599aa7cF8ae4A0CC",
+    "Souls": "0x3ef9D69dac211a169e008A816db185980bB420de",
+    "Stream": "0x4ADFD9205F6B133A5CD4Fe71C462c73627016C04",
+    "Kettle": "0xE79B5f88FBD535a9D50b0aB48e064DA4fE174923",
+    "Mine": "0xD863A81c2Cdd315b12b59c9162e224fa20619A99",
+    "Furnaces": "0xD4eDB09c1cbA6B9b93A521BF02a89Ff6E6b2c716",
+    "Workshop": "0xEABB5FED2758579B77c10973e5a14E740058D036",
+    "Alchemists": null,
+    "Timelock": null
+  },
+  "migration": {
+    "file": "migration.dry.json",
+    "balances": 88
+  }
+}

@@ -11,7 +11,11 @@ function preflight(P, env) {
   const g = P.governance || {};
   const isAddr = (a) => typeof a === "string" && /^0x[0-9a-fA-F]{40}$/.test(a) && a !== "0x0000000000000000000000000000000000000000";
   if (!isAddr(g.safe)) problems.push("governance.safe must be the Safe multisig address");
-  if (!(g.timelockDelay >= 48 * 3600)) problems.push("governance.timelockDelay must be at least 48h (172800)");
+  // v4 (owner's decision 2026-09-26): no timelock. The Safe governs directly; the collections' marketplace face is a
+  // fresh wallet that deploys them itself (scripts/deploy.js refuses a wallet with any earlier transaction)
+  if (g.mode !== "safe") problems.push("governance.mode must be \"safe\": the Safe governs directly, no timelock (owner's decision 2026-09-26)");
+  if (!isAddr(g.collectionsOwner) || g.collectionsOwner.toLowerCase() !== "0x5ce8fb583fd3583e4cd7bf89f881e011b6ecfcd2") problems.push("governance.collectionsOwner must be 0x5Ce8fb583fD3583E4cd7BF89f881e011B6ECfcD2, the wallet that deploys and fronts the collections on OpenSea");
+  if (isAddr(g.collectionsOwner) && isAddr(g.safe) && g.collectionsOwner.toLowerCase() === g.safe.toLowerCase()) problems.push("governance.collectionsOwner must be a plain wallet, not the Safe");
   if (g.guardian && g.guardian !== "safe" && !isAddr(g.guardian)) problems.push("governance.guardian must be an address or \"safe\"");
   if (!isAddr(env.TREASURY)) problems.push("TREASURY env must be the Safe (Cauldron) address");
   if (isAddr(env.TREASURY) && isAddr(g.safe) && env.TREASURY.toLowerCase() !== g.safe.toLowerCase()) problems.push("TREASURY should be the same Safe as governance.safe for v1 (Cauldron = Safe)");
@@ -29,7 +33,8 @@ function preflight(P, env) {
   if (!P.keysURI || P.keysURI.includes("example")) problems.push("keysURI still points at the placeholder host");
   if (!P.soulsURI || P.soulsURI.includes("example")) problems.push("soulsURI still points at the placeholder host");
   if (P.streamOpenAt !== 100) problems.push("streamOpenAt must be 100 on mainnet");
-  if (!(P.pausedAtLaunch || []).includes("alchemists")) problems.push("pausedAtLaunch must include \"alchemists\": the summoning is the main act and stays paused until the timelock opens it");
+  if (P.withAlchemists !== false) problems.push("withAlchemists must be false: the main act's contract is deployed once it is final (owner's decision 2026-09-26)");
+  if ((P.pausedAtLaunch || []).length) problems.push("pausedAtLaunch must be empty: every deployed contract starts open");
   const w = P.workshop || {};
   if (!w.keyChance || w.keyChance[4] < 100 || w.keyChance[0] < 1000000) problems.push("workshop.keyChance must be mainnet-scale (1e6 .. 100)");
   if (w.furnaceCooldown < 600) problems.push("workshop.furnaceCooldown must be at least 600s");

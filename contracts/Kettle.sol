@@ -16,7 +16,7 @@ interface IKettleStream {
 ///         tokens of its current collection); the steam waits and then flows out at the same rate. A Stream that
 ///         refuses a pour (paused, closed) never holds back the brew: the steam stays in the pot. The ticker has no
 ///         power over the ETH: the Safe is fixed, the Stream and the rates change only through the owner (the
-///         timelock). Emergency: the guardian pauses, the owner returns everything to the Safe and the Kettle closes.
+///         Safe). Emergency: the guardian pauses, the owner returns everything to the Safe and the Kettle closes.
 contract Kettle is Guarded, ReentrancyGuard {
     address public immutable safe;
     IKettleStream public stream;
@@ -124,7 +124,7 @@ contract Kettle is Guarded, ReentrancyGuard {
         potAfter = p - pour;
     }
 
-    /// @notice Emergency exit: while paused, the owner (the timelock) returns everything to the Safe; closed for good.
+    /// @notice Emergency exit: while paused, the owner (the Safe) returns everything to the Safe; closed for good.
     function rescue() external onlyOwner nonReentrant {
         require(paused, "Kettle: pause first");
         require(!closed, "Kettle: closed");

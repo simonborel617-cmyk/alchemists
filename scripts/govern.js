@@ -5,6 +5,9 @@
 //   NET=robinhoodTestnet node scripts/govern.js status   Mine setTreasury '["0x..."]'
 //   SALT=<text> makes the operation distinct, for a call the timelock has already executed once (e.g. a second grant)
 // The signer must be a proposer/executor of the timelock (the Safe on mainnet; on testnet the deployer).
+// v4 records (governance.mode "safe", owner's decision 2026-09-26) have no timelock: the Safe owns the game contracts
+// and administers the collections, so only `print` applies and gives the Safe's direct call {to, value, data}, no key
+// needed. The collections' setContractURI and ownership calls belong to their owner (the collections owner), not the Safe.
 const { ethers } = require("ethers");
 const fs = require("fs");
 const path = require("path");
@@ -14,18 +17,22 @@ const { mineConfig } = require("./lib/deploy-all");
 const NET = process.env.NET || "robinhoodTestnet";
 const dep = require(path.join(__dirname, "..", "deployments", `${NET}.json`));
 const art = (n) => require(path.join(__dirname, "..", "artifacts", "contracts", `${n}.sol`, `${n}.json`)).abi;
-const tlAbi = require(path.join(__dirname, "..", "artifacts", "@openzeppelin", "contracts", "governance", "TimelockController.sol", "TimelockController.json")).abi;
+const v4 = !!dep.governance && dep.governance.mode === "safe";
 const rpc =
   process.env.RPC_URL ||
   (NET === "robinhood" ? process.env.ROBINHOOD_RPC : NET === "localhost" ? "http://127.0.0.1:8545" : process.env.ROBINHOOD_TESTNET_RPC);
 const provider = new ethers.JsonRpcProvider(rpc, undefined, { staticNetwork: true });
-const wallet = new ethers.Wallet(process.env.GOVERNOR_KEY || process.env.DEPLOYER_KEY, provider);
+const signer = () => {
+  const key = process.env.GOVERNOR_KEY || process.env.DEPLOYER_KEY;
+  if (!key) throw new Error("GOVERNOR_KEY (or DEPLOYER_KEY) missing in .env");
+  return new ethers.Wallet(key, provider);
+};
+const FACE_ONLY = ["setContractURI", "transferOwnership", "renounceOwnership"];
 
 async function main() {
   const [action, contractName, fn, rawArgs] = process.argv.slice(2);
-  if (!action || !contractName || !fn) throw new Error("usage: govern.js <schedule|execute|status> <Contract> <function> [argsJson|@paramsFile]");
-  if (!dep.contracts.Timelock) throw new Error("this deployment has no timelock");
-  const target = new ethers.Contract(dep.contracts[contractName], art(contractName), wallet);
+  if (!action || !contractName || !fn) throw new Error("usage: govern.js <print|print-execute|schedule|execute|status> <Contract> <function> [argsJson|@paramsFile]");
+  if (!dep.contracts[contractName]) throw new Error(`${contractName} is not deployed in ${NET}`);
   let args = [];
   if (rawArgs && rawArgs.startsWith("@")) {
     const P = JSON.parse(fs.readFileSync(rawArgs.slice(1), "utf8"));
@@ -34,6 +41,21 @@ async function main() {
   } else if (rawArgs) {
     args = JSON.parse(rawArgs);
   }
+  const shown = `${contractName}.${fn}(${JSON.stringify(args, (k, v) => (typeof v === "bigint" ? v.toString() : v))})`;
+  if (v4) {
+    if (action !== "print") throw new Error(`${NET} has no timelock (v4): the Safe calls ${contractName} directly and at once. Use "print" and send its {to, value, data} from the Safe`);
+    const data = new ethers.Interface(art(contractName)).encodeFunctionData(fn, args);
+    const faceOnly = FACE_ONLY.includes(fn) && !["Mine", "Workshop", "Stream", "Kettle"].includes(contractName);
+    console.log(faceOnly
+      ? `v4, no timelock | ${shown}: only the collections owner ${dep.governance.collectionsOwner} may send this (the Safe would revert); the Safe can take the role back with ${contractName}.reassignOwner`
+      : `v4, no timelock | ${shown}: the Safe ${dep.governance.safe} calls it directly, no delay`);
+    console.log(JSON.stringify({ to: dep.contracts[contractName], value: "0", data, what: shown }, null, 2));
+    return;
+  }
+  if (!dep.contracts.Timelock) throw new Error("this deployment has no timelock");
+  const tlAbi = require(path.join(__dirname, "..", "artifacts", "@openzeppelin", "contracts", "governance", "TimelockController.sol", "TimelockController.json")).abi;
+  const wallet = signer();
+  const target = new ethers.Contract(dep.contracts[contractName], art(contractName), wallet);
   const data = target.interface.encodeFunctionData(fn, args);
   const timelock = new ethers.Contract(dep.contracts.Timelock, tlAbi, wallet);
   // a call the timelock has already run once (the same target and data) needs a fresh salt to run again: SALT=<any text>
@@ -48,7 +70,7 @@ async function main() {
     const tlData = action === "print"
       ? timelock.interface.encodeFunctionData("schedule", [await target.getAddress(), 0, data, pred, salt, delay])
       : timelock.interface.encodeFunctionData("execute", [await target.getAddress(), 0, data, pred, salt]);
-    console.log(JSON.stringify({ to: dep.contracts.Timelock, value: "0", data: tlData, op: id, what: `${action === "print" ? "schedule" : "execute"} ${contractName}.${fn}(${JSON.stringify(args, (k, v) => (typeof v === "bigint" ? v.toString() : v))})` }, null, 2));
+    console.log(JSON.stringify({ to: dep.contracts.Timelock, value: "0", data: tlData, op: id, what: `${action === "print" ? "schedule" : "execute"} ${shown}` }, null, 2));
     return;
   }
   if (action === "status") {

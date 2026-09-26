@@ -15,7 +15,8 @@ const rpc =
 const provider = new ethers.JsonRpcProvider(rpc, undefined, { staticNetwork: true });
 const wallet = new ethers.Wallet(process.env.DEPLOYER_KEY, provider);
 const C = (n) => new ethers.Contract(dep.contracts[n], art(n), wallet);
-const materials = C("Materials"), mine = C("Mine"), furnaces = C("Furnaces"), workshop = C("Workshop"), alchemists = C("Alchemists");
+const materials = C("Materials"), mine = C("Mine"), furnaces = C("Furnaces"), workshop = C("Workshop");
+const alchemists = dep.contracts.Alchemists ? C("Alchemists") : null; // mainnet v4 leaves them out
 const me = wallet.address;
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const ing = (t, tier) => 1 + t * 8 + tier;
@@ -86,6 +87,7 @@ async function main() {
   // ---- summons (stage 2: off unless EXERCISE_SUMMON=1)
   const summonIds = [];
   if (process.env.EXERCISE_SUMMON === "1") {
+    if (!alchemists) throw new Error(`EXERCISE_SUMMON=1 but ${NET} has no Alchemists contract`);
     const rcS1 = await send("summon 8x Legendary", alchemists.summon(legendarySet, G));
     const s1 = events(rcS1, alchemists, ["Summoned"])[0].args;
     log(`  alchemist #${s1.id} rank ${s1.rank} avg ${Number(s1.avgTier100) / 100}`);
@@ -114,7 +116,7 @@ async function main() {
 
   // ---- balances
   log(`iron U balance ${await materials.balanceOf(me, ing(2, 2))}, chalice T3 ${await materials.balanceOf(me, item(2, 3))}, chalice T4 ${await materials.balanceOf(me, item(2, 4))}`);
-  log(`burned ingredients ${await materials.burnedIngredients()}, alchemists total ${await alchemists.total()}, price now ${ethers.formatEther(await mine.currentPrice())} ETH`);
+  log(`burned ingredients ${await materials.burnedIngredients()}, alchemists total ${alchemists ? await alchemists.total() : "n/a"}, price now ${ethers.formatEther(await mine.currentPrice())} ETH`);
   log("exercise complete");
 }
 

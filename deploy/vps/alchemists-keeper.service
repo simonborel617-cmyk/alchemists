@@ -8,7 +8,8 @@ Wants=network-online.target
 User=alchemists
 WorkingDirectory=/opt/alchemists
 Environment=NET=robinhood
-Environment=KEEPER_REVEAL=stale
+# none: the keeper pays for no one's reveals (an address farm could rotate idle addresses to push its settlement gas onto it); it still ticks every minute, so every reveal seed is fixed on time
+Environment=KEEPER_REVEAL=none
 Environment=KEEPER_INTERVAL_MS=10000
 # KEEPER_KEY and optional RPC_URLS live in /opt/alchemists/.env (chmod 600), never in this file
 ExecStart=/usr/bin/node scripts/keeper.js

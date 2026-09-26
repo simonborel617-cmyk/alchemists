@@ -26,8 +26,9 @@ describe("Governance", function () {
     const { materials, mine, furnaces, workshop, alchemists, timelock, deployer, guardian } = await loadFixture(governedFixture);
     const tl = await timelock.getAddress();
     for (const c of [materials, mine, furnaces, workshop, alchemists]) expect(await c.owner()).to.equal(tl);
+    for (const c of [materials, furnaces, alchemists]) expect(await c.admin()).to.equal(tl); // under a timelock it is the collections' admin too
     expect(await mine.guardian()).to.equal(guardian.address);
-    await expect(materials.connect(deployer).setMinter(deployer.address, true)).to.be.revertedWithCustomError(materials, "OwnableUnauthorizedAccount");
+    await expect(materials.connect(deployer).setMinter(deployer.address, true)).to.be.revertedWithCustomError(materials, "NotAdmin");
     await expect(mine.connect(deployer).setConfig(mineConfig(P0))).to.be.revertedWithCustomError(mine, "OwnableUnauthorizedAccount");
     await expect(mine.connect(deployer).unpause()).to.be.revertedWithCustomError(mine, "OwnableUnauthorizedAccount");
   });

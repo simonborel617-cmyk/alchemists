@@ -14,6 +14,6 @@ describe("Furnaces metadata", function () {
     await furnaces.mint(alice.address, 1);
     expect(await furnaces.tokenURI(2)).to.equal("https://host/metadata/furnace/1.json");
     await expect(furnaces.tokenURI(3)).to.be.revertedWithCustomError(furnaces, "ERC721NonexistentToken");
-    await expect(furnaces.connect(alice).setBaseURI("x")).to.be.revertedWithCustomError(furnaces, "OwnableUnauthorizedAccount");
+    await expect(furnaces.connect(alice).setBaseURI("x")).to.be.revertedWithCustomError(furnaces, "NotAdmin");
   });
 });

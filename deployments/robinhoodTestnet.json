@@ -1,21 +1,32 @@
 {
   "network": "robinhoodTestnet",
   "chainId": 46630,
-  "deployer": "0xEd809549fFff5D7d79c27dfcad459389a8722a56",
-  "treasury": "0xc1e32A54744Bb075b49512c09Cd075DbeBBFA140",
-  "params": "params.rehearsal.json",
-  "deployedAt": "2026-09-25T21:22:21.244Z",
-  "block": 124282650,
+  "deployer": "0x1a8B80a33B84fE2160C6229b2c072C81d20C943B",
+  "treasury": "0xEd809549fFff5D7d79c27dfcad459389a8722a56",
+  "params": "params.rehearsal-v4.json",
+  "deployedAt": "2026-09-26T04:51:48.053Z",
+  "startBlock": 124418338,
+  "block": 124421049,
+  "governance": {
+    "mode": "safe",
+    "safe": "0xEd809549fFff5D7d79c27dfcad459389a8722a56",
+    "collectionsOwner": "0x1a8B80a33B84fE2160C6229b2c072C81d20C943B"
+  },
   "contracts": {
-    "Materials": "0xb77FdA791d671935a3F1eE97C8362Af7F5959318",
-    "Keys": "0x062134C01ff0EAa2BAAb4f180c92f7eac83f0742",
-    "Souls": "0xB2Dd13C369822F8e0E265CF3800fDf2E2a136E20",
-    "Stream": "0xb709E7eB2d34bc97b7F4c16A98b7458fbEDd6BA1",
-    "Kettle": "0x0090D36bA77f12cAdb3Ce0B03da78FD8C1F24686",
-    "Mine": "0x1aE1CB43793A86deB161bE7206e0cd6cf526fb00",
-    "Furnaces": "0x1A7556B3689861DDBc35624679B2EEF2856Ec01A",
-    "Workshop": "0x542FeE1025f23EAc592D7Bc76C6c7728cAd8aD35",
-    "Alchemists": "0xBa9e9449546c4B97123e131e24ce2C0f8861AC16",
-    "Timelock": "0x94e3f664eAFbDB8549AE53ed9dd7635C73AE2CeC"
+    "Materials": "0x105806802c4F8a885C360e1702Ba03274D4713d7",
+    "Keys": "0x8a39b453368a0E922e88bc5650F9c7df23ccAE0e",
+    "Souls": "0xD39812948c751781483957261bAF90017926cDc4",
+    "Stream": "0x31B2090f74C8d9D42F55d3Bce4BaD7Cf11Db2dC6",
+    "Kettle": "0x3F37b1b3Fc5267fAA44EE5680EF006353BF5AA79",
+    "Mine": "0x4CcB8F8b166e59B0B3bF5aFa34FD1e0fbe8Dbd53",
+    "Furnaces": "0x13FC0480685381d31b34310799Ce3F5f907F45A1",
+    "Workshop": "0x0De0262bf2cE7a8e3f131966ABAc6756f251E50A",
+    "Alchemists": null,
+    "Timelock": null
+  },
+  "migration": {
+    "file": "migration.rehearsal-v4.json",
+    "sha256": "3a3beedc41431f03d6c23cc6110e008df5a99edc662e242f198629014ff618d5",
+    "balances": 88
   }
 }

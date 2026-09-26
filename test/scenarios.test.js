@@ -177,7 +177,7 @@ describe("Scenarios: accounting and access", function () {
     const cfg = mineConfig(P);
     await expect(mine.connect(w).setConfig(cfg)).to.be.revertedWithCustomError(mine, "OwnableUnauthorizedAccount");
     await expect(mine.connect(w).setTreasury(w.address)).to.be.revertedWithCustomError(mine, "OwnableUnauthorizedAccount");
-    await expect(materials.connect(w).setMinter(w.address, true)).to.be.revertedWithCustomError(materials, "OwnableUnauthorizedAccount");
+    await expect(materials.connect(w).setMinter(w.address, true)).to.be.revertedWithCustomError(materials, "NotAdmin");
     await expect(materials.connect(w).mintMined(w.address, ing(0, 1), 1)).to.be.revertedWith("Materials: not minter");
     await expect(materials.connect(w).burn(w.address, ing(0, 1), 1)).to.be.revertedWith("Materials: not minter");
     await expect(furnaces.connect(w).mint(w.address, 1)).to.be.revertedWith("Furnaces: not workshop");

@@ -4,7 +4,8 @@ const { ethers } = require("ethers");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true });
 
-const NAMES = [["MAINNET_KEY", "deployer + keeper"], ["SAFE_OWNER_1_KEY", "Safe owner 1"], ["SAFE_OWNER_2_KEY", "Safe owner 2"]];
+// NFT_OWNER_KEY: the collections owner, which deploys mainnet v4 itself and must show 0 tx before it does
+const NAMES = [["MAINNET_KEY", "keeper"],["NFT_OWNER_KEY", "collections owner"], ["SAFE_OWNER_1_KEY", "Safe owner 1"], ["SAFE_OWNER_2_KEY", "Safe owner 2"]];
 const p = new ethers.JsonRpcProvider(process.env.ROBINHOOD_RPC || "https://rpc.mainnet.chain.robinhood.com", 4663, { staticNetwork: true });
 
 (async () => {
