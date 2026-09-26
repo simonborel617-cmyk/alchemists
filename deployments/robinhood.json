@@ -17,19 +17,5 @@
     "Workshop": "0xbEf2e85525aaE1b3d3EdB7CaDc28dA1DD61bd76f",
     "Alchemists": "0xa843c8185f6e1Ad0038fDd57768BD5dB04Ed920D",
     "Timelock": "0x4E7363b0839e717dD19f48fa245AE52fa38cAc36"
-  },
-  "rpc": "https://robinhood-rpc.publicnode.com",
-  "rpcs": [
-    "https://robinhood-rpc.publicnode.com",
-    "https://rpc.mainnet.chain.robinhood.com",
-    "https://rpc.ordofi.network"
-  ],
-  "readRpcs": [
-    "https://robinhood-rpc.publicnode.com"
-  ],
-  "logRpcs": [
-    "https://rpc.mainnet.chain.robinhood.com"
-  ],
-  "explorer": "https://robinhoodchain.blockscout.com",
-  "chainName": "Robinhood Chain"
+  }
 }
