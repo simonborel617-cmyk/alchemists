@@ -11,7 +11,7 @@ if (-not (Test-Path $dep)) { throw "$dep is missing: deploy first, then commit t
 $d = Get-Content $dep -Raw | ConvertFrom-Json
 Write-Output "deployment: $Net chain $($d.chainId), Mine $($d.contracts.Mine)"
 
-python -m PyInstaller --onefile --noconfirm --name alchemists-miner --distpath dist --workpath build/pyi --specpath build scripts/gpu-miner.py | Out-Null
+python -m PyInstaller --onefile --noconfirm --name alchemists-miner --distpath dist --workpath build/pyi --specpath build --exclude-module setuptools --exclude-module pkg_resources scripts/gpu-miner.py | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 if (-not (Test-Path "dist\hb-miner-linux-x64")) { throw "dist\hb-miner-linux-x64 is missing (build it with miner/build-dist.sh on a CUDA box)" }
 
@@ -23,7 +23,7 @@ Copy-Item "dist\README-miner.md" "$out\README.md"
 Copy-Item "scripts\gpu-miner.py" "$out\gpu-miner.py"
 Copy-Item $dep "$out\deployments\$Net.json"
 $sums = foreach ($f in @("alchemists-miner.exe", "hb-miner-linux-x64", "gpu-miner.py", "deployments\$Net.json")) {
-  $h = (Get-FileHash -Algorithm SHA256 "$out\$f").Hash.ToLower(); "$h  $($f -replace '\','/')"
+  $h = (Get-FileHash -Algorithm SHA256 "$out\$f").Hash.ToLower(); "$h  $($f.Replace('\', '/'))"
 }
 $sums | Set-Content -Encoding ascii "$out\SHA256SUMS"
 & "$out\alchemists-miner.exe" --help | Select-Object -First 3
